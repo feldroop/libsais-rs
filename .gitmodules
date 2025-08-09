@@ -1,0 +1,3 @@
+[submodule "libsais-sys/libsais"]
+	path = libsais-sys/libsais
+	url = https://github.com/IlyaGrebnov/libsais
