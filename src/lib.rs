@@ -7,6 +7,24 @@ pub use libsais_sys::libsais::LIBSAIS_VERSION_STRING;
 pub const LIBSAIS_MAXIMUM_TEXT_SIZE: usize = 2147483647;
 pub const LIBSAIS16_MAXIMUM_TEXT_SIZE: usize = LIBSAIS_MAXIMUM_TEXT_SIZE;
 
+// output structures: SA, SA+BWT, SA+BWT+AUX, GSA for multistring
+
+// required extra config: aux -> sampling rate, alhpabet size for int array, unbwt primary index
+// optional extra config: with context, unbwt context, omp, frequency table
+
+// other queries: lcp from plcp and sa, plcp from sa/gsa and text, unbwt
+// trait InputTextValue {}
+
+// impl InputTextValue for u8 {} // libsais, libsais64
+// impl InputTextValue for i32 {} // libsais
+// impl InputTextValue for u16 {} // libsais16, libsais16x64
+// impl InputTextValue for i64 {} // libsais64
+
+// trait OutputBufferValue {}
+
+// impl OutputBufferValue for i32 {} // libsais, libsais16
+// impl OutputBufferValue for i64 {} // libsais64, libsais16x64
+
 pub struct SaisConfig<'a> {
     extra_space: usize,
     frequency_table: Option<&'a mut [i32; 256]>,
@@ -20,7 +38,7 @@ impl<'a> SaisConfig<'a> {
         }
     }
 
-    pub fn with_extra_space(&mut self, extra_space: usize) -> &mut Self {
+    pub fn extra_space(&mut self, extra_space: usize) -> &mut Self {
         self.extra_space = extra_space;
         self
     }
@@ -30,10 +48,7 @@ impl<'a> SaisConfig<'a> {
     /// of the C library. This table is used only for a single run, because it might be mutated by
     /// libsais.
     // TODO make nicer
-    pub unsafe fn with_frequency_table(
-        &mut self,
-        frequency_table: &'a mut [i32; 256],
-    ) -> &mut Self {
+    pub unsafe fn frequency_table(&mut self, frequency_table: &'a mut [i32; 256]) -> &mut Self {
         self.frequency_table = Some(frequency_table);
         self
     }
@@ -137,11 +152,11 @@ mod tests {
 
         // SAFETY: the frequency table defined above is valid
         unsafe {
-            config.with_frequency_table(&mut frequency_table);
+            config.frequency_table(&mut frequency_table);
         }
 
         let suffix_array = config
-            .with_extra_space(5)
+            .extra_space(5)
             .run(text)
             .expect("libsais you run without an error");
 
