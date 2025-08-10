@@ -6,25 +6,91 @@ pub const LIBSAIS_VERSION_PATCH: u32 = 2;
 pub const LIBSAIS_VERSION_STRING: &str = "2.10.2";
 
 unsafe extern "C" {
-    #[doc = " Creates the libsais context that allows reusing allocated memory with each libsais operation.\n In multi-threaded environments, use one context per thread for parallel executions.\n @return the libsais context, NULL otherwise."]
+    /// Creates the libsais context that allows reusing allocated memory with each libsais operation.In multi-threaded environments, use one context per thread for parallel executions.
+    ///
+    /// # Returns
+    ///
+    /// the libsais context, NULL otherwise.
     pub fn libsais_create_ctx() -> *mut ::std::os::raw::c_void;
 
-    #[doc = " Creates the libsais context that allows reusing allocated memory with each parallel libsais operation using OpenMP.\n In multi-threaded environments, use one context per thread for parallel executions.\n @param threads The number of OpenMP threads to use (can be 0 for OpenMP default).\n @return the libsais context, NULL otherwise."]
+    /// Creates the libsais context that allows reusing allocated memory with each parallel libsais operation using OpenMP.In multi-threaded environments, use one context per thread for parallel executions.
+    ///
+    /// # Arguments
+    ///
+    /// * `threads` - The number of OpenMP threads to use (can be 0 for OpenMP default).
+    ///
+    /// # Returns
+    ///
+    /// the libsais context, NULL otherwise.
+    #[cfg(feature = "openmp")]
     pub fn libsais_create_ctx_omp(threads: i32) -> *mut ::std::os::raw::c_void;
 
-    #[doc = " Destroys the libsass context and free previusly allocated memory.\n @param ctx The libsais context (can be NULL)."]
+    /// Destroys the libsass context and free previusly allocated memory.
+    ///
+    /// # Arguments
+    ///
+    /// * `ctx` - The libsais context (can be NULL).
     pub fn libsais_free_ctx(ctx: *mut ::std::os::raw::c_void);
 
-    #[doc = " Constructs the suffix array of a given string.\n @param T [0..n-1] The input string.\n @param SA [0..n-1+fs] The output array of suffixes.\n @param n The length of the given string.\n @param fs The extra space available at the end of SA array (0 should be enough for most cases).\n @param freq [0..255] The output symbol frequency table (can be NULL).\n @return 0 if no error occurred, -1 or -2 otherwise."]
+    /// Constructs the suffix array of a given string.
+    ///
+    /// # Arguments
+    ///
+    /// * `T` - [0..n-1] The input string.
+    /// * `SA` - [0..n-1+fs] The output array of suffixes.
+    /// * `n` - The length of the given string.
+    /// * `fs` - The extra space available at the end of SA array (0 should be enough for most cases).
+    /// * `freq` - [0..255] The output symbol frequency table (can be NULL).
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 or -2 otherwise.
     pub fn libsais(T: *const u8, SA: *mut i32, n: i32, fs: i32, freq: *mut i32) -> i32;
 
-    #[doc = " Constructs the generalized suffix array (GSA) of given string set.\n @param T [0..n-1] The input string set using 0 as separators (T[n-1] must be 0).\n @param SA [0..n-1+fs] The output array of suffixes.\n @param n The length of the given string set.\n @param fs The extra space available at the end of SA array (0 should be enough for most cases).\n @param freq [0..255] The output symbol frequency table (can be NULL).\n @return 0 if no error occurred, -1 or -2 otherwise."]
+    /// Constructs the generalized suffix array (GSA) of given string set.
+    ///
+    /// # Arguments
+    ///
+    /// * `T` - [0..n-1] The input string set using 0 as separators (T[n-1] must be 0).
+    /// * `SA` - [0..n-1+fs] The output array of suffixes.
+    /// * `n` - The length of the given string set.
+    /// * `fs` - The extra space available at the end of SA array (0 should be enough for most cases).
+    /// * `freq` - [0..255] The output symbol frequency table (can be NULL).
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 or -2 otherwise.
     pub fn libsais_gsa(T: *const u8, SA: *mut i32, n: i32, fs: i32, freq: *mut i32) -> i32;
 
-    #[doc = " Constructs the suffix array of a given integer array.\n Note, during construction input array will be modified, but restored at the end if no errors occurred.\n @param T [0..n-1] The input integer array.\n @param SA [0..n-1+fs] The output array of suffixes.\n @param n The length of the integer array.\n @param k The alphabet size of the input integer array.\n @param fs Extra space available at the end of SA array (can be 0, but 4k or better 6k is recommended for optimal performance).\n @return 0 if no error occurred, -1 or -2 otherwise."]
+    /// Constructs the suffix array of a given integer array.Note, during construction input array will be modified, but restored at the end if no errors occurred.
+    ///
+    /// # Arguments
+    ///
+    /// * `T` - [0..n-1] The input integer array.
+    /// * `SA` - [0..n-1+fs] The output array of suffixes.
+    /// * `n` - The length of the integer array.
+    /// * `k` - The alphabet size of the input integer array.
+    /// * `fs` - Extra space available at the end of SA array (can be 0, but 4k or better 6k is recommended for optimal performance).
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 or -2 otherwise.
     pub fn libsais_int(T: *mut i32, SA: *mut i32, n: i32, k: i32, fs: i32) -> i32;
 
-    #[doc = " Constructs the suffix array of a given string using libsais context.\n @param ctx The libsais context.\n @param T [0..n-1] The input string.\n @param SA [0..n-1+fs] The output array of suffixes.\n @param n The length of the given string.\n @param fs The extra space available at the end of SA array (0 should be enough for most cases).\n @param freq [0..255] The output symbol frequency table (can be NULL).\n @return 0 if no error occurred, -1 or -2 otherwise."]
+    /// Constructs the suffix array of a given string using libsais context.
+    ///
+    /// # Arguments
+    ///
+    /// * `ctx` - The libsais context.
+    /// * `T` - [0..n-1] The input string.
+    /// * `SA` - [0..n-1+fs] The output array of suffixes.
+    /// * `n` - The length of the given string.
+    /// * `fs` - The extra space available at the end of SA array (0 should be enough for most cases).
+    /// * `freq` - [0..255] The output symbol frequency table (can be NULL).
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 or -2 otherwise.
     pub fn libsais_ctx(
         ctx: *const ::std::os::raw::c_void,
         T: *const u8,
@@ -34,7 +100,20 @@ unsafe extern "C" {
         freq: *mut i32,
     ) -> i32;
 
-    #[doc = " Constructs the generalized suffix array (GSA) of given string set using libsais context.\n @param ctx The libsais context.\n @param T [0..n-1] The input string set using 0 as separators (T[n-1] must be 0).\n @param SA [0..n-1+fs] The output array of suffixes.\n @param n The length of the given string set.\n @param fs The extra space available at the end of SA array (0 should be enough for most cases).\n @param freq [0..255] The output symbol frequency table (can be NULL).\n @return 0 if no error occurred, -1 or -2 otherwise."]
+    /// Constructs the generalized suffix array (GSA) of given string set using libsais context.
+    ///
+    /// # Arguments
+    ///
+    /// * `ctx` - The libsais context.
+    /// * `T` - [0..n-1] The input string set using 0 as separators (T[n-1] must be 0).
+    /// * `SA` - [0..n-1+fs] The output array of suffixes.
+    /// * `n` - The length of the given string set.
+    /// * `fs` - The extra space available at the end of SA array (0 should be enough for most cases).
+    /// * `freq` - [0..255] The output symbol frequency table (can be NULL).
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 or -2 otherwise.
     pub fn libsais_gsa_ctx(
         ctx: *const ::std::os::raw::c_void,
         T: *const u8,
@@ -44,7 +123,21 @@ unsafe extern "C" {
         freq: *mut i32,
     ) -> i32;
 
-    #[doc = " Constructs the suffix array of a given string in parallel using OpenMP.\n @param T [0..n-1] The input string.\n @param SA [0..n-1+fs] The output array of suffixes.\n @param n The length of the given string.\n @param fs The extra space available at the end of SA array (0 should be enough for most cases).\n @param freq [0..255] The output symbol frequency table (can be NULL).\n @param threads The number of OpenMP threads to use (can be 0 for OpenMP default).\n @return 0 if no error occurred, -1 or -2 otherwise."]
+    /// Constructs the suffix array of a given string in parallel using OpenMP.
+    ///
+    /// # Arguments
+    ///
+    /// * `T` - [0..n-1] The input string.
+    /// * `SA` - [0..n-1+fs] The output array of suffixes.
+    /// * `n` - The length of the given string.
+    /// * `fs` - The extra space available at the end of SA array (0 should be enough for most cases).
+    /// * `freq` - [0..255] The output symbol frequency table (can be NULL).
+    /// * `threads` - The number of OpenMP threads to use (can be 0 for OpenMP default).
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 or -2 otherwise.
+    #[cfg(feature = "openmp")]
     pub fn libsais_omp(
         T: *const u8,
         SA: *mut i32,
@@ -54,7 +147,21 @@ unsafe extern "C" {
         threads: i32,
     ) -> i32;
 
-    #[doc = " Constructs the generalized suffix array (GSA) of given string set in parallel using OpenMP.\n @param T [0..n-1] The input string set using 0 as separators (T[n-1] must be 0).\n @param SA [0..n-1+fs] The output array of suffixes.\n @param n The length of the given string set.\n @param fs The extra space available at the end of SA array (0 should be enough for most cases).\n @param freq [0..255] The output symbol frequency table (can be NULL).\n @param threads The number of OpenMP threads to use (can be 0 for OpenMP default).\n @return 0 if no error occurred, -1 or -2 otherwise."]
+    /// Constructs the generalized suffix array (GSA) of given string set in parallel using OpenMP.
+    ///
+    /// # Arguments
+    ///
+    /// * `T` - [0..n-1] The input string set using 0 as separators (T[n-1] must be 0).
+    /// * `SA` - [0..n-1+fs] The output array of suffixes.
+    /// * `n` - The length of the given string set.
+    /// * `fs` - The extra space available at the end of SA array (0 should be enough for most cases).
+    /// * `freq` - [0..255] The output symbol frequency table (can be NULL).
+    /// * `threads` - The number of OpenMP threads to use (can be 0 for OpenMP default).
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 or -2 otherwise.
+    #[cfg(feature = "openmp")]
     pub fn libsais_gsa_omp(
         T: *const u8,
         SA: *mut i32,
@@ -64,11 +171,38 @@ unsafe extern "C" {
         threads: i32,
     ) -> i32;
 
-    #[doc = " Constructs the suffix array of a given integer array in parallel using OpenMP.\n Note, during construction input array will be modified, but restored at the end if no errors occurred.\n @param T [0..n-1] The input integer array.\n @param SA [0..n-1+fs] The output array of suffixes.\n @param n The length of the integer array.\n @param k The alphabet size of the input integer array.\n @param fs Extra space available at the end of SA array (can be 0, but 4k or better 6k is recommended for optimal performance).\n @param threads The number of OpenMP threads to use (can be 0 for OpenMP default).\n @return 0 if no error occurred, -1 or -2 otherwise."]
+    /// Constructs the suffix array of a given integer array in parallel using OpenMP.Note, during construction input array will be modified, but restored at the end if no errors occurred.
+    ///
+    /// # Arguments
+    ///
+    /// * `T` - [0..n-1] The input integer array.
+    /// * `SA` - [0..n-1+fs] The output array of suffixes.
+    /// * `n` - The length of the integer array.
+    /// * `k` - The alphabet size of the input integer array.
+    /// * `fs` - Extra space available at the end of SA array (can be 0, but 4k or better 6k is recommended for optimal performance).
+    /// * `threads` - The number of OpenMP threads to use (can be 0 for OpenMP default).
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 or -2 otherwise.
+    #[cfg(feature = "openmp")]
     pub fn libsais_int_omp(T: *mut i32, SA: *mut i32, n: i32, k: i32, fs: i32, threads: i32)
     -> i32;
 
-    #[doc = " Constructs the burrows-wheeler transformed string (BWT) of a given string.\n @param T [0..n-1] The input string.\n @param U [0..n-1] The output string (can be T).\n @param A [0..n-1+fs] The temporary array.\n @param n The length of the given string.\n @param fs The extra space available at the end of A array (0 should be enough for most cases).\n @param freq [0..255] The output symbol frequency table (can be NULL).\n @return The primary index if no error occurred, -1 or -2 otherwise."]
+    /// Constructs the burrows-wheeler transformed string (BWT) of a given string.
+    ///
+    /// # Arguments
+    ///
+    /// * `T` - [0..n-1] The input string.
+    /// * `U` - [0..n-1] The output string (can be T).
+    /// * `A` - [0..n-1+fs] The temporary array.
+    /// * `n` - The length of the given string.
+    /// * `fs` - The extra space available at the end of A array (0 should be enough for most cases).
+    /// * `freq` - [0..255] The output symbol frequency table (can be NULL).
+    ///
+    /// # Returns
+    ///
+    /// The primary index if no error occurred, -1 or -2 otherwise.
     pub fn libsais_bwt(
         T: *const u8,
         U: *mut u8,
@@ -78,7 +212,22 @@ unsafe extern "C" {
         freq: *mut i32,
     ) -> i32;
 
-    #[doc = " Constructs the burrows-wheeler transformed string (BWT) of a given string with auxiliary indexes.\n @param T [0..n-1] The input string.\n @param U [0..n-1] The output string (can be T).\n @param A [0..n-1+fs] The temporary array.\n @param n The length of the given string.\n @param fs The extra space available at the end of A array (0 should be enough for most cases).\n @param freq [0..255] The output symbol frequency table (can be NULL).\n @param r The sampling rate for auxiliary indexes (must be power of 2).\n @param I [0..(n-1)/r] The output auxiliary indexes.\n @return 0 if no error occurred, -1 or -2 otherwise."]
+    /// Constructs the burrows-wheeler transformed string (BWT) of a given string with auxiliary indexes.
+    ///
+    /// # Arguments
+    ///
+    /// * `T` - [0..n-1] The input string.
+    /// * `U` - [0..n-1] The output string (can be T).
+    /// * `A` - [0..n-1+fs] The temporary array.
+    /// * `n` - The length of the given string.
+    /// * `fs` - The extra space available at the end of A array (0 should be enough for most cases).
+    /// * `freq` - [0..255] The output symbol frequency table (can be NULL).
+    /// * `r` - The sampling rate for auxiliary indexes (must be power of 2).
+    /// * `I` - [0..(n-1)/r] The output auxiliary indexes.
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 or -2 otherwise.
     pub fn libsais_bwt_aux(
         T: *const u8,
         U: *mut u8,
@@ -90,7 +239,21 @@ unsafe extern "C" {
         I: *mut i32,
     ) -> i32;
 
-    #[doc = " Constructs the burrows-wheeler transformed string (BWT) of a given string using libsais context.\n @param ctx The libsais context.\n @param T [0..n-1] The input string.\n @param U [0..n-1] The output string (can be T).\n @param A [0..n-1+fs] The temporary array.\n @param n The length of the given string.\n @param fs The extra space available at the end of A array (0 should be enough for most cases).\n @param freq [0..255] The output symbol frequency table (can be NULL).\n @return The primary index if no error occurred, -1 or -2 otherwise."]
+    /// Constructs the burrows-wheeler transformed string (BWT) of a given string using libsais context.
+    ///
+    /// # Arguments
+    ///
+    /// * `ctx` - The libsais context.
+    /// * `T` - [0..n-1] The input string.
+    /// * `U` - [0..n-1] The output string (can be T).
+    /// * `A` - [0..n-1+fs] The temporary array.
+    /// * `n` - The length of the given string.
+    /// * `fs` - The extra space available at the end of A array (0 should be enough for most cases).
+    /// * `freq` - [0..255] The output symbol frequency table (can be NULL).
+    ///
+    /// # Returns
+    ///
+    /// The primary index if no error occurred, -1 or -2 otherwise.
     pub fn libsais_bwt_ctx(
         ctx: *const ::std::os::raw::c_void,
         T: *const u8,
@@ -101,7 +264,23 @@ unsafe extern "C" {
         freq: *mut i32,
     ) -> i32;
 
-    #[doc = " Constructs the burrows-wheeler transformed string (BWT) of a given string with auxiliary indexes using libsais context.\n @param ctx The libsais context.\n @param T [0..n-1] The input string.\n @param U [0..n-1] The output string (can be T).\n @param A [0..n-1+fs] The temporary array.\n @param n The length of the given string.\n @param fs The extra space available at the end of A array (0 should be enough for most cases).\n @param freq [0..255] The output symbol frequency table (can be NULL).\n @param r The sampling rate for auxiliary indexes (must be power of 2).\n @param I [0..(n-1)/r] The output auxiliary indexes.\n @return 0 if no error occurred, -1 or -2 otherwise."]
+    /// Constructs the burrows-wheeler transformed string (BWT) of a given string with auxiliary indexes using libsais context.
+    ///
+    /// # Arguments
+    ///
+    /// * `ctx` - The libsais context.
+    /// * `T` - [0..n-1] The input string.
+    /// * `U` - [0..n-1] The output string (can be T).
+    /// * `A` - [0..n-1+fs] The temporary array.
+    /// * `n` - The length of the given string.
+    /// * `fs` - The extra space available at the end of A array (0 should be enough for most cases).
+    /// * `freq` - [0..255] The output symbol frequency table (can be NULL).
+    /// * `r` - The sampling rate for auxiliary indexes (must be power of 2).
+    /// * `I` - [0..(n-1)/r] The output auxiliary indexes.
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 or -2 otherwise.
     pub fn libsais_bwt_aux_ctx(
         ctx: *const ::std::os::raw::c_void,
         T: *const u8,
@@ -114,7 +293,22 @@ unsafe extern "C" {
         I: *mut i32,
     ) -> i32;
 
-    #[doc = " Constructs the burrows-wheeler transformed string (BWT) of a given string in parallel using OpenMP.\n @param T [0..n-1] The input string.\n @param U [0..n-1] The output string (can be T).\n @param A [0..n-1+fs] The temporary array.\n @param n The length of the given string.\n @param fs The extra space available at the end of A array (0 should be enough for most cases).\n @param freq [0..255] The output symbol frequency table (can be NULL).\n @param threads The number of OpenMP threads to use (can be 0 for OpenMP default).\n @return The primary index if no error occurred, -1 or -2 otherwise."]
+    /// Constructs the burrows-wheeler transformed string (BWT) of a given string in parallel using OpenMP.
+    ///
+    /// # Arguments
+    ///
+    /// * `T` - [0..n-1] The input string.
+    /// * `U` - [0..n-1] The output string (can be T).
+    /// * `A` - [0..n-1+fs] The temporary array.
+    /// * `n` - The length of the given string.
+    /// * `fs` - The extra space available at the end of A array (0 should be enough for most cases).
+    /// * `freq` - [0..255] The output symbol frequency table (can be NULL).
+    /// * `threads` - The number of OpenMP threads to use (can be 0 for OpenMP default).
+    ///
+    /// # Returns
+    ///
+    /// The primary index if no error occurred, -1 or -2 otherwise.
+    #[cfg(feature = "openmp")]
     pub fn libsais_bwt_omp(
         T: *const u8,
         U: *mut u8,
@@ -125,7 +319,24 @@ unsafe extern "C" {
         threads: i32,
     ) -> i32;
 
-    #[doc = " Constructs the burrows-wheeler transformed string (BWT) of a given string with auxiliary indexes in parallel using OpenMP.\n @param T [0..n-1] The input string.\n @param U [0..n-1] The output string (can be T).\n @param A [0..n-1+fs] The temporary array.\n @param n The length of the given string.\n @param fs The extra space available at the end of A array (0 should be enough for most cases).\n @param freq [0..255] The output symbol frequency table (can be NULL).\n @param r The sampling rate for auxiliary indexes (must be power of 2).\n @param I [0..(n-1)/r] The output auxiliary indexes.\n @param threads The number of OpenMP threads to use (can be 0 for OpenMP default).\n @return 0 if no error occurred, -1 or -2 otherwise."]
+    /// Constructs the burrows-wheeler transformed string (BWT) of a given string with auxiliary indexes in parallel using OpenMP.
+    ///
+    /// # Arguments
+    ///
+    /// * `T` - [0..n-1] The input string.
+    /// * `U` - [0..n-1] The output string (can be T).
+    /// * `A` - [0..n-1+fs] The temporary array.
+    /// * `n` - The length of the given string.
+    /// * `fs` - The extra space available at the end of A array (0 should be enough for most cases).
+    /// * `freq` - [0..255] The output symbol frequency table (can be NULL).
+    /// * `r` - The sampling rate for auxiliary indexes (must be power of 2).
+    /// * `I` - [0..(n-1)/r] The output auxiliary indexes.
+    /// * `threads` - The number of OpenMP threads to use (can be 0 for OpenMP default).
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 or -2 otherwise.
+    #[cfg(feature = "openmp")]
     pub fn libsais_bwt_aux_omp(
         T: *const u8,
         U: *mut u8,
@@ -138,16 +349,46 @@ unsafe extern "C" {
         threads: i32,
     ) -> i32;
 
-    #[doc = " Creates the libsais reverse BWT context that allows reusing allocated memory with each libsais_unbwt_* operation.\n In multi-threaded environments, use one context per thread for parallel executions.\n @return the libsais context, NULL otherwise."]
+    /// Creates the libsais reverse BWT context that allows reusing allocated memory with each libsais_unbwt_* operation.In multi-threaded environments, use one context per thread for parallel executions.
+    ///
+    /// # Returns
+    ///
+    /// the libsais context, NULL otherwise.
     pub fn libsais_unbwt_create_ctx() -> *mut ::std::os::raw::c_void;
 
-    #[doc = " Creates the libsais reverse BWT context that allows reusing allocated memory with each parallel libsais_unbwt_* operation using OpenMP.\n In multi-threaded environments, use one context per thread for parallel executions.\n @param threads The number of OpenMP threads to use (can be 0 for OpenMP default).\n @return the libsais context, NULL otherwise."]
+    /// Creates the libsais reverse BWT context that allows reusing allocated memory with each parallel libsais_unbwt_* operation using OpenMP.In multi-threaded environments, use one context per thread for parallel executions.
+    ///
+    /// # Arguments
+    ///
+    /// * `threads` - The number of OpenMP threads to use (can be 0 for OpenMP default).
+    ///
+    /// # Returns
+    ///
+    /// the libsais context, NULL otherwise.
+    #[cfg(feature = "openmp")]
     pub fn libsais_unbwt_create_ctx_omp(threads: i32) -> *mut ::std::os::raw::c_void;
 
-    #[doc = " Destroys the libsass reverse BWT context and free previusly allocated memory.\n @param ctx The libsais context (can be NULL)."]
+    /// Destroys the libsass reverse BWT context and free previusly allocated memory.
+    ///
+    /// # Arguments
+    ///
+    /// * `ctx` - The libsais context (can be NULL).
     pub fn libsais_unbwt_free_ctx(ctx: *mut ::std::os::raw::c_void);
 
-    #[doc = " Constructs the original string from a given burrows-wheeler transformed string (BWT) with primary index.\n @param T [0..n-1] The input string.\n @param U [0..n-1] The output string (can be T).\n @param A [0..n] The temporary array (NOTE, temporary array must be n + 1 size).\n @param n The length of the given string.\n @param freq [0..255] The input symbol frequency table (can be NULL).\n @param i The primary index.\n @return 0 if no error occurred, -1 or -2 otherwise."]
+    /// Constructs the original string from a given burrows-wheeler transformed string (BWT) with primary index.
+    ///
+    /// # Arguments
+    ///
+    /// * `T` - [0..n-1] The input string.
+    /// * `U` - [0..n-1] The output string (can be T).
+    /// * `A` - [0..n] The temporary array (NOTE, temporary array must be n + 1 size).
+    /// * `n` - The length of the given string.
+    /// * `freq` - [0..255] The input symbol frequency table (can be NULL).
+    /// * `i` - The primary index.
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 or -2 otherwise.
     pub fn libsais_unbwt(
         T: *const u8,
         U: *mut u8,
@@ -157,7 +398,21 @@ unsafe extern "C" {
         i: i32,
     ) -> i32;
 
-    #[doc = " Constructs the original string from a given burrows-wheeler transformed string (BWT) with primary index using libsais reverse BWT context.\n @param ctx The libsais reverse BWT context.\n @param T [0..n-1] The input string.\n @param U [0..n-1] The output string (can be T).\n @param A [0..n] The temporary array (NOTE, temporary array must be n + 1 size).\n @param n The length of the given string.\n @param freq [0..255] The input symbol frequency table (can be NULL).\n @param i The primary index.\n @return 0 if no error occurred, -1 or -2 otherwise."]
+    /// Constructs the original string from a given burrows-wheeler transformed string (BWT) with primary index using libsais reverse BWT context.
+    ///
+    /// # Arguments
+    ///
+    /// * `ctx` - The libsais reverse BWT context.
+    /// * `T` - [0..n-1] The input string.
+    /// * `U` - [0..n-1] The output string (can be T).
+    /// * `A` - [0..n] The temporary array (NOTE, temporary array must be n + 1 size).
+    /// * `n` - The length of the given string.
+    /// * `freq` - [0..255] The input symbol frequency table (can be NULL).
+    /// * `i` - The primary index.
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 or -2 otherwise.
     pub fn libsais_unbwt_ctx(
         ctx: *const ::std::os::raw::c_void,
         T: *const u8,
@@ -168,7 +423,21 @@ unsafe extern "C" {
         i: i32,
     ) -> i32;
 
-    #[doc = " Constructs the original string from a given burrows-wheeler transformed string (BWT) with auxiliary indexes.\n @param T [0..n-1] The input string.\n @param U [0..n-1] The output string (can be T).\n @param A [0..n] The temporary array (NOTE, temporary array must be n + 1 size).\n @param n The length of the given string.\n @param freq [0..255] The input symbol frequency table (can be NULL).\n @param r The sampling rate for auxiliary indexes (must be power of 2).\n @param I [0..(n-1)/r] The input auxiliary indexes.\n @return 0 if no error occurred, -1 or -2 otherwise."]
+    /// Constructs the original string from a given burrows-wheeler transformed string (BWT) with auxiliary indexes.
+    ///
+    /// # Arguments
+    ///
+    /// * `T` - [0..n-1] The input string.
+    /// * `U` - [0..n-1] The output string (can be T).
+    /// * `A` - [0..n] The temporary array (NOTE, temporary array must be n + 1 size).
+    /// * `n` - The length of the given string.
+    /// * `freq` - [0..255] The input symbol frequency table (can be NULL).
+    /// * `r` - The sampling rate for auxiliary indexes (must be power of 2).
+    /// * `I` - [0..(n-1)/r] The input auxiliary indexes.
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 or -2 otherwise.
     pub fn libsais_unbwt_aux(
         T: *const u8,
         U: *mut u8,
@@ -179,7 +448,22 @@ unsafe extern "C" {
         I: *const i32,
     ) -> i32;
 
-    #[doc = " Constructs the original string from a given burrows-wheeler transformed string (BWT) with auxiliary indexes using libsais reverse BWT context.\n @param ctx The libsais reverse BWT context.\n @param T [0..n-1] The input string.\n @param U [0..n-1] The output string (can be T).\n @param A [0..n] The temporary array (NOTE, temporary array must be n + 1 size).\n @param n The length of the given string.\n @param freq [0..255] The input symbol frequency table (can be NULL).\n @param r The sampling rate for auxiliary indexes (must be power of 2).\n @param I [0..(n-1)/r] The input auxiliary indexes.\n @return 0 if no error occurred, -1 or -2 otherwise."]
+    /// Constructs the original string from a given burrows-wheeler transformed string (BWT) with auxiliary indexes using libsais reverse BWT context.
+    ///
+    /// # Arguments
+    ///
+    /// * `ctx` - The libsais reverse BWT context.
+    /// * `T` - [0..n-1] The input string.
+    /// * `U` - [0..n-1] The output string (can be T).
+    /// * `A` - [0..n] The temporary array (NOTE, temporary array must be n + 1 size).
+    /// * `n` - The length of the given string.
+    /// * `freq` - [0..255] The input symbol frequency table (can be NULL).
+    /// * `r` - The sampling rate for auxiliary indexes (must be power of 2).
+    /// * `I` - [0..(n-1)/r] The input auxiliary indexes.
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 or -2 otherwise.
     pub fn libsais_unbwt_aux_ctx(
         ctx: *const ::std::os::raw::c_void,
         T: *const u8,
@@ -191,7 +475,22 @@ unsafe extern "C" {
         I: *const i32,
     ) -> i32;
 
-    #[doc = " Constructs the original string from a given burrows-wheeler transformed string (BWT) with primary index in parallel using OpenMP.\n @param T [0..n-1] The input string.\n @param U [0..n-1] The output string (can be T).\n @param A [0..n] The temporary array (NOTE, temporary array must be n + 1 size).\n @param n The length of the given string.\n @param freq [0..255] The input symbol frequency table (can be NULL).\n @param i The primary index.\n @param threads The number of OpenMP threads to use (can be 0 for OpenMP default).\n @return 0 if no error occurred, -1 or -2 otherwise."]
+    /// Constructs the original string from a given burrows-wheeler transformed string (BWT) with primary index in parallel using OpenMP.
+    ///
+    /// # Arguments
+    ///
+    /// * `T` - [0..n-1] The input string.
+    /// * `U` - [0..n-1] The output string (can be T).
+    /// * `A` - [0..n] The temporary array (NOTE, temporary array must be n + 1 size).
+    /// * `n` - The length of the given string.
+    /// * `freq` - [0..255] The input symbol frequency table (can be NULL).
+    /// * `i` - The primary index.
+    /// * `threads` - The number of OpenMP threads to use (can be 0 for OpenMP default).
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 or -2 otherwise.
+    #[cfg(feature = "openmp")]
     pub fn libsais_unbwt_omp(
         T: *const u8,
         U: *mut u8,
@@ -202,7 +501,23 @@ unsafe extern "C" {
         threads: i32,
     ) -> i32;
 
-    #[doc = " Constructs the original string from a given burrows-wheeler transformed string (BWT) with auxiliary indexes in parallel using OpenMP.\n @param T [0..n-1] The input string.\n @param U [0..n-1] The output string (can be T).\n @param A [0..n] The temporary array (NOTE, temporary array must be n + 1 size).\n @param n The length of the given string.\n @param freq [0..255] The input symbol frequency table (can be NULL).\n @param r The sampling rate for auxiliary indexes (must be power of 2).\n @param I [0..(n-1)/r] The input auxiliary indexes.\n @param threads The number of OpenMP threads to use (can be 0 for OpenMP default).\n @return 0 if no error occurred, -1 or -2 otherwise."]
+    /// Constructs the original string from a given burrows-wheeler transformed string (BWT) with auxiliary indexes in parallel using OpenMP.
+    ///
+    /// # Arguments
+    ///
+    /// * `T` - [0..n-1] The input string.
+    /// * `U` - [0..n-1] The output string (can be T).
+    /// * `A` - [0..n] The temporary array (NOTE, temporary array must be n + 1 size).
+    /// * `n` - The length of the given string.
+    /// * `freq` - [0..255] The input symbol frequency table (can be NULL).
+    /// * `r` - The sampling rate for auxiliary indexes (must be power of 2).
+    /// * `I` - [0..(n-1)/r] The input auxiliary indexes.
+    /// * `threads` - The number of OpenMP threads to use (can be 0 for OpenMP default).
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 or -2 otherwise.
+    #[cfg(feature = "openmp")]
     pub fn libsais_unbwt_aux_omp(
         T: *const u8,
         U: *mut u8,
@@ -214,19 +529,76 @@ unsafe extern "C" {
         threads: i32,
     ) -> i32;
 
-    #[doc = " Constructs the permuted longest common prefix array (PLCP) of a given string and a suffix array.\n @param T [0..n-1] The input string.\n @param SA [0..n-1] The input suffix array.\n @param PLCP [0..n-1] The output permuted longest common prefix array.\n @param n The length of the string and the suffix array.\n @return 0 if no error occurred, -1 otherwise."]
+    /// Constructs the permuted longest common prefix array (PLCP) of a given string and a suffix array.
+    ///
+    /// # Arguments
+    ///
+    /// * `T` - [0..n-1] The input string.
+    /// * `SA` - [0..n-1] The input suffix array.
+    /// * `PLCP` - [0..n-1] The output permuted longest common prefix array.
+    /// * `n` - The length of the string and the suffix array.
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 otherwise.
     pub fn libsais_plcp(T: *const u8, SA: *const i32, PLCP: *mut i32, n: i32) -> i32;
 
-    #[doc = " Constructs the permuted longest common prefix array (PLCP) of a given string set and a generalized suffix array (GSA).\n @param T [0..n-1] The input string set using 0 as separators (T[n-1] must be 0).\n @param SA [0..n-1] The input generalized suffix array.\n @param PLCP [0..n-1] The output permuted longest common prefix array.\n @param n The length of the string set and the generalized suffix array.\n @return 0 if no error occurred, -1 otherwise."]
+    /// Constructs the permuted longest common prefix array (PLCP) of a given string set and a generalized suffix array (GSA).
+    ///
+    /// # Arguments
+    ///
+    /// * `T` - [0..n-1] The input string set using 0 as separators (T[n-1] must be 0).
+    /// * `SA` - [0..n-1] The input generalized suffix array.
+    /// * `PLCP` - [0..n-1] The output permuted longest common prefix array.
+    /// * `n` - The length of the string set and the generalized suffix array.
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 otherwise.
     pub fn libsais_plcp_gsa(T: *const u8, SA: *const i32, PLCP: *mut i32, n: i32) -> i32;
 
-    #[doc = " Constructs the permuted longest common prefix array (PLCP) of a integer array and a suffix array.\n @param T [0..n-1] The input integer array.\n @param SA [0..n-1] The input suffix array.\n @param PLCP [0..n-1] The output permuted longest common prefix array.\n @param n The length of the integer array and the suffix array.\n @return 0 if no error occurred, -1 otherwise."]
+    /// Constructs the permuted longest common prefix array (PLCP) of a integer array and a suffix array.
+    ///
+    /// # Arguments
+    ///
+    /// * `T` - [0..n-1] The input integer array.
+    /// * `SA` - [0..n-1] The input suffix array.
+    /// * `PLCP` - [0..n-1] The output permuted longest common prefix array.
+    /// * `n` - The length of the integer array and the suffix array.
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 otherwise.
     pub fn libsais_plcp_int(T: *const i32, SA: *const i32, PLCP: *mut i32, n: i32) -> i32;
 
-    #[doc = " Constructs the longest common prefix array (LCP) of a given permuted longest common prefix array (PLCP) and a suffix array.\n @param PLCP [0..n-1] The input permuted longest common prefix array.\n @param SA [0..n-1] The input suffix array or generalized suffix array (GSA).\n @param LCP [0..n-1] The output longest common prefix array (can be SA).\n @param n The length of the permuted longest common prefix array and the suffix array.\n @return 0 if no error occurred, -1 otherwise."]
+    /// Constructs the longest common prefix array (LCP) of a given permuted longest common prefix array (PLCP) and a suffix array.
+    ///
+    /// # Arguments
+    ///
+    /// * `PLCP` - [0..n-1] The input permuted longest common prefix array.
+    /// * `SA` - [0..n-1] The input suffix array or generalized suffix array (GSA).
+    /// * `LCP` - [0..n-1] The output longest common prefix array (can be SA).
+    /// * `n` - The length of the permuted longest common prefix array and the suffix array.
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 otherwise.
     pub fn libsais_lcp(PLCP: *const i32, SA: *const i32, LCP: *mut i32, n: i32) -> i32;
 
-    #[doc = " Constructs the permuted longest common prefix array (PLCP) of a given string and a suffix array in parallel using OpenMP.\n @param T [0..n-1] The input string.\n @param SA [0..n-1] The input suffix array.\n @param PLCP [0..n-1] The output permuted longest common prefix array.\n @param n The length of the string and the suffix array.\n @param threads The number of OpenMP threads to use (can be 0 for OpenMP default).\n @return 0 if no error occurred, -1 otherwise."]
+    /// Constructs the permuted longest common prefix array (PLCP) of a given string and a suffix array in parallel using OpenMP.
+    ///
+    /// # Arguments
+    ///
+    /// * `T` - [0..n-1] The input string.
+    /// * `SA` - [0..n-1] The input suffix array.
+    /// * `PLCP` - [0..n-1] The output permuted longest common prefix array.
+    /// * `n` - The length of the string and the suffix array.
+    /// * `threads` - The number of OpenMP threads to use (can be 0 for OpenMP default).
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 otherwise.
+    #[cfg(feature = "openmp")]
     pub fn libsais_plcp_omp(
         T: *const u8,
         SA: *const i32,
@@ -235,7 +607,20 @@ unsafe extern "C" {
         threads: i32,
     ) -> i32;
 
-    #[doc = " Constructs the permuted longest common prefix array (PLCP) of a given string set and a generalized suffix array (GSA) in parallel using OpenMP.\n @param T [0..n-1] The input string set using 0 as separators (T[n-1] must be 0).\n @param SA [0..n-1] The input generalized suffix array.\n @param PLCP [0..n-1] The output permuted longest common prefix array.\n @param n The length of the string set and the generalized suffix array.\n @param threads The number of OpenMP threads to use (can be 0 for OpenMP default).\n @return 0 if no error occurred, -1 otherwise."]
+    /// Constructs the permuted longest common prefix array (PLCP) of a given string set and a generalized suffix array (GSA) in parallel using OpenMP.
+    ///
+    /// # Arguments
+    ///
+    /// * `T` - [0..n-1] The input string set using 0 as separators (T[n-1] must be 0).
+    /// * `SA` - [0..n-1] The input generalized suffix array.
+    /// * `PLCP` - [0..n-1] The output permuted longest common prefix array.
+    /// * `n` - The length of the string set and the generalized suffix array.
+    /// * `threads` - The number of OpenMP threads to use (can be 0 for OpenMP default).
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 otherwise.
+    #[cfg(feature = "openmp")]
     pub fn libsais_plcp_gsa_omp(
         T: *const u8,
         SA: *const i32,
@@ -244,7 +629,20 @@ unsafe extern "C" {
         threads: i32,
     ) -> i32;
 
-    #[doc = " Constructs the permuted longest common prefix array (PLCP) of a given integer array and a suffix array in parallel using OpenMP.\n @param T [0..n-1] The input integer array.\n @param SA [0..n-1] The input suffix array.\n @param PLCP [0..n-1] The output permuted longest common prefix array.\n @param n The length of the integer array and the suffix array.\n @param threads The number of OpenMP threads to use (can be 0 for OpenMP default).\n @return 0 if no error occurred, -1 otherwise."]
+    /// Constructs the permuted longest common prefix array (PLCP) of a given integer array and a suffix array in parallel using OpenMP.
+    ///
+    /// # Arguments
+    ///
+    /// * `T` - [0..n-1] The input integer array.
+    /// * `SA` - [0..n-1] The input suffix array.
+    /// * `PLCP` - [0..n-1] The output permuted longest common prefix array.
+    /// * `n` - The length of the integer array and the suffix array.
+    /// * `threads` - The number of OpenMP threads to use (can be 0 for OpenMP default).
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 otherwise.
+    #[cfg(feature = "openmp")]
     pub fn libsais_plcp_int_omp(
         T: *const i32,
         SA: *const i32,
@@ -253,7 +651,20 @@ unsafe extern "C" {
         threads: i32,
     ) -> i32;
 
-    #[doc = " Constructs the longest common prefix array (LCP) of a given permuted longest common prefix array (PLCP) and a suffix array in parallel using OpenMP.\n @param PLCP [0..n-1] The input permuted longest common prefix array.\n @param SA [0..n-1] The input suffix array or generalized suffix array (GSA).\n @param LCP [0..n-1] The output longest common prefix array (can be SA).\n @param n The length of the permuted longest common prefix array and the suffix array.\n @param threads The number of OpenMP threads to use (can be 0 for OpenMP default).\n @return 0 if no error occurred, -1 otherwise."]
+    /// Constructs the longest common prefix array (LCP) of a given permuted longest common prefix array (PLCP) and a suffix array in parallel using OpenMP.
+    ///
+    /// # Arguments
+    ///
+    /// * `PLCP` - [0..n-1] The input permuted longest common prefix array.
+    /// * `SA` - [0..n-1] The input suffix array or generalized suffix array (GSA).
+    /// * `LCP` - [0..n-1] The output longest common prefix array (can be SA).
+    /// * `n` - The length of the permuted longest common prefix array and the suffix array.
+    /// * `threads` - The number of OpenMP threads to use (can be 0 for OpenMP default).
+    ///
+    /// # Returns
+    ///
+    /// 0 if no error occurred, -1 otherwise.
+    #[cfg(feature = "openmp")]
     pub fn libsais_lcp_omp(
         PLCP: *const i32,
         SA: *const i32,
