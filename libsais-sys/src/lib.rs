@@ -16,9 +16,10 @@ mod tests {
             return true;
         }
 
-        for indices in maybe_suffix_array[1..].windows(2) {
+        for indices in maybe_suffix_array.windows(2) {
             let previous = indices[0] as usize;
             let current = indices[1] as usize;
+
             if &text[previous..] > &text[current..] {
                 return false;
             }
