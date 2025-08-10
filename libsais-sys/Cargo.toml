@@ -1,6 +1,14 @@
 [package]
 name = "libsais-sys"
 version = "0.1.0"
+authors = ["Felix Leander Droop <info@felix-droop.de>"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/feldroop/libsais-rs/tree/master/libsais-sys"
+documentation = "https://docs.rs/libsais-sys"
+homepage = "https://github.com/feldroop/libsais-rs"
+description = "Raw bindings to the C library libsais for suffix array construction"
+categories = ["string-analysis", "bioinformatics", "algorithm", "suffix-array", "bindings"]
 edition = "2024"
 
 [features]
