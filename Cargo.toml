@@ -8,7 +8,8 @@ repository = "https://github.com/feldroop/libsais-rs"
 documentation = "https://docs.rs/libsais"
 homepage = "https://github.com/feldroop/libsais-rs"
 description = "Bindings to the C library libsais for suffix array construction"
-categories = ["string-analysis", "bioinformatics", "algorithm", "suffix-array"]
+categories = ["science::bioinformatics::sequence-analysis", "text-processing", "api-bindings"]
+keywords = ["sequence-analysis", "bioinformatics", "algorithm", "suffix-array", "c-bindings"]
 edition = "2024"
 
 [workspace]
