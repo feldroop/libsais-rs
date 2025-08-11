@@ -23,7 +23,6 @@ unsafe extern "C" {
     ///
     /// the libsais16 context, NULL otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16_create_ctx_omp(threads: i32) -> *mut ::std::os::raw::c_void;
 
     /// Destroys the libsass context and free previusly allocated memory.
@@ -139,7 +138,6 @@ unsafe extern "C" {
     ///
     /// 0 if no error occurred, -1 or -2 otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16_omp(
         T: *const u16,
         SA: *mut i32,
@@ -164,7 +162,6 @@ unsafe extern "C" {
     ///
     /// 0 if no error occurred, -1 or -2 otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16_gsa_omp(
         T: *const u16,
         SA: *mut i32,
@@ -189,7 +186,6 @@ unsafe extern "C" {
     ///
     /// 0 if no error occurred, -1 or -2 otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16_int_omp(
         T: *mut i32,
         SA: *mut i32,
@@ -319,7 +315,6 @@ unsafe extern "C" {
     ///
     /// The primary index if no error occurred, -1 or -2 otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16_bwt_omp(
         T: *const u16,
         U: *mut u16,
@@ -348,7 +343,6 @@ unsafe extern "C" {
     ///
     /// 0 if no error occurred, -1 or -2 otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16_bwt_aux_omp(
         T: *const u16,
         U: *mut u16,
@@ -378,7 +372,6 @@ unsafe extern "C" {
     ///
     /// the libsais16 context, NULL otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16_unbwt_create_ctx_omp(threads: i32) -> *mut ::std::os::raw::c_void;
 
     /// Destroys the libsass reverse BWT context and free previusly allocated memory.
@@ -504,7 +497,6 @@ unsafe extern "C" {
     ///
     /// 0 if no error occurred, -1 or -2 otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16_unbwt_omp(
         T: *const u16,
         U: *mut u16,
@@ -532,7 +524,6 @@ unsafe extern "C" {
     ///
     /// 0 if no error occurred, -1 or -2 otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16_unbwt_aux_omp(
         T: *const u16,
         U: *mut u16,
@@ -600,7 +591,6 @@ unsafe extern "C" {
     ///
     /// 0 if no error occurred, -1 otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16_plcp_omp(
         T: *const u16,
         SA: *const i32,
@@ -623,7 +613,6 @@ unsafe extern "C" {
     ///
     /// 0 if no error occurred, -1 otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16_plcp_gsa_omp(
         T: *const u16,
         SA: *const i32,
@@ -646,7 +635,6 @@ unsafe extern "C" {
     ///
     /// 0 if no error occurred, -1 otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16_lcp_omp(
         PLCP: *const i32,
         SA: *const i32,

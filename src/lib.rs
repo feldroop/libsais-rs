@@ -62,7 +62,6 @@ impl<'a> SaisConfig<'a> {
     /// Nuumber of threads to use. Setting it to 0 will lead to the library choosing the
     /// number of threads (typically this will be equal to the available hardware parallelism).
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn num_threads(&mut self, num_threads: u16) -> &mut Self {
         self.num_threads = num_threads;
         self

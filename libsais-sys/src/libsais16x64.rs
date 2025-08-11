@@ -66,7 +66,6 @@ unsafe extern "C" {
     ///
     /// 0 if no error occurred, -1 or -2 otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16x64_omp(
         T: *const u16,
         SA: *mut i64,
@@ -91,7 +90,6 @@ unsafe extern "C" {
     ///
     /// 0 if no error occurred, -1 or -2 otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16x64_gsa_omp(
         T: *const u16,
         SA: *mut i64,
@@ -116,7 +114,6 @@ unsafe extern "C" {
     ///
     /// 0 if no error occurred, -1 or -2 otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16x64_long_omp(
         T: *mut i64,
         SA: *mut i64,
@@ -192,7 +189,6 @@ unsafe extern "C" {
     ///
     /// The primary index if no error occurred, -1 or -2 otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16x64_bwt_omp(
         T: *const u16,
         U: *mut u16,
@@ -221,7 +217,6 @@ unsafe extern "C" {
     ///
     /// 0 if no error occurred, -1 or -2 otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16x64_bwt_aux_omp(
         T: *const u16,
         U: *mut u16,
@@ -298,7 +293,6 @@ unsafe extern "C" {
     ///
     /// 0 if no error occurred, -1 or -2 otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16x64_unbwt_omp(
         T: *const u16,
         U: *mut u16,
@@ -326,7 +320,6 @@ unsafe extern "C" {
     ///
     /// 0 if no error occurred, -1 or -2 otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16x64_unbwt_aux_omp(
         T: *const u16,
         U: *mut u16,
@@ -394,7 +387,6 @@ unsafe extern "C" {
     ///
     /// 0 if no error occurred, -1 otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16x64_plcp_omp(
         T: *const u16,
         SA: *const i64,
@@ -417,7 +409,6 @@ unsafe extern "C" {
     ///
     /// 0 if no error occurred, -1 otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16x64_plcp_gsa_omp(
         T: *const u16,
         SA: *const i64,
@@ -440,7 +431,6 @@ unsafe extern "C" {
     ///
     /// 0 if no error occurred, -1 otherwise.
     #[cfg(feature = "openmp")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "openmp")))]
     pub fn libsais16x64_lcp_omp(
         PLCP: *const i64,
         SA: *const i64,
