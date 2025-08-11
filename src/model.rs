@@ -14,6 +14,7 @@ pub trait Parallelism {
         extra_space: i32,
         frequency_table_ptr: *mut i32,
         num_threads: i32,
+        generalized_suffix_array: bool,
         context: Option<*mut c_void>,
     ) -> i32;
 }
@@ -30,28 +31,41 @@ impl Parallelism for SingleThreaded {
         extra_space: i32,
         frequency_table_ptr: *mut i32,
         _num_threads: i32,
+        generalized_suffix_array: bool,
         context: Option<*mut c_void>,
     ) -> i32 {
-        if let Some(context) = context {
-            unsafe {
-                libsais::libsais_ctx(
+        unsafe {
+            match (generalized_suffix_array, context) {
+                (true, None) => libsais::libsais_gsa(
+                    text_ptr,
+                    suffix_array_buffer_ptr,
+                    text_len,
+                    extra_space,
+                    frequency_table_ptr,
+                ),
+                (true, Some(context)) => libsais::libsais_gsa_ctx(
                     context,
                     text_ptr,
                     suffix_array_buffer_ptr,
                     text_len,
                     extra_space,
                     frequency_table_ptr,
-                )
-            }
-        } else {
-            unsafe {
-                libsais::libsais(
+                ),
+                (false, None) => libsais::libsais(
                     text_ptr,
                     suffix_array_buffer_ptr,
                     text_len,
                     extra_space,
                     frequency_table_ptr,
-                )
+                ),
+                (false, Some(context)) => libsais::libsais_ctx(
+                    context,
+                    text_ptr,
+                    suffix_array_buffer_ptr,
+                    text_len,
+                    extra_space,
+                    frequency_table_ptr,
+                ),
             }
         }
     }
@@ -71,17 +85,29 @@ impl Parallelism for MultiThreaded {
         extra_space: i32,
         frequency_table_ptr: *mut i32,
         num_threads: i32,
-        _context: Option<*mut c_void>, // currently, no libsais_omp_ctx function exists
+        generalized_suffix_array: bool,
+        _context: Option<*mut c_void>, // currently, no libsais_omp_ctx functions exist
     ) -> i32 {
         unsafe {
-            libsais::libsais_omp(
-                text_ptr,
-                suffix_array_buffer_ptr,
-                text_len,
-                extra_space,
-                frequency_table_ptr,
-                num_threads,
-            )
+            if generalized_suffix_array {
+                libsais::libsais_gsa_omp(
+                    text_ptr,
+                    suffix_array_buffer_ptr,
+                    text_len,
+                    extra_space,
+                    frequency_table_ptr,
+                    num_threads,
+                )
+            } else {
+                libsais::libsais_omp(
+                    text_ptr,
+                    suffix_array_buffer_ptr,
+                    text_len,
+                    extra_space,
+                    frequency_table_ptr,
+                    num_threads,
+                )
+            }
         }
     }
 }

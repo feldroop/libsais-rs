@@ -1,15 +1,17 @@
 mod context;
+mod helpers;
 mod model;
-
-use model::{MultiThreaded, Parallelism, SingleThreaded};
 
 use std::{marker::PhantomData, ptr};
 
-pub use context::{MultiThreadedSaisContext, SingleThreadedSaisContext};
-
-pub use libsais_sys::libsais::LIBSAIS_VERSION_STRING;
-
 use crate::context::SaisContext;
+use model::{MultiThreaded, Parallelism, SingleThreaded};
+
+pub use context::{MultiThreadedSaisContext, SingleThreadedSaisContext};
+pub use helpers::concatenate_strings;
+
+/// The version of the C library libsais wrapped by this crate
+pub use libsais_sys::libsais::LIBSAIS_VERSION_STRING;
 
 /// The maximum text size that this library can handle when using i32-based buffers
 pub const LIBSAIS_I32_MAXIMUM_TEXT_SIZE: usize = 2147483647;
@@ -22,12 +24,13 @@ pub const LIBSAIS_I32_MAXIMUM_TEXT_SIZE: usize = 2147483647;
 // other queries: lcp from plcp and sa, plcp from sa/gsa and text, unbwt
 
 // TODO num threads wrapper
-// next steps: context, gsa, int input
+// next steps: int input
 // then: bwt + aux
 // later: unbwt, plcp + lcp
 pub struct SaisConfig<'a, P: Parallelism> {
     frequency_table: Option<&'a mut [i32; 256]>,
     num_threads: u16,
+    generalized_suffix_array: bool,
     context: Option<&'a mut P::Context>,
     _parallelism_marker: PhantomData<P>,
 }
@@ -37,6 +40,7 @@ impl<'a> SaisConfig<'a, SingleThreaded> {
         Self {
             frequency_table: None,
             num_threads: 1,
+            generalized_suffix_array: false,
             context: None,
             _parallelism_marker: PhantomData,
         }
@@ -58,6 +62,7 @@ impl<'a> SaisConfig<'a, MultiThreaded> {
         Self {
             frequency_table: None,
             num_threads: 0, // TODO more expressive
+            generalized_suffix_array: false,
             context: None,
             _parallelism_marker: PhantomData,
         }
@@ -84,6 +89,17 @@ impl<'a, P: Parallelism> SaisConfig<'a, P> {
         }
     }
 
+    /// Construct the generalized suffix array, which is the suffix array of a set of strings.
+    /// Conceptually, all suffixes of all of the strings will be sorted in a single array.
+    /// The set of strings will be supplied to the algorithm by concatenating them separated by the 0 character
+    /// (not ASCII '0'). The concatenated string additionally has to be terminated by a 0.
+    pub fn generalized_suffix_array(self) -> Self {
+        Self {
+            generalized_suffix_array: true,
+            ..self
+        }
+    }
+
     /// Construct the suffix array for the given text.
     pub fn run(self, text: &[u8], extra_space_in_buffer: usize) -> Result<Vec<i32>, SaisError> {
         let buffer_len = text.len() + extra_space_in_buffer;
@@ -105,13 +121,7 @@ impl<'a, P: Parallelism> SaisConfig<'a, P> {
         text: &[u8],
         suffix_array_buffer: &mut [i32],
     ) -> Result<(), SaisError> {
-        assert!(text.len() < LIBSAIS_I32_MAXIMUM_TEXT_SIZE);
-        assert!(suffix_array_buffer.len() < LIBSAIS_I32_MAXIMUM_TEXT_SIZE);
-        assert!(suffix_array_buffer.len() >= text.len());
-
-        if let Some(context) = &self.context {
-            assert_eq!(context.num_threads(), self.num_threads);
-        }
+        self.safety_checks(text, suffix_array_buffer);
 
         let extra_space = (suffix_array_buffer.len() - text.len()) as i32;
 
@@ -131,6 +141,7 @@ impl<'a, P: Parallelism> SaisConfig<'a, P> {
                 extra_space,
                 frequency_table_ptr,
                 self.num_threads.into(),
+                self.generalized_suffix_array,
                 self.context.map(|ctx| ctx.as_mut_ptr()),
             )
         };
@@ -139,6 +150,38 @@ impl<'a, P: Parallelism> SaisConfig<'a, P> {
             Err(SaisError::from_return_code(return_code))
         } else {
             Ok(())
+        }
+    }
+
+    fn safety_checks(&self, text: &[u8], suffix_array_buffer: &mut [i32]) {
+        assert!(
+            text.len() < LIBSAIS_I32_MAXIMUM_TEXT_SIZE,
+            "text is too large for the basic version of libsais"
+        );
+        assert!(
+            suffix_array_buffer.len() < LIBSAIS_I32_MAXIMUM_TEXT_SIZE,
+            "suffix_array_buffer is too large for the basic version of libsais"
+        );
+        assert!(
+            suffix_array_buffer.len() >= text.len(),
+            "suffix_array_buffer must be at least as large as text"
+        );
+
+        if let Some(context) = &self.context {
+            assert_eq!(
+                context.num_threads(),
+                self.num_threads,
+                "context needs to have the same number of threads as this config"
+            );
+        }
+
+        if self.generalized_suffix_array
+            && let Some(c) = text.last()
+        {
+            assert!(
+                *c == 0,
+                "For the generalized suffix array, the last character of the text needs to be 0 (not ASCII '0')"
+            );
         }
     }
 }
@@ -182,7 +225,30 @@ mod tests {
         true
     }
 
-    fn setup_example() -> (
+    fn is_generalized_suffix_array(concatenated_text: &[u8], maybe_suffix_array: &[i32]) -> bool {
+        if concatenated_text.is_empty() && maybe_suffix_array.is_empty() {
+            return true;
+        }
+
+        for indices in maybe_suffix_array.windows(2) {
+            let previous = indices[0] as usize;
+            let current = indices[1] as usize;
+
+            // for the generalized suffix array, the zero char borders can be in a different order than
+            // they would be in the normal suffix array
+            if concatenated_text[previous] == 0 && concatenated_text[current] == 0 {
+                continue;
+            }
+
+            if &concatenated_text[previous..] > &concatenated_text[current..] {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    fn setup_basic_example() -> (
         &'static [u8; 11],
         usize,
         [i32; 256],
@@ -199,9 +265,22 @@ mod tests {
         (text, extra_space, frequency_table, ctx)
     }
 
+    fn setup_generalized_suffix_array_example()
+    -> (Vec<u8>, usize, [i32; 256], SingleThreadedSaisContext) {
+        let text = concatenate_strings([b"abababcabba".as_slice(), b"babaabccbac"]);
+        let extra_space = 20;
+        let mut frequency_table = [0; 256];
+        frequency_table[b'a' as usize] = 9;
+        frequency_table[b'b' as usize] = 9;
+        frequency_table[b'c' as usize] = 4;
+        let ctx = SingleThreadedSaisContext::new();
+
+        (text, extra_space, frequency_table, ctx)
+    }
+
     #[test]
     fn libsais_basic() {
-        let (text, extra_space, mut frequency_table, mut ctx) = setup_example();
+        let (text, extra_space, mut frequency_table, mut ctx) = setup_basic_example();
 
         let mut config = SaisConfig::single_threaded().with_context(&mut ctx);
 
@@ -218,8 +297,31 @@ mod tests {
     }
 
     #[test]
+    fn libsais_generalized_suffix_array() {
+        let (text, extra_space, mut frequency_table, mut ctx) =
+            setup_generalized_suffix_array_example();
+
+        let mut config = SaisConfig::single_threaded()
+            .generalized_suffix_array()
+            .with_context(&mut ctx);
+
+        // SAFETY: the frequency table defined above is valid
+        unsafe {
+            config = config.frequency_table(&mut frequency_table);
+        }
+
+        let suffix_array = config
+            .run(&text, extra_space)
+            .expect("libsais should run without an error");
+
+        println!("{suffix_array:?}");
+
+        assert!(is_generalized_suffix_array(&text, &suffix_array));
+    }
+
+    #[test]
     fn libsais_with_output_buffer() {
-        let (text, extra_space, mut frequency_table, mut ctx) = setup_example();
+        let (text, extra_space, mut frequency_table, mut ctx) = setup_basic_example();
         let buffer_size = text.len() + extra_space;
         let mut suffix_array_buffer = vec![0; buffer_size];
 
@@ -240,7 +342,7 @@ mod tests {
     #[cfg(feature = "openmp")]
     #[test]
     fn libsais_omp() {
-        let (text, extra_space, mut frequency_table, _) = setup_example();
+        let (text, extra_space, mut frequency_table, _) = setup_basic_example();
 
         let mut config = SaisConfig::multi_threaded().num_threads(4);
 
