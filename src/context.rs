@@ -2,7 +2,10 @@ use libsais_sys::libsais;
 
 use std::ffi::c_void;
 
-pub unsafe trait SaisContext {
+mod sealed {
+    pub trait Sealed {}
+}
+pub trait SaisContext: sealed::Sealed {
     fn as_mut_ptr(&mut self) -> *mut c_void;
 
     fn num_threads(&self) -> u16;
@@ -21,7 +24,9 @@ impl SingleThreadedSaisContext {
     }
 }
 
-unsafe impl SaisContext for SingleThreadedSaisContext {
+impl sealed::Sealed for SingleThreadedSaisContext {}
+
+impl SaisContext for SingleThreadedSaisContext {
     fn as_mut_ptr(&mut self) -> *mut c_void {
         self.ptr
     }
@@ -55,7 +60,9 @@ impl MultiThreadedSaisContext {
     }
 }
 
-unsafe impl SaisContext for MultiThreadedSaisContext {
+impl sealed::Sealed for MultiThreadedSaisContext {}
+
+impl SaisContext for MultiThreadedSaisContext {
     fn as_mut_ptr(&mut self) -> *mut c_void {
         self.ptr
     }

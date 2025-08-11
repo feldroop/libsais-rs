@@ -1,13 +1,13 @@
-mod context;
 mod helpers;
 mod model;
 
 use std::{marker::PhantomData, ptr};
 
 use crate::context::SaisContext;
+use context::SingleThreadedSaisContext;
 use model::{MultiThreaded, Parallelism, SingleThreaded};
 
-pub use context::{MultiThreadedSaisContext, SingleThreadedSaisContext};
+pub mod context;
 pub use helpers::concatenate_strings;
 
 /// The version of the C library libsais wrapped by this crate
@@ -23,23 +23,22 @@ pub const LIBSAIS_I32_MAXIMUM_TEXT_SIZE: usize = 2147483647;
 
 // other queries: lcp from plcp and sa, plcp from sa/gsa and text, unbwt
 
-// TODO num threads wrapper
-// next steps: int input
-// then: bwt + aux
+// next: bwt + aux
 // later: unbwt, plcp + lcp
-pub struct SaisConfig<'a, P: Parallelism> {
+// finally: 16, 16x64, 64
+pub struct Sais<'a, P: Parallelism> {
     frequency_table: Option<&'a mut [i32; 256]>,
-    num_threads: u16,
+    thread_count: ThreadCount,
     generalized_suffix_array: bool,
     context: Option<&'a mut P::Context>,
     _parallelism_marker: PhantomData<P>,
 }
 
-impl<'a> SaisConfig<'a, SingleThreaded> {
+impl<'a> Sais<'a, SingleThreaded> {
     pub fn single_threaded() -> Self {
         Self {
             frequency_table: None,
-            num_threads: 1,
+            thread_count: ThreadCount::Fixed { value: 1 },
             generalized_suffix_array: false,
             context: None,
             _parallelism_marker: PhantomData,
@@ -57,11 +56,11 @@ impl<'a> SaisConfig<'a, SingleThreaded> {
 }
 
 #[cfg(feature = "openmp")]
-impl<'a> SaisConfig<'a, MultiThreaded> {
+impl<'a> Sais<'a, MultiThreaded> {
     pub fn multi_threaded() -> Self {
         Self {
             frequency_table: None,
-            num_threads: 0, // TODO more expressive
+            thread_count: ThreadCount::OpenMpDefault,
             generalized_suffix_array: false,
             context: None,
             _parallelism_marker: PhantomData,
@@ -70,15 +69,15 @@ impl<'a> SaisConfig<'a, MultiThreaded> {
 
     /// Number of threads to use. Setting it to 0 will lead to the library choosing the
     /// number of threads (typically this will be equal to the available hardware parallelism).
-    pub fn num_threads(self, num_threads: u16) -> Self {
+    pub fn num_threads(self, thread_count: ThreadCount) -> Self {
         Self {
-            num_threads,
+            thread_count,
             ..self
         }
     }
 }
 
-impl<'a, P: Parallelism> SaisConfig<'a, P> {
+impl<'a, P: Parallelism> Sais<'a, P> {
     /// By calling this function you are claiming that the frequency table is valid for the text
     /// for which this config is used later. Otherwise there is not guarantee for correct behavior
     /// of the C library.
@@ -140,7 +139,7 @@ impl<'a, P: Parallelism> SaisConfig<'a, P> {
                 text.len() as i32,
                 extra_space,
                 frequency_table_ptr,
-                self.num_threads.into(),
+                self.thread_count.into_libsais_convention(),
                 self.generalized_suffix_array,
                 self.context.map(|ctx| ctx.as_mut_ptr()),
             )
@@ -169,8 +168,8 @@ impl<'a, P: Parallelism> SaisConfig<'a, P> {
 
         if let Some(context) = &self.context {
             assert_eq!(
-                context.num_threads(),
-                self.num_threads,
+                context.num_threads() as i32,
+                self.thread_count.into_libsais_convention(),
                 "context needs to have the same number of threads as this config"
             );
         }
@@ -200,6 +199,27 @@ impl SaisError {
             -1 => Self::InvalidConfig,
             -2 => Self::AlgorithmError,
             _ => Self::UnknownError,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ThreadCount {
+    OpenMpDefault,
+    Fixed { value: u16 },
+}
+
+impl ThreadCount {
+    pub fn fixed(thread_count: u16) -> Self {
+        Self::Fixed {
+            value: thread_count,
+        }
+    }
+
+    fn into_libsais_convention(self) -> i32 {
+        match self {
+            Self::OpenMpDefault => 0,
+            Self::Fixed { value } => value.into(),
         }
     }
 }
@@ -282,7 +302,7 @@ mod tests {
     fn libsais_basic() {
         let (text, extra_space, mut frequency_table, mut ctx) = setup_basic_example();
 
-        let mut config = SaisConfig::single_threaded().with_context(&mut ctx);
+        let mut config = Sais::single_threaded().with_context(&mut ctx);
 
         // SAFETY: the frequency table defined above is valid
         unsafe {
@@ -301,7 +321,7 @@ mod tests {
         let (text, extra_space, mut frequency_table, mut ctx) =
             setup_generalized_suffix_array_example();
 
-        let mut config = SaisConfig::single_threaded()
+        let mut config = Sais::single_threaded()
             .generalized_suffix_array()
             .with_context(&mut ctx);
 
@@ -325,7 +345,7 @@ mod tests {
         let buffer_size = text.len() + extra_space;
         let mut suffix_array_buffer = vec![0; buffer_size];
 
-        let mut config = SaisConfig::single_threaded().with_context(&mut ctx);
+        let mut config = Sais::single_threaded().with_context(&mut ctx);
 
         // SAFETY: the frequency table defined in the example is valid
         unsafe {
@@ -344,7 +364,7 @@ mod tests {
     fn libsais_omp() {
         let (text, extra_space, mut frequency_table, _) = setup_basic_example();
 
-        let mut config = SaisConfig::multi_threaded().num_threads(4);
+        let mut config = Sais::multi_threaded().num_threads(ThreadCount::OpenMpDefault);
 
         // SAFETY: the frequency table defined above is valid
         unsafe {
