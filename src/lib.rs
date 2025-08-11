@@ -8,7 +8,7 @@ use context::SingleThreadedSaisContext;
 use model::{MultiThreaded, Parallelism, SingleThreaded};
 
 pub mod context;
-pub use helpers::concatenate_strings_for_generalized_suffix_array;
+pub use helpers::concatenate_strings;
 
 /// The version of the C library libsais wrapped by this crate
 pub use libsais_sys::libsais::LIBSAIS_VERSION_STRING;
@@ -287,10 +287,7 @@ mod tests {
 
     fn setup_generalized_suffix_array_example()
     -> (Vec<u8>, usize, [i32; 256], SingleThreadedSaisContext) {
-        let text = concatenate_strings_for_generalized_suffix_array([
-            b"abababcabba".as_slice(),
-            b"babaabccbac",
-        ]);
+        let text = concatenate_strings([b"abababcabba".as_slice(), b"babaabccbac"]);
         let extra_space = 20;
         let mut frequency_table = [0; 256];
         frequency_table[b'a' as usize] = 9;
