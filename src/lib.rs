@@ -26,7 +26,6 @@ pub const LIBSAIS_I32_MAXIMUM_TEXT_SIZE: usize = 2147483647;
 // then: bwt + aux
 // later: unbwt, plcp + lcp
 pub struct SaisConfig<'a, P: Parallelism> {
-    extra_space: usize,
     frequency_table: Option<&'a mut [i32; 256]>,
     num_threads: u16,
     context: Option<&'a mut P::Context>,
@@ -36,7 +35,6 @@ pub struct SaisConfig<'a, P: Parallelism> {
 impl<'a> SaisConfig<'a, SingleThreaded> {
     pub fn single_threaded() -> Self {
         Self {
-            extra_space: 0,
             frequency_table: None,
             num_threads: 1,
             context: None,
@@ -58,7 +56,6 @@ impl<'a> SaisConfig<'a, SingleThreaded> {
 impl<'a> SaisConfig<'a, MultiThreaded> {
     pub fn multi_threaded() -> Self {
         Self {
-            extra_space: 0,
             frequency_table: None,
             num_threads: 0, // TODO more expressive
             context: None,
@@ -77,19 +74,9 @@ impl<'a> SaisConfig<'a, MultiThreaded> {
 }
 
 impl<'a, P: Parallelism> SaisConfig<'a, P> {
-    /// The size of the extra space libsais gets to use. This will only used when the run() method is
-    /// used for suffix array construction.
-    pub fn extra_space(self, extra_space: usize) -> Self {
-        Self {
-            extra_space,
-            ..self
-        }
-    }
-
     /// By calling this function you are claiming that the frequency table is valid for the text
     /// for which this config is used later. Otherwise there is not guarantee for correct behavior
-    /// of the C library. This table is used only for a single run, because it might be mutated by
-    /// libsais.
+    /// of the C library.
     pub unsafe fn frequency_table(self, frequency_table: &'a mut [i32; 256]) -> Self {
         Self {
             frequency_table: Some(frequency_table),
@@ -98,8 +85,8 @@ impl<'a, P: Parallelism> SaisConfig<'a, P> {
     }
 
     /// Construct the suffix array for the given text.
-    pub fn run(self, text: &[u8]) -> Result<Vec<i32>, SaisError> {
-        let buffer_len = text.len() + self.extra_space;
+    pub fn run(self, text: &[u8], extra_space_in_buffer: usize) -> Result<Vec<i32>, SaisError> {
+        let buffer_len = text.len() + extra_space_in_buffer;
         let mut suffix_array_buffer = vec![0; buffer_len];
 
         let res: Result<(), SaisError> =
@@ -195,24 +182,28 @@ mod tests {
         true
     }
 
-    fn setup_example() -> (&'static [u8; 11], [i32; 256]) {
+    fn setup_example() -> (
+        &'static [u8; 11],
+        usize,
+        [i32; 256],
+        SingleThreadedSaisContext,
+    ) {
         let text = b"abababcabba";
+        let extra_space = 10;
         let mut frequency_table = [0; 256];
         frequency_table[b'a' as usize] = 5;
         frequency_table[b'b' as usize] = 5;
         frequency_table[b'c' as usize] = 1;
+        let ctx = SingleThreadedSaisContext::new();
 
-        (text, frequency_table)
+        (text, extra_space, frequency_table, ctx)
     }
 
     #[test]
     fn libsais_basic() {
-        let (text, mut frequency_table) = setup_example();
+        let (text, extra_space, mut frequency_table, mut ctx) = setup_example();
 
-        let mut ctx = SingleThreadedSaisContext::new();
-        let mut config = SaisConfig::single_threaded()
-            .extra_space(10)
-            .with_context(&mut ctx);
+        let mut config = SaisConfig::single_threaded().with_context(&mut ctx);
 
         // SAFETY: the frequency table defined above is valid
         unsafe {
@@ -220,18 +211,38 @@ mod tests {
         }
 
         let suffix_array = config
-            .run(text)
+            .run(text, extra_space)
             .expect("libsais should run without an error");
 
         assert!(is_suffix_array(text, &suffix_array));
     }
 
+    #[test]
+    fn libsais_with_output_buffer() {
+        let (text, extra_space, mut frequency_table, mut ctx) = setup_example();
+        let buffer_size = text.len() + extra_space;
+        let mut suffix_array_buffer = vec![0; buffer_size];
+
+        let mut config = SaisConfig::single_threaded().with_context(&mut ctx);
+
+        // SAFETY: the frequency table defined in the example is valid
+        unsafe {
+            config = config.frequency_table(&mut frequency_table);
+        }
+
+        let _ = config
+            .run_with_output_buffer(text, &mut suffix_array_buffer)
+            .expect("libsais should run without an error");
+
+        assert!(is_suffix_array(text, &suffix_array_buffer[..text.len()]));
+    }
+
     #[cfg(feature = "openmp")]
     #[test]
     fn libsais_omp() {
-        let (text, mut frequency_table) = setup_example();
+        let (text, extra_space, mut frequency_table, _) = setup_example();
 
-        let mut config = SaisConfig::multi_threaded().extra_space(10).num_threads(4);
+        let mut config = SaisConfig::multi_threaded().num_threads(4);
 
         // SAFETY: the frequency table defined above is valid
         unsafe {
@@ -239,7 +250,7 @@ mod tests {
         }
 
         let suffix_array = config
-            .run(text)
+            .run(text, extra_space)
             .expect("libsais should run without an error");
 
         assert!(is_suffix_array(text, &suffix_array));
