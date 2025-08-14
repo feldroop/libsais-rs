@@ -232,7 +232,7 @@ pub trait Parallelism {
     type WithInput<I: InputBits, O: OutputBits>: InputDispatch<I, O>;
 }
 
-pub(crate) enum SingleThreaded {}
+pub enum SingleThreaded {}
 
 impl Parallelism for SingleThreaded {
     type Context = context::SingleThreadedSaisContext;
@@ -240,7 +240,7 @@ impl Parallelism for SingleThreaded {
 }
 
 #[cfg(feature = "openmp")]
-pub(crate) enum MultiThreaded {}
+pub enum MultiThreaded {}
 
 #[cfg(feature = "openmp")]
 impl Parallelism for MultiThreaded {
