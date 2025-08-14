@@ -5,6 +5,9 @@ use std::ffi::c_void;
 mod sealed {
     pub trait Sealed {}
 }
+
+// TODO unbwt contexts, libsais16 contexts
+
 pub trait SaisContext: sealed::Sealed {
     fn as_mut_ptr(&mut self) -> *mut c_void;
 
