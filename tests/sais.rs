@@ -1,4 +1,6 @@
-use libsais::{Sais, ThreadCount, concatenate_strings, context::SingleThreaded8InputSaisContext};
+use libsais::{
+    ExtraSpace, Sais, ThreadCount, concatenate_strings, context::SingleThreaded8InputSaisContext,
+};
 
 fn is_suffix_array(text: &[u8], maybe_suffix_array: &[i32]) -> bool {
     if text.is_empty() && maybe_suffix_array.is_empty() {
@@ -85,7 +87,7 @@ fn libsais_basic() {
     }
 
     let suffix_array = config
-        .run(text, extra_space)
+        .run(text, ExtraSpace::Fixed { value: extra_space })
         .expect("libsais should run without an error");
 
     assert!(is_suffix_array(text, &suffix_array));
@@ -108,7 +110,7 @@ fn libsais_generalized_suffix_array() {
     }
 
     let suffix_array = config
-        .run(&text, extra_space)
+        .run(&text, ExtraSpace::Fixed { value: extra_space })
         .expect("libsais should run without an error");
 
     assert!(is_generalized_suffix_array(&text, &suffix_array));
@@ -153,7 +155,7 @@ fn libsais_omp() {
     }
 
     let suffix_array = config
-        .run(text, extra_space)
+        .run(text, ExtraSpace::Fixed { value: extra_space })
         .expect("libsais should run without an error");
 
     assert!(is_suffix_array(text, &suffix_array));

@@ -268,6 +268,8 @@ impl Output for Undecided {}
 // -------------------- InputBits and OutputBits with implementations for u8, u16, i32, i64 --------------------
 // Unsafe trait because the context type has to be correct for this input type
 pub unsafe trait InputBits: sealed::Sealed + Into<i64> + Clone {
+    const RECOMMENDED_EXTRA_SPACE: usize;
+
     type SingleThreadedContext: SaisContext;
     type SingleThreadedOutputDispatcher<O: OutputBits>: OutputDispatch<Self, O>;
     #[cfg(feature = "openmp")]
@@ -303,6 +305,8 @@ impl<B: OutputBits> Output for B {}
 impl sealed::Sealed for u8 {}
 
 unsafe impl InputBits for u8 {
+    const RECOMMENDED_EXTRA_SPACE: usize = 0;
+
     type SingleThreadedContext = SingleThreaded8InputSaisContext;
     type SingleThreadedOutputDispatcher<O: OutputBits> = SingleThreaded8InputOutputDispatcher<O>;
     #[cfg(feature = "openmp")]
@@ -312,6 +316,8 @@ unsafe impl InputBits for u8 {
 impl sealed::Sealed for u16 {}
 
 unsafe impl InputBits for u16 {
+    const RECOMMENDED_EXTRA_SPACE: usize = 0;
+
     type SingleThreadedContext = SingleThreaded16InputSaisContext;
     type SingleThreadedOutputDispatcher<O: OutputBits> = SingleThreaded16InputOutputDispatcher<O>;
     #[cfg(feature = "openmp")]

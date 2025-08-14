@@ -45,7 +45,6 @@ pub const LIBSAIS_I64_OUTPUT_MAXIMUM_SIZE: usize = 9223372036854775807;
 //      unbwt, plcp + lcp
 
 // SMALL TODOs:
-//      recommended extra space
 //      32/64 inputs with mutability issues,
 //      add try_API that is fallible on safety checks
 //      more tests
@@ -226,8 +225,8 @@ impl<'a, P: Parallelism, I: InputBits, O: OutputBits> Sais<'a, P, I, O> {
     }
 
     /// Construct the suffix array for the given text.
-    pub fn run(self, text: &[I], extra_space_in_buffer: usize) -> Result<Vec<O>, SaisError> {
-        let buffer_len = text.len() + extra_space_in_buffer;
+    pub fn run(self, text: &[I], extra_space_in_buffer: ExtraSpace) -> Result<Vec<O>, SaisError> {
+        let buffer_len = extra_space_in_buffer.compute_buffer_size::<I, O>(text.len());
         let mut suffix_array_buffer: Vec<O> = vec![O::try_from(0).unwrap(); buffer_len];
 
         let res: Result<(), SaisError> =
@@ -363,5 +362,36 @@ impl ThreadCount {
 
     pub fn openmp_default() -> Self {
         Self { value: 0 }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExtraSpace {
+    Recommended,
+    Fixed { value: usize },
+}
+
+impl ExtraSpace {
+    fn compute_buffer_size<I: InputBits, O: OutputBits>(&self, text_len: usize) -> usize {
+        match *self {
+            ExtraSpace::Recommended => {
+                if text_len <= 10_000 {
+                    text_len
+                } else {
+                    let max_buffer_len_in_usize = O::MAX.into() as usize;
+                    let desired_buffer_len = text_len + I::RECOMMENDED_EXTRA_SPACE;
+
+                    if desired_buffer_len <= max_buffer_len_in_usize {
+                        desired_buffer_len
+                    } else if text_len <= max_buffer_len_in_usize {
+                        max_buffer_len_in_usize
+                    } else {
+                        // if text_len was already too big, just return in and let safety checks later handle it
+                        text_len
+                    }
+                }
+            }
+            ExtraSpace::Fixed { value } => text_len + value,
+        }
     }
 }
