@@ -271,8 +271,10 @@ pub trait InputBits: sealed::Sealed + Into<i64> + Clone {
 impl<I: InputBits> Input for I {}
 
 pub trait OutputBits:
-    sealed::Sealed + TryFrom<usize, Error: std::fmt::Debug> + Into<i64> + Clone
+    sealed::Sealed + TryFrom<usize, Error: std::fmt::Debug> + Into<i64> + Clone + std::fmt::Display
 {
+    const MAX: Self;
+
     type SingleThreaded8InputFunctions: LibsaisFunctions<u8, Self>;
     type SingleThreaded16InputFunctions: LibsaisFunctions<u16, Self>;
     // type SingleThreaded32InputFunctions: LibsaisFunctions<i32, Self>;
@@ -316,6 +318,8 @@ impl sealed::Sealed for i32 {}
 // }
 
 impl OutputBits for i32 {
+    const MAX: Self = Self::MAX;
+
     type SingleThreaded8InputFunctions = SingleThreaded8Input32Output;
     type SingleThreaded16InputFunctions = SingleThreaded16Input32Output;
     // type SingleThreaded32InputFunctions = SingleThreaded32Input32Output;
@@ -341,6 +345,8 @@ impl sealed::Sealed for i64 {}
 // }
 
 impl OutputBits for i64 {
+    const MAX: Self = Self::MAX;
+
     type SingleThreaded8InputFunctions = SingleThreaded8Input64Output;
     type SingleThreaded16InputFunctions = SingleThreaded16Input64Output;
     // type SingleThreaded32InputFunctions = SingleThreaded32Input64Output;
@@ -354,6 +360,20 @@ impl OutputBits for i64 {
     // type MultiThreaded32InputFunctions = MultiThreaded32Input64Output;
     // #[cfg(feature = "openmp")]
     // type MultiThreaded64InputFunctions = MultiThreaded64Input64Output;
+}
+
+// -------------------- InputBits refinement traits and implementations --------------------
+
+pub trait SmallInputBits: InputBits {
+    const FREQUENCY_TABLE_SIZE: usize;
+}
+
+impl SmallInputBits for u8 {
+    const FREQUENCY_TABLE_SIZE: usize = 256;
+}
+
+impl SmallInputBits for u16 {
+    const FREQUENCY_TABLE_SIZE: usize = 65536;
 }
 
 // -------------------- InputDispatch and implementations --------------------

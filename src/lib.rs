@@ -20,7 +20,10 @@ pub use helpers::concatenate_strings;
 pub use libsais_sys::libsais::LIBSAIS_VERSION_STRING;
 
 /// The maximum text size that this library can handle when using i32-based buffers
-pub const LIBSAIS_I32_MAXIMUM_TEXT_SIZE: usize = 2147483647;
+pub const LIBSAIS_I32_OUTPUT_MAXIMUM_SIZE: usize = 2147483647;
+
+/// The maximum text size that this library can handle when using i64-based buffers
+pub const LIBSAIS_I64_OUTPUT_MAXIMUM_SIZE: usize = 9223372036854775807;
 
 // functionality differences:
 // libsais: full
@@ -40,14 +43,14 @@ pub const LIBSAIS_I32_MAXIMUM_TEXT_SIZE: usize = 2147483647;
 //      unbwt, plcp + lcp
 
 // SMALL TODOs:
-//      seal traits
-//      clean up using macros?
 //      redo context (generic and only callable when it is defined)
 //      32/64 inputs with mutability issues,
 //      num threads at correct position + refactor enum
 //      recommended extra space
-//      safety checks dependent on generic types
 //      more tests
+//      add try_API that is fallible on safety checks
+//      seal traits
+//      clean up using macros?
 
 pub struct Sais<'a, P: Parallelism, I: Input, O: Output> {
     frequency_table: Option<&'a mut [O]>,
@@ -274,16 +277,24 @@ impl<'a, P: Parallelism, I: InputBits, O: OutputBits> Sais<'a, P, I, O> {
         }
     }
 
-    // TODO make safety checks be dependent on O
     fn safety_checks(&self, text: &[I], suffix_array_buffer: &mut [O]) {
-        assert!(
-            text.len() < LIBSAIS_I32_MAXIMUM_TEXT_SIZE,
-            "text is too large for the basic version of libsais"
-        );
-        assert!(
-            suffix_array_buffer.len() < LIBSAIS_I32_MAXIMUM_TEXT_SIZE,
-            "suffix_array_buffer is too large for the basic version of libsais"
-        );
+        // the try_into implementations fail exactly when the value is too large for the respective libsais version
+        let Ok(_): Result<O, _> = text.len().try_into() else {
+            panic!(
+                "The text is too long for the chosen output type. Text len: {}, Max allowed len: {}",
+                text.len(),
+                O::MAX
+            );
+        };
+
+        let Ok(_): Result<O, _> = suffix_array_buffer.len().try_into() else {
+            panic!(
+                "The suffix array buffer is too long for chosen output type. Buffer len: {}, Max allowed len: {}",
+                suffix_array_buffer.len(),
+                O::MAX
+            );
+        };
+
         assert!(
             suffix_array_buffer.len() >= text.len(),
             "suffix_array_buffer must be at least as large as text"
