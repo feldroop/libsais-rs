@@ -507,16 +507,6 @@ impl SmallAlphabet for u16 {
     const FREQUENCY_TABLE_SIZE: usize = 65536;
 }
 
-pub trait SupportsContextInput: InputBits {}
-
-impl SupportsContextInput for u8 {}
-
-impl SupportsContextInput for u16 {}
-
-pub trait SupportsContextOutput: OutputBits {}
-
-impl SupportsContextOutput for i32 {}
-
 // -------------------- InputDispatch and implementations --------------------
 pub trait InputDispatch<I: InputBits, O: OutputBits> {
     type WithOutput: OutputDispatch<I, O>;

@@ -5,9 +5,7 @@ use std::{marker::PhantomData, ptr};
 
 use crate::{
     context::SaisContext,
-    type_model::{
-        InputDispatch, OutputDispatch, SmallAlphabet, SupportsContextInput, SupportsContextOutput,
-    },
+    type_model::{InputDispatch, OutputDispatch, SmallAlphabet},
 };
 
 use type_model::{
@@ -214,7 +212,7 @@ impl<'a, P: Parallelism, I: SmallAlphabet, O: OutputBits> Sais<'a, P, I, O> {
 }
 
 // -------------------- support context only when it is implemented --------------------
-impl<'a, I: SupportsContextInput, O: SupportsContextOutput> Sais<'a, SingleThreaded, I, O> {
+impl<'a, I: SmallAlphabet> Sais<'a, SingleThreaded, I, i32> {
     /// Uses a context object that allows reusing memory across runs of the algorithm.
     /// Currently, this is only available for the single threaded version.
     pub fn with_context(self, context: &'a mut I::SingleThreadedContext) -> Self {
