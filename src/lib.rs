@@ -5,9 +5,11 @@ use std::{marker::PhantomData, ptr};
 
 use crate::{
     context::SaisContext,
-    type_model::{InputDispatch, OutputDispatch, SmallInputBits},
+    type_model::{
+        InputDispatch, OutputDispatch, SmallInputBits, SupportsContextInput, SupportsContextOutput,
+    },
 };
-use context::SingleThreadedSaisContext;
+
 use type_model::{
     Input, InputBits, LibsaisFunctions, MultiThreaded, Output, OutputBits, Parallelism,
     SingleThreaded, Undecided,
@@ -38,16 +40,15 @@ pub const LIBSAIS_I64_OUTPUT_MAXIMUM_SIZE: usize = 9223372036854775807;
 // other queries: lcp from plcp and sa, plcp from sa/gsa and text, unbwt
 
 // BIG TODOs:
-//      bwt + aux
 //      int input
+//      bwt + aux
 //      unbwt, plcp + lcp
 
 // SMALL TODOs:
-//      redo context (generic and only callable when it is defined)
-//      32/64 inputs with mutability issues,
 //      recommended extra space
-//      more tests
+//      32/64 inputs with mutability issues,
 //      add try_API that is fallible on safety checks
+//      more tests
 //      seal traits
 //      clean up using macros?
 
@@ -55,7 +56,7 @@ pub struct Sais<'a, P: Parallelism, I: Input, O: Output> {
     frequency_table: Option<&'a mut [O]>,
     thread_count: ThreadCount,
     generalized_suffix_array: bool,
-    context: Option<&'a mut P::Context>,
+    context: Option<&'a mut I::SingleThreadedContext>,
     _parallelism_marker: PhantomData<P>,
     _input_marker: PhantomData<I>,
     _output_marker: PhantomData<O>,
@@ -72,16 +73,6 @@ impl<'a> Sais<'a, SingleThreaded, Undecided, Undecided> {
             _parallelism_marker: PhantomData,
             _input_marker: PhantomData,
             _output_marker: PhantomData,
-        }
-    }
-
-    // TODO move context away because it only supports 8 and 16 bit inpus
-    /// Uses a context object that allows reusing memory across runs of the algorithm.
-    /// Currently, this is only available for the single threaded version.
-    pub fn with_context(self, context: &'a mut SingleThreadedSaisContext) -> Self {
-        Self {
-            context: Some(context),
-            ..self
         }
     }
 }
@@ -122,7 +113,7 @@ impl<'a, P: Parallelism> Sais<'a, P, Undecided, Undecided> {
             frequency_table: None,
             thread_count: self.thread_count,
             generalized_suffix_array: self.generalized_suffix_array,
-            context: self.context,
+            context: None,
             _parallelism_marker: PhantomData,
             _input_marker: PhantomData,
             _output_marker: PhantomData,
@@ -134,7 +125,7 @@ impl<'a, P: Parallelism> Sais<'a, P, Undecided, Undecided> {
             frequency_table: None,
             thread_count: self.thread_count,
             generalized_suffix_array: self.generalized_suffix_array,
-            context: self.context,
+            context: None,
             _parallelism_marker: PhantomData,
             _input_marker: PhantomData,
             _output_marker: PhantomData,
@@ -210,6 +201,18 @@ impl<'a, P: Parallelism, I: SmallInputBits, O: OutputBits> Sais<'a, P, I, O> {
     }
 }
 
+// -------------------- support context only when it is implemented --------------------
+impl<'a, I: SupportsContextInput, O: SupportsContextOutput> Sais<'a, SingleThreaded, I, O> {
+    /// Uses a context object that allows reusing memory across runs of the algorithm.
+    /// Currently, this is only available for the single threaded version.
+    pub fn with_context(self, context: &'a mut I::SingleThreadedContext) -> Self {
+        Self {
+            context: Some(context),
+            ..self
+        }
+    }
+}
+
 impl<'a, P: Parallelism, I: InputBits, O: OutputBits> Sais<'a, P, I, O> {
     /// Construct the generalized suffix array, which is the suffix array of a set of strings.
     /// Conceptually, all suffixes of all of the strings will be sorted in a single array.
@@ -259,6 +262,8 @@ impl<'a, P: Parallelism, I: InputBits, O: OutputBits> Sais<'a, P, I, O> {
         // suffix array buffer is asserted above to have the correct length
         // the library user claimed earlier that the frequency table is correct by calling an unsafe function
         // and the frequency table was asserted to be the correct size
+        // if there is a context it has the correct type, because that was claimed in an unsafe impl
+        // for input bits
         let return_code: i64 = unsafe {
             <<P::WithInput<I, O> as InputDispatch<I, O>>::WithOutput as OutputDispatch<I,O>>::Functions::run_libsais(
                 text.as_ptr(),

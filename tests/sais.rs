@@ -1,4 +1,4 @@
-use libsais::{Sais, ThreadCount, concatenate_strings, context::SingleThreadedSaisContext};
+use libsais::{Sais, ThreadCount, concatenate_strings, context::SingleThreaded8InputSaisContext};
 
 fn is_suffix_array(text: &[u8], maybe_suffix_array: &[i32]) -> bool {
     if text.is_empty() && maybe_suffix_array.is_empty() {
@@ -44,7 +44,7 @@ fn setup_basic_example() -> (
     &'static [u8; 11],
     usize,
     [i32; 256],
-    SingleThreadedSaisContext,
+    SingleThreaded8InputSaisContext,
 ) {
     let text = b"abababcabba";
     let extra_space = 10;
@@ -52,20 +52,20 @@ fn setup_basic_example() -> (
     frequency_table[b'a' as usize] = 5;
     frequency_table[b'b' as usize] = 5;
     frequency_table[b'c' as usize] = 1;
-    let ctx = SingleThreadedSaisContext::new();
+    let ctx = SingleThreaded8InputSaisContext::new();
 
     (text, extra_space, frequency_table, ctx)
 }
 
 fn setup_generalized_suffix_array_example()
--> (Vec<u8>, usize, [i32; 256], SingleThreadedSaisContext) {
+-> (Vec<u8>, usize, [i32; 256], SingleThreaded8InputSaisContext) {
     let text = concatenate_strings([b"abababcabba".as_slice(), b"babaabccbac"]);
     let extra_space = 20;
     let mut frequency_table = [0; 256];
     frequency_table[b'a' as usize] = 9;
     frequency_table[b'b' as usize] = 9;
     frequency_table[b'c' as usize] = 4;
-    let ctx = SingleThreadedSaisContext::new();
+    let ctx = SingleThreaded8InputSaisContext::new();
 
     (text, extra_space, frequency_table, ctx)
 }
@@ -75,9 +75,9 @@ fn libsais_basic() {
     let (text, extra_space, mut frequency_table, mut ctx) = setup_basic_example();
 
     let mut config = Sais::single_threaded()
-        .with_context(&mut ctx)
         .input_8_bits()
-        .output_32_bits();
+        .output_32_bits()
+        .with_context(&mut ctx);
 
     // SAFETY: the frequency table defined above is valid
     unsafe {
@@ -97,9 +97,9 @@ fn libsais_generalized_suffix_array() {
         setup_generalized_suffix_array_example();
 
     let mut config = Sais::single_threaded()
-        .with_context(&mut ctx)
         .input_8_bits()
         .output_32_bits()
+        .with_context(&mut ctx)
         .generalized_suffix_array();
 
     // SAFETY: the frequency table defined above is valid
@@ -121,9 +121,9 @@ fn libsais_with_output_buffer() {
     let mut suffix_array_buffer = vec![0; buffer_size];
 
     let mut config = Sais::single_threaded()
-        .with_context(&mut ctx)
         .input_8_bits()
-        .output_32_bits();
+        .output_32_bits()
+        .with_context(&mut ctx);
 
     // SAFETY: the frequency table defined in the example is valid
     unsafe {

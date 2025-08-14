@@ -2,7 +2,10 @@ use std::{ffi::c_void, marker::PhantomData};
 
 use libsais_sys::{libsais, libsais16, libsais16x64, libsais64};
 
-use crate::context::{self, SaisContext};
+use crate::context::{
+    ContextUnimplemented, SaisContext, SingleThreaded8InputSaisContext,
+    SingleThreaded16InputSaisContext,
+};
 
 macro_rules! ctx_fn_or_unimplemented {
     ($mod_name:ident, unimplemented, $($parameter:ident),*) => {
@@ -228,14 +231,12 @@ pub trait LibsaisFunctions<I: InputBits, O: OutputBits> {
 
 // -------------------- Parallelism and implementations --------------------
 pub trait Parallelism {
-    type Context: SaisContext;
     type WithInput<I: InputBits, O: OutputBits>: InputDispatch<I, O>;
 }
 
 pub enum SingleThreaded {}
 
 impl Parallelism for SingleThreaded {
-    type Context = context::SingleThreadedSaisContext;
     type WithInput<I: InputBits, O: OutputBits> = SingleThreadedInputDispatcher<I, O>;
 }
 
@@ -244,12 +245,13 @@ pub enum MultiThreaded {}
 
 #[cfg(feature = "openmp")]
 impl Parallelism for MultiThreaded {
-    type Context = context::MultiThreadedSaisContext;
     type WithInput<I: InputBits, O: OutputBits> = MultiThreadedInputDispatcher<I, O>;
 }
 
 // -------------------- Typestate traits for Builder API --------------------
-pub trait Input: sealed::Sealed {}
+pub trait Input: sealed::Sealed {
+    type SingleThreadedContext: SaisContext;
+}
 
 pub trait Output: sealed::Sealed {}
 
@@ -257,18 +259,24 @@ pub enum Undecided {}
 
 impl sealed::Sealed for Undecided {}
 
-impl Input for Undecided {}
+impl Input for Undecided {
+    type SingleThreadedContext = ContextUnimplemented;
+}
 
 impl Output for Undecided {}
 
 // -------------------- InputBits and OutputBits with implementations for u8, u16, i32, i64 --------------------
-pub trait InputBits: sealed::Sealed + Into<i64> + Clone {
+// Unsafe trait because the context type has to be correct for this input type
+pub unsafe trait InputBits: sealed::Sealed + Into<i64> + Clone {
+    type SingleThreadedContext: SaisContext;
     type SingleThreadedOutputDispatcher<O: OutputBits>: OutputDispatch<Self, O>;
     #[cfg(feature = "openmp")]
     type MultiThreadedOutputDispatcher<O: OutputBits>: OutputDispatch<Self, O>;
 }
 
-impl<I: InputBits> Input for I {}
+impl<I: InputBits> Input for I {
+    type SingleThreadedContext = <Self as InputBits>::SingleThreadedContext;
+}
 
 pub trait OutputBits:
     sealed::Sealed + TryFrom<usize, Error: std::fmt::Debug> + Into<i64> + Clone + std::fmt::Display
@@ -294,7 +302,8 @@ impl<B: OutputBits> Output for B {}
 
 impl sealed::Sealed for u8 {}
 
-impl InputBits for u8 {
+unsafe impl InputBits for u8 {
+    type SingleThreadedContext = SingleThreaded8InputSaisContext;
     type SingleThreadedOutputDispatcher<O: OutputBits> = SingleThreaded8InputOutputDispatcher<O>;
     #[cfg(feature = "openmp")]
     type MultiThreadedOutputDispatcher<O: OutputBits> = MultiThreaded8InputOutputDispatcher<O>;
@@ -302,7 +311,8 @@ impl InputBits for u8 {
 
 impl sealed::Sealed for u16 {}
 
-impl InputBits for u16 {
+unsafe impl InputBits for u16 {
+    type SingleThreadedContext = SingleThreaded16InputSaisContext;
     type SingleThreadedOutputDispatcher<O: OutputBits> = SingleThreaded16InputOutputDispatcher<O>;
     #[cfg(feature = "openmp")]
     type MultiThreadedOutputDispatcher<O: OutputBits> = MultiThreaded16InputOutputDispatcher<O>;
@@ -375,6 +385,16 @@ impl SmallInputBits for u8 {
 impl SmallInputBits for u16 {
     const FREQUENCY_TABLE_SIZE: usize = 65536;
 }
+
+pub trait SupportsContextInput: InputBits {}
+
+impl SupportsContextInput for u8 {}
+
+impl SupportsContextInput for u16 {}
+
+pub trait SupportsContextOutput: OutputBits {}
+
+impl SupportsContextOutput for i32 {}
 
 // -------------------- InputDispatch and implementations --------------------
 pub trait InputDispatch<I: InputBits, O: OutputBits> {
