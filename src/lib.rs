@@ -200,6 +200,17 @@ impl<'a, P: Parallelism, I: SmallAlphabet, O: OutputBits> Sais<'a, P, I, O> {
             ..self
         }
     }
+
+    /// Construct the generalized suffix array, which is the suffix array of a set of strings.
+    /// Conceptually, all suffixes of all of the strings will be sorted in a single array.
+    /// The set of strings will be supplied to the algorithm by concatenating them separated by the 0 character
+    /// (not ASCII '0'). The concatenated string additionally has to be terminated by a 0.
+    pub fn generalized_suffix_array(self) -> Self {
+        Self {
+            generalized_suffix_array: true,
+            ..self
+        }
+    }
 }
 
 // -------------------- support context only when it is implemented --------------------
@@ -215,17 +226,6 @@ impl<'a, I: SupportsContextInput, O: SupportsContextOutput> Sais<'a, SingleThrea
 }
 
 impl<'a, P: Parallelism, I: InputBits, O: OutputBits> Sais<'a, P, I, O> {
-    /// Construct the generalized suffix array, which is the suffix array of a set of strings.
-    /// Conceptually, all suffixes of all of the strings will be sorted in a single array.
-    /// The set of strings will be supplied to the algorithm by concatenating them separated by the 0 character
-    /// (not ASCII '0'). The concatenated string additionally has to be terminated by a 0.
-    pub fn generalized_suffix_array(self) -> Self {
-        Self {
-            generalized_suffix_array: true,
-            ..self
-        }
-    }
-
     /// Construct the suffix array for the given text.
     pub fn run(self, text: &[I], extra_space_in_buffer: ExtraSpace) -> Result<Vec<O>, SaisError> {
         let buffer_len = extra_space_in_buffer.compute_buffer_size::<I, O>(text.len());
@@ -266,7 +266,7 @@ impl<'a, P: Parallelism, I: InputBits, O: OutputBits> Sais<'a, P, I, O> {
         // if there is a context it has the correct type, because that was claimed in an unsafe impl
         // for input bits
         let return_code: i64 = unsafe {
-            <<P::WithInput<I, O> as InputDispatch<I, O>>::WithOutput as OutputDispatch<I,O>>::Functions::run_libsais(
+            <<P::WithInput<I, O> as InputDispatch<I, O>>::WithOutput as OutputDispatch<I,O>>::SmallAlphabetFunctions::run_libsais_small_alphabet(
                 text.as_ptr(),
                 suffix_array_buffer.as_mut_ptr(),
                 text_len,
