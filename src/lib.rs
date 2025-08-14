@@ -5,7 +5,7 @@ use std::{marker::PhantomData, ptr};
 
 use crate::{
     context::SaisContext,
-    type_model::{InputDispatch, OutputDispatch},
+    type_model::{InputDispatch, OutputDispatch, SmallInputBits},
 };
 use context::SingleThreadedSaisContext;
 use type_model::{
@@ -43,16 +43,14 @@ pub const LIBSAIS_I32_MAXIMUM_TEXT_SIZE: usize = 2147483647;
 //      seal traits
 //      clean up using macros?
 //      redo context (generic and only callable when it is defined)
-//      frequency table (generic, correct sizes)
 //      32/64 inputs with mutability issues,
 //      num threads at correct position + refactor enum
 //      recommended extra space
 //      safety checks dependent on generic types
-//      move tests
 //      more tests
 
 pub struct Sais<'a, P: Parallelism, I: Input, O: Output> {
-    frequency_table: Option<&'a mut [O; 256]>,
+    frequency_table: Option<&'a mut [O]>,
     thread_count: ThreadCount,
     generalized_suffix_array: bool,
     context: Option<&'a mut P::Context>,
@@ -61,7 +59,7 @@ pub struct Sais<'a, P: Parallelism, I: Input, O: Output> {
     _output_marker: PhantomData<O>,
 }
 
-// entry point to builder single threaded
+// -------------------- entry point to builder single threaded --------------------
 impl<'a> Sais<'a, SingleThreaded, Undecided, Undecided> {
     pub fn single_threaded() -> Self {
         Self {
@@ -85,7 +83,7 @@ impl<'a> Sais<'a, SingleThreaded, Undecided, Undecided> {
     }
 }
 
-// entry point to builder multithreaded
+// -------------------- entry point to builder multithreaded --------------------
 #[cfg(feature = "openmp")]
 impl<'a> Sais<'a, MultiThreaded, Undecided, Undecided> {
     pub fn multi_threaded() -> Self {
@@ -111,7 +109,7 @@ impl<'a> Sais<'a, MultiThreaded, Undecided, Undecided> {
     }
 }
 
-// first transition: choose input type
+// -------------------- first transition: choose input type --------------------
 impl<'a, P: Parallelism> Sais<'a, P, Undecided, Undecided> {
     pub fn input_8_bits(self) -> Sais<'a, P, u8, Undecided> {
         Sais {
@@ -164,7 +162,7 @@ impl<'a, P: Parallelism> Sais<'a, P, Undecided, Undecided> {
     // }
 }
 
-// second transition: choose output type
+// -------------------- second transition: choose output type --------------------
 impl<'a, P: Parallelism, I: InputBits> Sais<'a, P, I, Undecided> {
     pub fn output_32_bits(self) -> Sais<'a, P, I, i32> {
         Sais {
@@ -191,17 +189,22 @@ impl<'a, P: Parallelism, I: InputBits> Sais<'a, P, I, Undecided> {
     }
 }
 
-impl<'a, P: Parallelism, I: InputBits, O: OutputBits> Sais<'a, P, I, O> {
+// -------------------- operations only defined for small input types --------------------
+impl<'a, P: Parallelism, I: SmallInputBits, O: OutputBits> Sais<'a, P, I, O> {
     /// By calling this function you are claiming that the frequency table is valid for the text
     /// for which this config is used later. Otherwise there is not guarantee for correct behavior
     /// of the C library.
-    pub unsafe fn frequency_table(self, frequency_table: &'a mut [O; 256]) -> Self {
+    pub unsafe fn frequency_table(self, frequency_table: &'a mut [O]) -> Self {
+        assert_eq!(frequency_table.len(), I::FREQUENCY_TABLE_SIZE);
+
         Self {
             frequency_table: Some(frequency_table),
             ..self
         }
     }
+}
 
+impl<'a, P: Parallelism, I: InputBits, O: OutputBits> Sais<'a, P, I, O> {
     /// Construct the generalized suffix array, which is the suffix array of a set of strings.
     /// Conceptually, all suffixes of all of the strings will be sorted in a single array.
     /// The set of strings will be supplied to the algorithm by concatenating them separated by the 0 character
@@ -249,6 +252,7 @@ impl<'a, P: Parallelism, I: InputBits, O: OutputBits> Sais<'a, P, I, O> {
         // text len is asserted to be in required range, which also makes the as i32 cast valid
         // suffix array buffer is asserted above to have the correct length
         // the library user claimed earlier that the frequency table is correct by calling an unsafe function
+        // and the frequency table was asserted to be the correct size
         let return_code: i64 = unsafe {
             <<P::WithInput<I, O> as InputDispatch<I, O>>::WithOutput as OutputDispatch<I,O>>::Functions::run_libsais(
                 text.as_ptr(),
