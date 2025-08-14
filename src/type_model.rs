@@ -27,7 +27,7 @@ macro_rules! fn_with_or_without_threads {
     };
 }
 
-macro_rules! libsais_functions_impl {
+macro_rules! libsais_functions_small_alphabet_impl {
     (
         $struct_name:ident,
         $input_type:ty,
@@ -43,7 +43,7 @@ macro_rules! libsais_functions_impl {
         pub struct $struct_name {}
 
         #[cfg($($parallelism_tail)+)]
-        impl LibsaisFunctions<$input_type, $output_type> for $struct_name {
+        impl LibsaisFunctionsSmallAlphabet<$input_type, $output_type> for $struct_name {
             unsafe fn run_libsais(
                 text_ptr: *const $input_type,
                 suffix_array_buffer_ptr: *mut $output_type,
@@ -111,7 +111,7 @@ macro_rules! libsais_functions_impl {
     };
 }
 
-libsais_functions_impl!(
+libsais_functions_small_alphabet_impl!(
     SingleThreaded8Input32Output,
     u8,
     i32,
@@ -123,7 +123,7 @@ libsais_functions_impl!(
     all()
 );
 
-libsais_functions_impl!(
+libsais_functions_small_alphabet_impl!(
     SingleThreaded8Input64Output,
     u8,
     i64,
@@ -135,7 +135,7 @@ libsais_functions_impl!(
     all()
 );
 
-libsais_functions_impl!(
+libsais_functions_small_alphabet_impl!(
     SingleThreaded16Input32Output,
     u16,
     i32,
@@ -147,7 +147,7 @@ libsais_functions_impl!(
     all()
 );
 
-libsais_functions_impl!(
+libsais_functions_small_alphabet_impl!(
     SingleThreaded16Input64Output,
     u16,
     i64,
@@ -159,7 +159,7 @@ libsais_functions_impl!(
     all()
 );
 
-libsais_functions_impl!(
+libsais_functions_small_alphabet_impl!(
     MultiThreaded8Input32Output,
     u8,
     i32,
@@ -171,7 +171,7 @@ libsais_functions_impl!(
     feature = "openmp"
 );
 
-libsais_functions_impl!(
+libsais_functions_small_alphabet_impl!(
     MultiThreaded8Input64Output,
     u8,
     i64,
@@ -183,7 +183,7 @@ libsais_functions_impl!(
     feature = "openmp"
 );
 
-libsais_functions_impl!(
+libsais_functions_small_alphabet_impl!(
     MultiThreaded16Input32Output,
     u16,
     i32,
@@ -195,7 +195,7 @@ libsais_functions_impl!(
     feature = "openmp"
 );
 
-libsais_functions_impl!(
+libsais_functions_small_alphabet_impl!(
     MultiThreaded16Input64Output,
     u16,
     i64,
@@ -208,7 +208,7 @@ libsais_functions_impl!(
 );
 
 #[cfg(true)]
-pub trait LibsaisFunctions<I: InputBits, O: OutputBits> {
+pub trait LibsaisFunctionsSmallAlphabet<I: InputBits, O: OutputBits> {
     unsafe fn run_libsais(
         text_ptr: *const I,
         suffix_array_buffer_ptr: *mut O,
@@ -285,15 +285,15 @@ pub trait OutputBits:
 {
     const MAX: Self;
 
-    type SingleThreaded8InputFunctions: LibsaisFunctions<u8, Self>;
-    type SingleThreaded16InputFunctions: LibsaisFunctions<u16, Self>;
+    type SingleThreaded8InputFunctions: LibsaisFunctionsSmallAlphabet<u8, Self>;
+    type SingleThreaded16InputFunctions: LibsaisFunctionsSmallAlphabet<u16, Self>;
     // type SingleThreaded32InputFunctions: LibsaisFunctions<i32, Self>;
     // type SingleThreaded64InputFunctions: LibsaisFunctions<i64, Self>;
 
     #[cfg(feature = "openmp")]
-    type MultiThreaded8InputFunctions: LibsaisFunctions<u8, Self>;
+    type MultiThreaded8InputFunctions: LibsaisFunctionsSmallAlphabet<u8, Self>;
     #[cfg(feature = "openmp")]
-    type MultiThreaded16InputFunctions: LibsaisFunctions<u16, Self>;
+    type MultiThreaded16InputFunctions: LibsaisFunctionsSmallAlphabet<u16, Self>;
     // #[cfg(feature = "openmp")]
     // type MultiThreaded32InputFunctions: LibsaisFunctions<i32, Self>;
     // #[cfg(feature = "openmp")]
@@ -380,15 +380,15 @@ impl OutputBits for i64 {
 
 // -------------------- InputBits refinement traits and implementations --------------------
 
-pub trait SmallInputBits: InputBits {
+pub trait SmallAlphabet: InputBits {
     const FREQUENCY_TABLE_SIZE: usize;
 }
 
-impl SmallInputBits for u8 {
+impl SmallAlphabet for u8 {
     const FREQUENCY_TABLE_SIZE: usize = 256;
 }
 
-impl SmallInputBits for u16 {
+impl SmallAlphabet for u16 {
     const FREQUENCY_TABLE_SIZE: usize = 65536;
 }
 
@@ -429,7 +429,7 @@ impl<I: InputBits, O: OutputBits> InputDispatch<I, O> for MultiThreadedInputDisp
 
 // -------------------- OutputDispatch and implementations --------------------
 pub trait OutputDispatch<I: InputBits, O: OutputBits> {
-    type Functions: LibsaisFunctions<I, O>;
+    type Functions: LibsaisFunctionsSmallAlphabet<I, O>;
 }
 
 pub struct SingleThreaded8InputOutputDispatcher<O> {

@@ -6,13 +6,13 @@ use std::{marker::PhantomData, ptr};
 use crate::{
     context::SaisContext,
     type_model::{
-        InputDispatch, OutputDispatch, SmallInputBits, SupportsContextInput, SupportsContextOutput,
+        InputDispatch, OutputDispatch, SmallAlphabet, SupportsContextInput, SupportsContextOutput,
     },
 };
 
 use type_model::{
-    Input, InputBits, LibsaisFunctions, MultiThreaded, Output, OutputBits, Parallelism,
-    SingleThreaded, Undecided,
+    Input, InputBits, LibsaisFunctionsSmallAlphabet, MultiThreaded, Output, OutputBits,
+    Parallelism, SingleThreaded, Undecided,
 };
 
 pub mod context;
@@ -46,7 +46,9 @@ pub const LIBSAIS_I64_OUTPUT_MAXIMUM_SIZE: usize = 9223372036854775807;
 
 // SMALL TODOs:
 //      32/64 inputs with mutability issues,
-//      add try_API that is fallible on safety checks
+//      find a way to make arguments such as extra_space, alphabet_size part of the builder sequence,
+//           -> alphabet size probably needs to be given in an unsafe way
+//      Buffer Mode : AllocateAndReturn, AllocateAndReturnWithExtraSpace, WithGivenBuffer
 //      more tests
 //      seal traits
 //      clean up using macros?
@@ -186,7 +188,7 @@ impl<'a, P: Parallelism, I: InputBits> Sais<'a, P, I, Undecided> {
 }
 
 // -------------------- operations only defined for small input types --------------------
-impl<'a, P: Parallelism, I: SmallInputBits, O: OutputBits> Sais<'a, P, I, O> {
+impl<'a, P: Parallelism, I: SmallAlphabet, O: OutputBits> Sais<'a, P, I, O> {
     /// By calling this function you are claiming that the frequency table is valid for the text
     /// for which this config is used later. Otherwise there is not guarantee for correct behavior
     /// of the C library.
@@ -367,6 +369,7 @@ impl ThreadCount {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExtraSpace {
+    None,
     Recommended,
     Fixed { value: usize },
 }
@@ -374,6 +377,7 @@ pub enum ExtraSpace {
 impl ExtraSpace {
     fn compute_buffer_size<I: InputBits, O: OutputBits>(&self, text_len: usize) -> usize {
         match *self {
+            ExtraSpace::None => text_len,
             ExtraSpace::Recommended => {
                 if text_len <= 10_000 {
                     text_len
