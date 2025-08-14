@@ -143,9 +143,9 @@ fn libsais_omp() {
     let (text, extra_space, mut frequency_table, _) = setup_basic_example();
 
     let mut config = Sais::multi_threaded()
-        .num_threads(ThreadCount::OpenMpDefault)
         .input_8_bits()
-        .output_32_bits();
+        .output_32_bits()
+        .num_threads(ThreadCount::openmp_default());
 
     // SAFETY: the frequency table defined above is valid
     unsafe {

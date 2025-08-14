@@ -45,7 +45,6 @@ pub const LIBSAIS_I64_OUTPUT_MAXIMUM_SIZE: usize = 9223372036854775807;
 // SMALL TODOs:
 //      redo context (generic and only callable when it is defined)
 //      32/64 inputs with mutability issues,
-//      num threads at correct position + refactor enum
 //      recommended extra space
 //      more tests
 //      add try_API that is fallible on safety checks
@@ -67,7 +66,7 @@ impl<'a> Sais<'a, SingleThreaded, Undecided, Undecided> {
     pub fn single_threaded() -> Self {
         Self {
             frequency_table: None,
-            thread_count: ThreadCount::Fixed { value: 1 },
+            thread_count: ThreadCount::fixed(1),
             generalized_suffix_array: false,
             context: None,
             _parallelism_marker: PhantomData,
@@ -75,6 +74,7 @@ impl<'a> Sais<'a, SingleThreaded, Undecided, Undecided> {
             _output_marker: PhantomData,
         }
     }
+
     // TODO move context away because it only supports 8 and 16 bit inpus
     /// Uses a context object that allows reusing memory across runs of the algorithm.
     /// Currently, this is only available for the single threaded version.
@@ -92,7 +92,7 @@ impl<'a> Sais<'a, MultiThreaded, Undecided, Undecided> {
     pub fn multi_threaded() -> Self {
         Self {
             frequency_table: None,
-            thread_count: ThreadCount::OpenMpDefault,
+            thread_count: ThreadCount::openmp_default(),
             generalized_suffix_array: false,
             context: None,
             _parallelism_marker: PhantomData,
@@ -100,8 +100,11 @@ impl<'a> Sais<'a, MultiThreaded, Undecided, Undecided> {
             _output_marker: PhantomData,
         }
     }
+}
 
-    // TODO move somewhere else where it can always be called
+// -------------------- Choose threads at any time, but only with multithreaded config --------------------
+#[cfg(feature = "openmp")]
+impl<'a, I: Input, O: Output> Sais<'a, MultiThreaded, I, O> {
     /// Number of threads to use. Setting it to 0 will lead to the library choosing the
     /// number of threads (typically this will be equal to the available hardware parallelism).
     pub fn num_threads(self, thread_count: ThreadCount) -> Self {
@@ -249,7 +252,7 @@ impl<'a, P: Parallelism, I: InputBits, O: OutputBits> Sais<'a, P, I, O> {
             .map_or(ptr::null_mut(), |freq| freq.as_mut_ptr());
 
         let text_len = O::try_from(text.len()).unwrap();
-        let num_threads = O::try_from(self.thread_count.into_libsais_convention()).unwrap();
+        let num_threads = O::try_from(self.thread_count.value as usize).unwrap();
 
         // SAFETY:
         // text len is asserted to be in required range, which also makes the as i32 cast valid
@@ -302,8 +305,8 @@ impl<'a, P: Parallelism, I: InputBits, O: OutputBits> Sais<'a, P, I, O> {
 
         if let Some(context) = &self.context {
             assert_eq!(
-                context.num_threads() as usize,
-                self.thread_count.into_libsais_convention(),
+                context.num_threads(),
+                self.thread_count.value,
                 "context needs to have the same number of threads as this config"
             );
         }
@@ -338,22 +341,22 @@ impl SaisError {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ThreadCount {
-    OpenMpDefault,
-    Fixed { value: u16 },
+pub struct ThreadCount {
+    value: u16,
 }
 
 impl ThreadCount {
     pub fn fixed(thread_count: u16) -> Self {
-        Self::Fixed {
+        if thread_count == 0 {
+            panic!("Fixed thread count cannot be 0");
+        }
+
+        Self {
             value: thread_count,
         }
     }
 
-    fn into_libsais_convention(self) -> usize {
-        match self {
-            Self::OpenMpDefault => 0,
-            Self::Fixed { value } => value.into(),
-        }
+    pub fn openmp_default() -> Self {
+        Self { value: 0 }
     }
 }
