@@ -379,7 +379,9 @@ impl Output for Undecided {}
 
 // -------------------- InputBits and OutputBits with implementations for u8, u16, i32, i64 --------------------
 // Unsafe trait because the context type has to be correct for this input type
-pub unsafe trait InputBits: sealed::Sealed + Into<i64> + Clone {
+pub unsafe trait InputBits:
+    sealed::Sealed + Copy + TryFrom<usize, Error: std::fmt::Debug> + Into<i64> + Clone + Ord
+{
     const RECOMMENDED_EXTRA_SPACE: usize;
 
     type SingleThreadedContext: SaisContext;
@@ -393,7 +395,12 @@ impl<I: InputBits> Input for I {
 }
 
 pub trait OutputBits:
-    sealed::Sealed + TryFrom<usize, Error: std::fmt::Debug> + Into<i64> + Clone + std::fmt::Display
+    sealed::Sealed
+    + Copy
+    + TryFrom<usize, Error: std::fmt::Debug>
+    + Into<i64>
+    + Clone
+    + std::fmt::Display
 {
     const MAX: Self;
 
@@ -506,6 +513,11 @@ impl SmallAlphabet for u8 {
 impl SmallAlphabet for u16 {
     const FREQUENCY_TABLE_SIZE: usize = 65536;
 }
+
+pub trait LargeAlphabet: InputBits {}
+
+impl LargeAlphabet for i32 {}
+impl LargeAlphabet for i64 {}
 
 // -------------------- InputDispatch and implementations --------------------
 pub trait InputDispatch<I: InputBits, O: OutputBits> {

@@ -5,8 +5,9 @@ pub mod type_model;
 use std::{marker::PhantomData, ptr};
 
 use type_model::{
-    Input, InputBits, InputDispatch, LibsaisFunctionsSmallAlphabet, MultiThreaded, Output,
-    OutputBits, OutputDispatch, Parallelism, SingleThreaded, SmallAlphabet, Undecided,
+    Input, InputBits, InputDispatch, LargeAlphabet, LibsaisFunctionsLargeAlphabet,
+    LibsaisFunctionsSmallAlphabet, MultiThreaded, Output, OutputBits, OutputDispatch, Parallelism,
+    SingleThreaded, SmallAlphabet, Undecided,
 };
 
 use context::SaisContext;
@@ -33,12 +34,10 @@ pub const LIBSAIS_I64_OUTPUT_MAXIMUM_SIZE: usize = 9223372036854775807;
 // other queries: lcp from plcp and sa, plcp from sa/gsa and text, unbwt
 
 // BIG TODOs:
-//      int input
 //      bwt + aux
 //      unbwt, plcp + lcp
 
 // SMALL TODOs:
-//      32/64 inputs with mutability issues,
 //      find a way to make arguments such as extra_space, alphabet_size part of the builder sequence,
 //           -> alphabet size probably needs to be given in an unsafe way
 //      Buffer Mode : AllocateAndReturn, AllocateAndReturnWithExtraSpace, WithGivenBuffer
@@ -50,6 +49,7 @@ pub struct Sais<'a, P: Parallelism, I: Input, O: Output> {
     frequency_table: Option<&'a mut [O]>,
     thread_count: ThreadCount,
     generalized_suffix_array: bool,
+    alphabet_size: AlphabetSize,
     context: Option<&'a mut I::SingleThreadedContext>,
     _parallelism_marker: PhantomData<P>,
     _input_marker: PhantomData<I>,
@@ -63,6 +63,7 @@ impl<'a> Sais<'a, SingleThreaded, Undecided, Undecided> {
             frequency_table: None,
             thread_count: ThreadCount::fixed(1),
             generalized_suffix_array: false,
+            alphabet_size: AlphabetSize::ComputeFromMaxOfText,
             context: None,
             _parallelism_marker: PhantomData,
             _input_marker: PhantomData,
@@ -79,6 +80,7 @@ impl<'a> Sais<'a, MultiThreaded, Undecided, Undecided> {
             frequency_table: None,
             thread_count: ThreadCount::openmp_default(),
             generalized_suffix_array: false,
+            alphabet_size: AlphabetSize::ComputeFromMaxOfText,
             context: None,
             _parallelism_marker: PhantomData,
             _input_marker: PhantomData,
@@ -107,6 +109,7 @@ impl<'a, P: Parallelism> Sais<'a, P, Undecided, Undecided> {
             frequency_table: None,
             thread_count: self.thread_count,
             generalized_suffix_array: self.generalized_suffix_array,
+            alphabet_size: self.alphabet_size,
             context: None,
             _parallelism_marker: PhantomData,
             _input_marker: PhantomData,
@@ -119,6 +122,7 @@ impl<'a, P: Parallelism> Sais<'a, P, Undecided, Undecided> {
             frequency_table: None,
             thread_count: self.thread_count,
             generalized_suffix_array: self.generalized_suffix_array,
+            alphabet_size: self.alphabet_size,
             context: None,
             _parallelism_marker: PhantomData,
             _input_marker: PhantomData,
@@ -126,31 +130,31 @@ impl<'a, P: Parallelism> Sais<'a, P, Undecided, Undecided> {
         }
     }
 
-    // reintroduce once mutabiltiy issues are fixed
-    // pub fn input_and_output_32_bits(self) -> Sais<'a, P, i32, i32> {
-    //     Sais {
-    //         frequency_table: None,
-    //         thread_count: self.thread_count,
-    //         generalized_suffix_array: self.generalized_suffix_array,
-    //         context: self.context,
-    //         _parallelism_marker: PhantomData,
-    //         _input_marker: PhantomData,
-    //         _output_marker: PhantomData,
-    //     }
-    // }
+    pub fn input_and_output_32_bits(self) -> Sais<'a, P, i32, i32> {
+        Sais {
+            frequency_table: None,
+            thread_count: self.thread_count,
+            generalized_suffix_array: self.generalized_suffix_array,
+            alphabet_size: self.alphabet_size,
+            context: None,
+            _parallelism_marker: PhantomData,
+            _input_marker: PhantomData,
+            _output_marker: PhantomData,
+        }
+    }
 
-    // reintroduce once mutabiltiy issues are fixed
-    // pub fn input_and_output_64_bits(self) -> Sais<'a, P, i64, i64> {
-    //     Sais {
-    //         frequency_table: None,
-    //         thread_count: self.thread_count,
-    //         generalized_suffix_array: self.generalized_suffix_array,
-    //         context: self.context,
-    //         _parallelism_marker: PhantomData,
-    //         _input_marker: PhantomData,
-    //         _output_marker: PhantomData,
-    //     }
-    // }
+    pub fn input_and_output_64_bits(self) -> Sais<'a, P, i64, i64> {
+        Sais {
+            frequency_table: None,
+            thread_count: self.thread_count,
+            generalized_suffix_array: self.generalized_suffix_array,
+            alphabet_size: self.alphabet_size,
+            context: None,
+            _parallelism_marker: PhantomData,
+            _input_marker: PhantomData,
+            _output_marker: PhantomData,
+        }
+    }
 }
 
 // -------------------- second transition: choose output type --------------------
@@ -160,6 +164,7 @@ impl<'a, P: Parallelism, I: InputBits> Sais<'a, P, I, Undecided> {
             frequency_table: None,
             thread_count: self.thread_count,
             generalized_suffix_array: self.generalized_suffix_array,
+            alphabet_size: self.alphabet_size,
             context: self.context,
             _parallelism_marker: PhantomData,
             _input_marker: PhantomData,
@@ -172,10 +177,23 @@ impl<'a, P: Parallelism, I: InputBits> Sais<'a, P, I, Undecided> {
             frequency_table: None,
             thread_count: self.thread_count,
             generalized_suffix_array: self.generalized_suffix_array,
+            alphabet_size: self.alphabet_size,
             context: self.context,
             _parallelism_marker: PhantomData,
             _input_marker: PhantomData,
             _output_marker: PhantomData,
+        }
+    }
+}
+
+// -------------------- support context only when it is implemented --------------------
+impl<'a, I: SmallAlphabet> Sais<'a, SingleThreaded, I, i32> {
+    /// Uses a context object that allows reusing memory across runs of the algorithm.
+    /// Currently, this is only available for the single threaded version.
+    pub fn with_context(self, context: &'a mut I::SingleThreadedContext) -> Self {
+        Self {
+            context: Some(context),
+            ..self
         }
     }
 }
@@ -204,56 +222,52 @@ impl<'a, P: Parallelism, I: SmallAlphabet, O: OutputBits> Sais<'a, P, I, O> {
             ..self
         }
     }
-}
 
-// -------------------- support context only when it is implemented --------------------
-impl<'a, I: SmallAlphabet> Sais<'a, SingleThreaded, I, i32> {
-    /// Uses a context object that allows reusing memory across runs of the algorithm.
-    /// Currently, this is only available for the single threaded version.
-    pub fn with_context(self, context: &'a mut I::SingleThreadedContext) -> Self {
-        Self {
-            context: Some(context),
-            ..self
-        }
-    }
-}
-
-impl<'a, P: Parallelism, I: InputBits, O: OutputBits> Sais<'a, P, I, O> {
     /// Construct the suffix array for the given text.
-    pub fn run(self, text: &[I], extra_space_in_buffer: ExtraSpace) -> Result<Vec<O>, SaisError> {
-        let buffer_len = extra_space_in_buffer.compute_buffer_size::<I, O>(text.len());
-        let mut suffix_array_buffer: Vec<O> = vec![O::try_from(0).unwrap(); buffer_len];
+    pub fn run_small_alphabet(
+        self,
+        text: &[I],
+        extra_space_in_buffer: ExtraSpace,
+    ) -> Result<Vec<O>, SaisError> {
+        let mut suffix_array_buffer =
+            self.allocate_suffix_array_buffer(extra_space_in_buffer, text.len());
 
         let res: Result<(), SaisError> =
-            self.run_with_output_buffer(text, &mut suffix_array_buffer);
+            self.run_small_alphabet_with_output_buffer(text, &mut suffix_array_buffer);
 
         suffix_array_buffer.truncate(text.len());
+        suffix_array_buffer.shrink_to_fit();
 
         res.map(|_| suffix_array_buffer)
     }
 
     /// Construct the suffix array for the given text in the provided buffer.
     /// The buffer must be at least as large as the text. Additional space at the end
-    /// will be used as extra space. The supplied extra space value will be ignored in this case.
-    pub fn run_with_output_buffer(
+    /// will be used as extra space.
+    /// The suffix array will be written to the start of the buffer
+    pub fn run_small_alphabet_with_output_buffer(
         self,
         text: &[I],
         suffix_array_buffer: &mut [O],
     ) -> Result<(), SaisError> {
+        if text.is_empty() {
+            return Ok(());
+        }
+
         self.safety_checks(text, suffix_array_buffer);
 
+        // all of these casts should succeed after the safety checks
         let extra_space: O = (suffix_array_buffer.len() - text.len()).try_into().unwrap();
+        let text_len = O::try_from(text.len()).unwrap();
+        let num_threads = O::try_from(self.thread_count.value as usize).unwrap();
 
         let frequency_table_ptr = self
             .frequency_table
             .map_or(ptr::null_mut(), |freq| freq.as_mut_ptr());
 
-        let text_len = O::try_from(text.len()).unwrap();
-        let num_threads = O::try_from(self.thread_count.value as usize).unwrap();
-
         // SAFETY:
-        // text len is asserted to be in required range, which also makes the as i32 cast valid
-        // suffix array buffer is asserted above to have the correct length
+        // text len is asserted to be in required range in safety checks
+        // suffix array buffer is at least as large as text, asserted in safety checks
         // the library user claimed earlier that the frequency table is correct by calling an unsafe function
         // and the frequency table was asserted to be the correct size
         // if there is a context it has the correct type, because that was claimed in an unsafe impl
@@ -277,6 +291,96 @@ impl<'a, P: Parallelism, I: InputBits, O: OutputBits> Sais<'a, P, I, O> {
         } else {
             Ok(())
         }
+    }
+}
+
+impl<'a, P: Parallelism, I: LargeAlphabet, O: OutputBits> Sais<'a, P, I, O> {
+    /// By calling this function you are asserting that all values of the text
+    /// you'll use for this configuration are in the range [0, alphabet_size)
+    pub unsafe fn alphabet_size(self, alphabet_size: usize) -> Self {
+        Self {
+            alphabet_size: AlphabetSize::Fixed {
+                value: alphabet_size,
+            },
+            ..self
+        }
+    }
+
+    pub fn run_large_alphabet(
+        self,
+        text: &mut [I],
+        extra_space_in_buffer: ExtraSpace,
+    ) -> Result<Vec<O>, SaisError> {
+        let mut suffix_array_buffer =
+            self.allocate_suffix_array_buffer(extra_space_in_buffer, text.len());
+
+        let res: Result<(), SaisError> =
+            self.run_large_alphabet_with_output_buffer(text, &mut suffix_array_buffer);
+
+        suffix_array_buffer.truncate(text.len());
+        suffix_array_buffer.shrink_to_fit();
+
+        res.map(|_| suffix_array_buffer)
+    }
+
+    pub fn run_large_alphabet_with_output_buffer(
+        self,
+        text: &mut [I],
+        suffix_array_buffer: &mut [O],
+    ) -> Result<(), SaisError> {
+        if text.is_empty() {
+            return Ok(());
+        }
+
+        self.safety_checks(text, suffix_array_buffer);
+
+        // all of these casts should succeed after the safety checks
+        let extra_space: O = (suffix_array_buffer.len() - text.len()).try_into().unwrap();
+        let text_len = O::try_from(text.len()).unwrap();
+        let num_threads = O::try_from(self.thread_count.value as usize).unwrap();
+
+        // TODO compute stuff about alphabet size, with little safety check
+        let alphabet_size: O = match self.alphabet_size {
+            AlphabetSize::ComputeFromMaxOfText => {
+                helpers::compute_and_validate_alphabet_size(text).unwrap_or_else(|e| panic!("{e}"))
+            }
+            AlphabetSize::Fixed { value } => value
+                .try_into()
+                .expect("The alphabet size needs to fit into the output type."),
+        };
+
+        // SAFETY:
+        // text len is asserted to be in required range in safety checks
+        // suffix array buffer is at least as large as text, asserted in safety checks
+        // alphabet size was either set as the max of the text + 1 or claimed to be correct in an unsafe function
+        let return_code: i64 = unsafe {
+            <<P::WithInput<I, O> as InputDispatch<I, O>>::WithOutput as OutputDispatch<I,O>>::LargeAlphabetFunctions::run_libsais_large_alphabet(
+                text.as_mut_ptr(),
+                suffix_array_buffer.as_mut_ptr(),
+                text_len,
+                alphabet_size,
+                extra_space,
+                num_threads,
+            )
+        }
+        .into();
+
+        if return_code != 0 {
+            Err(SaisError::from_return_code(return_code))
+        } else {
+            Ok(())
+        }
+    }
+}
+
+impl<'a, P: Parallelism, I: InputBits, O: OutputBits> Sais<'a, P, I, O> {
+    fn allocate_suffix_array_buffer(
+        &self,
+        extra_space_in_buffer: ExtraSpace,
+        text_len: usize,
+    ) -> Vec<O> {
+        let buffer_len = extra_space_in_buffer.compute_buffer_size::<I, O>(text_len);
+        vec![O::try_from(0).unwrap(); buffer_len]
     }
 
     fn safety_checks(&self, text: &[I], suffix_array_buffer: &mut [O]) {
@@ -391,4 +495,10 @@ impl ExtraSpace {
             ExtraSpace::Fixed { value } => text_len + value,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AlphabetSize {
+    ComputeFromMaxOfText,
+    Fixed { value: usize },
 }

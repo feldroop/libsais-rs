@@ -1,45 +1,5 @@
 use libsais::{ExtraSpace, Sais, ThreadCount, context::SingleThreaded8InputSaisContext, helpers};
 
-fn is_suffix_array(text: &[u8], maybe_suffix_array: &[i32]) -> bool {
-    if text.is_empty() && maybe_suffix_array.is_empty() {
-        return true;
-    }
-
-    for indices in maybe_suffix_array.windows(2) {
-        let previous = indices[0] as usize;
-        let current = indices[1] as usize;
-
-        if &text[previous..] > &text[current..] {
-            return false;
-        }
-    }
-
-    true
-}
-
-fn is_generalized_suffix_array(concatenated_text: &[u8], maybe_suffix_array: &[i32]) -> bool {
-    if concatenated_text.is_empty() && maybe_suffix_array.is_empty() {
-        return true;
-    }
-
-    for indices in maybe_suffix_array.windows(2) {
-        let previous = indices[0] as usize;
-        let current = indices[1] as usize;
-
-        // for the generalized suffix array, the zero char borders can be in a different order than
-        // they would be in the normal suffix array
-        if concatenated_text[previous] == 0 && concatenated_text[current] == 0 {
-            continue;
-        }
-
-        if &concatenated_text[previous..] > &concatenated_text[current..] {
-            return false;
-        }
-    }
-
-    true
-}
-
 fn setup_basic_example() -> (
     &'static [u8; 11],
     usize,
@@ -85,10 +45,10 @@ fn libsais_basic() {
     }
 
     let suffix_array = config
-        .run(text, ExtraSpace::Fixed { value: extra_space })
+        .run_small_alphabet(text, ExtraSpace::Fixed { value: extra_space })
         .expect("libsais should run without an error");
 
-    assert!(is_suffix_array(text, &suffix_array));
+    assert!(helpers::is_suffix_array(text, &suffix_array));
 }
 
 #[test]
@@ -108,10 +68,10 @@ fn libsais_generalized_suffix_array() {
     }
 
     let suffix_array = config
-        .run(&text, ExtraSpace::Fixed { value: extra_space })
+        .run_small_alphabet(&text, ExtraSpace::Fixed { value: extra_space })
         .expect("libsais should run without an error");
 
-    assert!(is_generalized_suffix_array(&text, &suffix_array));
+    assert!(helpers::is_generalized_suffix_array(&text, &suffix_array));
 }
 
 #[test]
@@ -131,10 +91,13 @@ fn libsais_with_output_buffer() {
     }
 
     let _ = config
-        .run_with_output_buffer(text, &mut suffix_array_buffer)
+        .run_small_alphabet_with_output_buffer(text, &mut suffix_array_buffer)
         .expect("libsais should run without an error");
 
-    assert!(is_suffix_array(text, &suffix_array_buffer[..text.len()]));
+    assert!(helpers::is_suffix_array(
+        text,
+        &suffix_array_buffer[..text.len()]
+    ));
 }
 
 #[cfg(feature = "openmp")]
@@ -153,8 +116,65 @@ fn libsais_omp() {
     }
 
     let suffix_array = config
-        .run(text, ExtraSpace::Fixed { value: extra_space })
+        .run_small_alphabet(text, ExtraSpace::Fixed { value: extra_space })
         .expect("libsais should run without an error");
 
-    assert!(is_suffix_array(text, &suffix_array));
+    assert!(helpers::is_suffix_array(text, &suffix_array));
+}
+
+#[test]
+fn libsais_16input_extra_space_fixed() {
+    let text = [3u16, 5, 2, 65, 1, 3, 2, 51, 2, 34, 51];
+
+    let suffix_array = Sais::single_threaded()
+        .input_16_bits()
+        .output_64_bits()
+        .run_small_alphabet(&text, ExtraSpace::Fixed { value: 200 })
+        .expect("libsais should run without an error");
+
+    assert!(helpers::is_suffix_array(&text, &suffix_array));
+}
+
+#[test]
+fn libsais_32input_extra_space_recommended() {
+    let mut text = [3i32, 5, 2, 65, 1, 3, 2, 51, 2, 34, 51];
+
+    let suffix_array = Sais::single_threaded()
+        .input_and_output_32_bits()
+        .run_large_alphabet(&mut text, ExtraSpace::Recommended)
+        .expect("libsais should run without an error");
+
+    assert!(helpers::is_suffix_array(&text, &suffix_array));
+}
+
+#[test]
+fn libsais_64input_alphabet_size() {
+    let mut text = [3i64, 5, 2, 65, 1, 3, 2, 51, 2, 34, 51];
+
+    let mut config = Sais::single_threaded().input_and_output_64_bits();
+
+    // SAFETY: the alphabet size is correct and there are no negative values in the example
+    unsafe {
+        config = config.alphabet_size(66);
+    }
+
+    let suffix_array = config
+        .run_large_alphabet(&mut text, ExtraSpace::Recommended)
+        .expect("libsais should run without an error");
+
+    assert!(helpers::is_suffix_array(&text, &suffix_array));
+}
+
+#[cfg(feature = "openmp")]
+#[test]
+fn libsais_64input_omp() {
+    let mut text = [3i64, 5, 2, 65, 1, 3, 2, 51, 2, 34, 51];
+
+    let suffix_array = Sais::multi_threaded()
+        .input_and_output_64_bits()
+        .num_threads(ThreadCount::fixed(2))
+        .run_large_alphabet(&mut text, ExtraSpace::Recommended)
+        .expect("libsais should run without an error");
+
+    assert!(helpers::is_suffix_array(&text, &suffix_array));
 }
