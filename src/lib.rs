@@ -1,20 +1,15 @@
-mod helpers;
-mod type_model;
+pub mod context;
+pub mod helpers;
+pub mod type_model;
 
 use std::{marker::PhantomData, ptr};
 
-use crate::{
-    context::SaisContext,
-    type_model::{InputDispatch, OutputDispatch, SmallAlphabet},
-};
-
 use type_model::{
-    Input, InputBits, LibsaisFunctionsSmallAlphabet, MultiThreaded, Output, OutputBits,
-    Parallelism, SingleThreaded, Undecided,
+    Input, InputBits, InputDispatch, LibsaisFunctionsSmallAlphabet, MultiThreaded, Output,
+    OutputBits, OutputDispatch, Parallelism, SingleThreaded, SmallAlphabet, Undecided,
 };
 
-pub mod context;
-pub use helpers::concatenate_strings;
+use context::SaisContext;
 
 /// The version of the C library libsais wrapped by this crate
 pub use libsais_sys::libsais::LIBSAIS_VERSION_STRING;
@@ -344,7 +339,7 @@ impl SaisError {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ThreadCount {
     value: u16,
 }
@@ -365,7 +360,7 @@ impl ThreadCount {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ExtraSpace {
     None,
     Recommended,

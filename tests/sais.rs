@@ -1,6 +1,4 @@
-use libsais::{
-    ExtraSpace, Sais, ThreadCount, concatenate_strings, context::SingleThreaded8InputSaisContext,
-};
+use libsais::{ExtraSpace, Sais, ThreadCount, context::SingleThreaded8InputSaisContext, helpers};
 
 fn is_suffix_array(text: &[u8], maybe_suffix_array: &[i32]) -> bool {
     if text.is_empty() && maybe_suffix_array.is_empty() {
@@ -61,7 +59,7 @@ fn setup_basic_example() -> (
 
 fn setup_generalized_suffix_array_example()
 -> (Vec<u8>, usize, [i32; 256], SingleThreaded8InputSaisContext) {
-    let text = concatenate_strings([b"abababcabba".as_slice(), b"babaabccbac"]);
+    let text = helpers::concatenate_strings([b"abababcabba".as_slice(), b"babaabccbac"]);
     let extra_space = 20;
     let mut frequency_table = [0; 256];
     frequency_table[b'a' as usize] = 9;
