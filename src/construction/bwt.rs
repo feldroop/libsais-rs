@@ -1,15 +1,30 @@
-use super::{BwtConstruction, ExtraSpace, IntoSaisResult, SaisError};
+use super::{AlphabetSize, ExtraSpace, IntoSaisResult, SaisError, ThreadCount};
 use crate::context::SaisContext;
-use crate::data_structures::Bwt;
+use crate::data_structures::{Bwt, BwtWithAuxIndices};
 use crate::type_model::*;
 
-// // -------------------- runners for suffix array and bwt --------------------
+pub struct BwtConstruction<'a, P: Parallelism, I: InputElement, O: OutputElement> {
+    frequency_table: Option<&'a mut [O]>,
+    thread_count: ThreadCount,
+    generalized_suffix_array: bool,
+    alphabet_size: AlphabetSize,
+    context: Option<&'a mut I::SingleThreadedContext>,
+    _parallelism_marker: std::marker::PhantomData<P>,
+}
+
+super::construction_impl!(BwtConstruction,);
+
+// -------------------- runners for suffix array and bwt --------------------
 impl<'a, P: Parallelism, I: SmallAlphabet, O: OutputElementDecided> BwtConstruction<'a, P, I, O> {
-    pub fn run(self, text: &[I], extra_space_in_buffer: ExtraSpace) -> Result<Bwt<I>, SaisError> {
+    pub fn construct(
+        self,
+        text: &[I],
+        extra_space_in_buffer: ExtraSpace,
+    ) -> Result<Bwt<I>, SaisError> {
         let (mut suffix_array_buffer, mut bwt_buffer) =
             super::allocate_suffix_array_and_bwt_buffer::<I, O>(extra_space_in_buffer, text.len());
 
-        let res = self.run_in_output_buffers(text, &mut suffix_array_buffer, &mut bwt_buffer);
+        let res = self.construct_in_output_buffers(text, &mut suffix_array_buffer, &mut bwt_buffer);
 
         res.map(|bwt_primary_index| Bwt {
             bwt_data: bwt_buffer,
@@ -17,7 +32,7 @@ impl<'a, P: Parallelism, I: SmallAlphabet, O: OutputElementDecided> BwtConstruct
         })
     }
 
-    pub fn run_in_output_buffers(
+    pub fn construct_in_output_buffers(
         mut self,
         text: &[I],
         suffix_array_buffer: &mut [O],
@@ -42,33 +57,32 @@ impl<'a, P: Parallelism, I: SmallAlphabet, O: OutputElementDecided> BwtConstruct
         // if there is a context it has the correct type, because that was claimed in an unsafe impl
         // for InputElementDecided
         unsafe {
-            <<P::WithInput<I, O> as InputDispatch<I, O>>::WithOutput as OutputDispatch<I,O>>::SmallAlphabetFunctions::run_libsais_bwt(
-                text.as_ptr(),
-                bwt_buffer.as_mut_ptr(),
-                suffix_array_buffer.as_mut_ptr(),
-                text_len,
-                extra_space,
-                frequency_table_ptr,
-                num_threads,
-                self.context.map(|ctx| ctx.as_mut_ptr()),
-            )
-        }.into_primary_index_sais_result()
+                <<P::WithInput<I, O> as InputDispatch<I, O>>::WithOutput as OutputDispatch<I,O>>::SmallAlphabetFunctions::run_libsais_bwt(
+                    text.as_ptr(),
+                    bwt_buffer.as_mut_ptr(),
+                    suffix_array_buffer.as_mut_ptr(),
+                    text_len,
+                    extra_space,
+                    frequency_table_ptr,
+                    num_threads,
+                    self.context.map(|ctx| ctx.as_mut_ptr()),
+                )
+            }.into_primary_index_sais_result()
     }
 }
 
-// // -------------------- runners for suffix array and bwt and aux indices --------------------
-// impl<'a, P: Parallelism, I: SmallAlphabet, O: OutputElementDecided>
-//     Sais<'a, P, I, O, BwtAndAuxIndices<I, O>>
-// {
-//     pub fn run_with_bwt_and_aux_indices(
-//         self,
-//         text: &[I],
-//         extra_space_in_buffer: ExtraSpace,
-//     ) -> Result<BwtAndAuxIndices<I, O>, SaisError> {
-//         todo!()
-//     }
+// -------------------- runners for suffix array and bwt and aux indices --------------------
+impl<'a, P: Parallelism, I: SmallAlphabet, O: OutputElementDecided> BwtConstruction<'a, P, I, O> {
+    pub fn construct_with_aux_indices(
+        self,
+        text: &[I],
+        extra_space_in_buffer: ExtraSpace,
+        aux_sampling_rate: usize,
+    ) -> Result<BwtWithAuxIndices<I, O>, SaisError> {
+        todo!()
+    }
 
-//     pub fn run_with_bwt_and_aux_indices_in_output_buffers(self) -> Result<(), SaisError> {
-//         todo!()
-//     }
-// }
+    pub fn construct_with_aux_indices_in_output_buffers(self) -> Result<(), SaisError> {
+        todo!()
+    }
+}

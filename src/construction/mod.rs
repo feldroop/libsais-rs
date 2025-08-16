@@ -1,13 +1,10 @@
-mod bwt;
-mod suffix_array;
+pub mod bwt;
+pub mod suffix_array;
 
-use crate::context::SaisContext;
 use crate::type_model::*;
 
-use std::{marker::PhantomData, ptr};
-
 macro_rules! construction_impl {
-    ($struct_name:ident) => {
+    ($struct_name:ident, $($extra_items:item)*) => {
         // -------------------- entry point to builder single threaded --------------------
         impl<'a> $struct_name<'a, SingleThreaded, Undecided, Undecided> {
             pub fn single_threaded() -> Self {
@@ -17,7 +14,7 @@ macro_rules! construction_impl {
                     generalized_suffix_array: false,
                     alphabet_size: AlphabetSize::ComputeFromMaxOfText,
                     context: None,
-                    _parallelism_marker: PhantomData,
+                    _parallelism_marker: std::marker::PhantomData,
                 }
             }
         }
@@ -32,7 +29,7 @@ macro_rules! construction_impl {
                     generalized_suffix_array: false,
                     alphabet_size: AlphabetSize::ComputeFromMaxOfText,
                     context: None,
-                    _parallelism_marker: PhantomData,
+                    _parallelism_marker: std::marker::PhantomData,
                 }
             }
         }
@@ -48,7 +45,7 @@ macro_rules! construction_impl {
                     generalized_suffix_array: self.generalized_suffix_array,
                     alphabet_size: self.alphabet_size,
                     context: None,
-                    _parallelism_marker: PhantomData,
+                    _parallelism_marker: std::marker::PhantomData,
                 }
             }
 
@@ -61,10 +58,12 @@ macro_rules! construction_impl {
                     generalized_suffix_array: self.generalized_suffix_array,
                     alphabet_size: self.alphabet_size,
                     context: None,
-                    _parallelism_marker: PhantomData,
+                    _parallelism_marker: std::marker::PhantomData,
                 }
             }
         }
+
+        $($extra_items)*
 
         // -------------------- second transition: choose output type --------------------
         impl<'a, P: Parallelism, I: InputElementDecided>
@@ -77,7 +76,7 @@ macro_rules! construction_impl {
                     generalized_suffix_array: self.generalized_suffix_array,
                     alphabet_size: self.alphabet_size,
                     context: self.context,
-                    _parallelism_marker: PhantomData,
+                    _parallelism_marker: std::marker::PhantomData,
                 }
             }
 
@@ -88,7 +87,7 @@ macro_rules! construction_impl {
                     generalized_suffix_array: self.generalized_suffix_array,
                     alphabet_size: self.alphabet_size,
                     context: self.context,
-                    _parallelism_marker: PhantomData,
+                    _parallelism_marker: std::marker::PhantomData,
                 }
             }
         }
@@ -154,7 +153,7 @@ macro_rules! construction_impl {
                 let frequency_table_ptr = self
                     .frequency_table
                     .take()
-                    .map_or(ptr::null_mut(), |freq| freq.as_mut_ptr());
+                    .map_or(std::ptr::null_mut(), |freq| freq.as_mut_ptr());
 
                 (extra_space, text_len, num_threads, frequency_table_ptr)
             }
@@ -203,27 +202,7 @@ macro_rules! construction_impl {
     };
 }
 
-pub struct SuffixArrayConstruction<'a, P: Parallelism, I: InputElement, O: OutputElement> {
-    frequency_table: Option<&'a mut [O]>,
-    thread_count: ThreadCount,
-    generalized_suffix_array: bool,
-    alphabet_size: AlphabetSize,
-    context: Option<&'a mut I::SingleThreadedContext>,
-    _parallelism_marker: PhantomData<P>,
-}
-
-construction_impl!(SuffixArrayConstruction);
-
-pub struct BwtConstruction<'a, P: Parallelism, I: InputElement, O: OutputElement> {
-    frequency_table: Option<&'a mut [O]>,
-    thread_count: ThreadCount,
-    generalized_suffix_array: bool,
-    alphabet_size: AlphabetSize,
-    context: Option<&'a mut I::SingleThreadedContext>,
-    _parallelism_marker: PhantomData<P>,
-}
-
-construction_impl!(BwtConstruction);
+pub(crate) use construction_impl;
 
 // -------------------- free helper functions for all configs --------------------
 fn allocate_suffix_array_buffer<I: InputElementDecided, O: OutputElementDecided>(

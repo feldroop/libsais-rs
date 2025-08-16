@@ -1,4 +1,4 @@
-use super::{AlphabetSize, ExtraSpace, IntoSaisResult, SaisError, SuffixArrayConstruction};
+use super::{AlphabetSize, ExtraSpace, IntoSaisResult, SaisError, ThreadCount};
 use crate::context::SaisContext;
 use crate::data_structures::SuffixArray;
 use crate::helpers;
@@ -6,30 +6,43 @@ use crate::type_model::*;
 
 use std::marker::PhantomData;
 
-// -------------------- first transition: choose input type --------------------
-impl<'a, P: Parallelism> SuffixArrayConstruction<'a, P, Undecided, Undecided> {
-    pub fn input_and_output_32_bits(self) -> SuffixArrayConstruction<'a, P, i32, i32> {
-        SuffixArrayConstruction {
-            frequency_table: None,
-            thread_count: self.thread_count,
-            generalized_suffix_array: self.generalized_suffix_array,
-            alphabet_size: self.alphabet_size,
-            context: None,
-            _parallelism_marker: PhantomData,
-        }
-    }
-
-    pub fn input_and_output_64_bits(self) -> SuffixArrayConstruction<'a, P, i64, i64> {
-        SuffixArrayConstruction {
-            frequency_table: None,
-            thread_count: self.thread_count,
-            generalized_suffix_array: self.generalized_suffix_array,
-            alphabet_size: self.alphabet_size,
-            context: None,
-            _parallelism_marker: PhantomData,
-        }
-    }
+pub struct SuffixArrayConstruction<'a, P: Parallelism, I: InputElement, O: OutputElement> {
+    frequency_table: Option<&'a mut [O]>,
+    thread_count: ThreadCount,
+    generalized_suffix_array: bool,
+    alphabet_size: AlphabetSize,
+    context: Option<&'a mut I::SingleThreadedContext>,
+    _parallelism_marker: PhantomData<P>,
 }
+
+super::construction_impl!(
+    SuffixArrayConstruction,
+    // -------------------- first transition: choose input type (with large alphabets allowed) --------------------
+    // impl block goes here to make it appear at the correct location in the docs
+    impl<'a, P: Parallelism> SuffixArrayConstruction<'a, P, Undecided, Undecided> {
+        pub fn input_and_output_32_bits(self) -> SuffixArrayConstruction<'a, P, i32, i32> {
+            SuffixArrayConstruction {
+                frequency_table: None,
+                thread_count: self.thread_count,
+                generalized_suffix_array: self.generalized_suffix_array,
+                alphabet_size: self.alphabet_size,
+                context: None,
+                _parallelism_marker: PhantomData,
+            }
+        }
+
+        pub fn input_and_output_64_bits(self) -> SuffixArrayConstruction<'a, P, i64, i64> {
+            SuffixArrayConstruction {
+                frequency_table: None,
+                thread_count: self.thread_count,
+                generalized_suffix_array: self.generalized_suffix_array,
+                alphabet_size: self.alphabet_size,
+                context: None,
+                _parallelism_marker: PhantomData,
+            }
+        }
+    }
+);
 
 // -------------------- operations and runners for only suffix array and small alphabets --------------------
 impl<'a, P: Parallelism, I: SmallAlphabet, O: OutputElementDecided>
@@ -47,7 +60,7 @@ impl<'a, P: Parallelism, I: SmallAlphabet, O: OutputElementDecided>
     }
 
     /// Construct the suffix array for the given text.
-    pub fn run(
+    pub fn construct(
         self,
         text: &[I],
         extra_space_in_buffer: ExtraSpace,
@@ -55,7 +68,7 @@ impl<'a, P: Parallelism, I: SmallAlphabet, O: OutputElementDecided>
         let mut suffix_array_buffer =
             super::allocate_suffix_array_buffer::<I, O>(extra_space_in_buffer, text.len());
 
-        let res = self.run_in_output_buffer(text, &mut suffix_array_buffer);
+        let res = self.construct_in_output_buffer(text, &mut suffix_array_buffer);
 
         super::free_extra_space(&mut suffix_array_buffer, text.len());
 
@@ -68,7 +81,7 @@ impl<'a, P: Parallelism, I: SmallAlphabet, O: OutputElementDecided>
     /// The buffer must be at least as large as the text. Additional space at the end
     /// will be used as extra space.
     /// The suffix array will be written to the start of the buffer
-    pub fn run_in_output_buffer(
+    pub fn construct_in_output_buffer(
         mut self,
         text: &[I],
         suffix_array_buffer: &mut [O],
@@ -120,7 +133,7 @@ impl<'a, P: Parallelism, I: LargeAlphabet, O: OutputElementDecided>
         }
     }
 
-    pub fn run_large_alphabet(
+    pub fn construct_with_large_alphabet(
         self,
         text: &mut [I],
         extra_space_in_buffer: ExtraSpace,
@@ -128,7 +141,8 @@ impl<'a, P: Parallelism, I: LargeAlphabet, O: OutputElementDecided>
         let mut suffix_array_buffer =
             super::allocate_suffix_array_buffer::<I, O>(extra_space_in_buffer, text.len());
 
-        let res = self.run_large_alphabet_in_output_buffer(text, &mut suffix_array_buffer);
+        let res =
+            self.construct_with_large_alphabet_in_output_buffer(text, &mut suffix_array_buffer);
 
         super::free_extra_space(&mut suffix_array_buffer, text.len());
 
@@ -137,7 +151,7 @@ impl<'a, P: Parallelism, I: LargeAlphabet, O: OutputElementDecided>
         })
     }
 
-    pub fn run_large_alphabet_in_output_buffer(
+    pub fn construct_with_large_alphabet_in_output_buffer(
         mut self,
         text: &mut [I],
         suffix_array_buffer: &mut [O],

@@ -48,7 +48,7 @@ fn libsais_basic() {
     }
 
     let suffix_array = config
-        .run(text, ExtraSpace::Fixed { value: extra_space })
+        .construct(text, ExtraSpace::Fixed { value: extra_space })
         .expect("libsais should run without an error");
 
     println!("{suffix_array:?}");
@@ -73,7 +73,7 @@ fn libsais_generalized_suffix_array() {
     }
 
     let suffix_array = config
-        .run(&text, ExtraSpace::Fixed { value: extra_space })
+        .construct(&text, ExtraSpace::Fixed { value: extra_space })
         .expect("libsais should run without an error");
 
     assert!(helpers::is_generalized_suffix_array(
@@ -99,7 +99,7 @@ fn libsais_with_output_buffer() {
     }
 
     let _ = config
-        .run_in_output_buffer(text, &mut suffix_array_buffer)
+        .construct_in_output_buffer(text, &mut suffix_array_buffer)
         .expect("libsais should run without an error");
 
     assert!(helpers::is_suffix_array(
@@ -124,7 +124,7 @@ fn libsais_omp() {
     }
 
     let suffix_array = config
-        .run(text, ExtraSpace::Fixed { value: extra_space })
+        .construct(text, ExtraSpace::Fixed { value: extra_space })
         .expect("libsais should run without an error");
 
     assert!(helpers::is_suffix_array(text, suffix_array.as_slice()));
@@ -137,7 +137,7 @@ fn libsais_16input_extra_space_fixed() {
     let suffix_array = SuffixArrayConstruction::single_threaded()
         .input_16_bits()
         .output_64_bits()
-        .run(&text, ExtraSpace::Fixed { value: 200 })
+        .construct(&text, ExtraSpace::Fixed { value: 200 })
         .expect("libsais should run without an error");
 
     assert!(helpers::is_suffix_array(&text, suffix_array.as_slice()));
@@ -149,7 +149,7 @@ fn libsais_32input_extra_space_recommended() {
 
     let suffix_array = SuffixArrayConstruction::single_threaded()
         .input_and_output_32_bits()
-        .run_large_alphabet(&mut text, ExtraSpace::Recommended)
+        .construct_with_large_alphabet(&mut text, ExtraSpace::Recommended)
         .expect("libsais should run without an error");
 
     assert!(helpers::is_suffix_array(&text, suffix_array.as_slice()));
@@ -167,7 +167,7 @@ fn libsais_64input_alphabet_size() {
     }
 
     let suffix_array = config
-        .run_large_alphabet(&mut text, ExtraSpace::Recommended)
+        .construct_with_large_alphabet(&mut text, ExtraSpace::Recommended)
         .expect("libsais should run without an error");
 
     assert!(helpers::is_suffix_array(&text, suffix_array.as_slice()));
@@ -181,7 +181,7 @@ fn libsais_64input_omp() {
     let suffix_array = SuffixArrayConstruction::multi_threaded()
         .input_and_output_64_bits()
         .num_threads(ThreadCount::fixed(2))
-        .run_large_alphabet(&mut text, ExtraSpace::Recommended)
+        .construct_with_large_alphabet(&mut text, ExtraSpace::Recommended)
         .expect("libsais should run without an error");
 
     assert!(helpers::is_suffix_array(&text, suffix_array.as_slice()));
@@ -201,13 +201,13 @@ fn libsais_bwt() {
     }
 
     let res = config
-        .run(text.as_slice(), ExtraSpace::Fixed { value: extra_space })
+        .construct(text.as_slice(), ExtraSpace::Fixed { value: extra_space })
         .expect("libsais should run without an error");
 
     let suffix_array = SuffixArrayConstruction::single_threaded()
         .input_8_bits()
         .output_32_bits()
-        .run(text.as_slice(), ExtraSpace::None)
+        .construct(text.as_slice(), ExtraSpace::None)
         .expect("libsais should run without an error");
 
     assert!(helpers::is_libsais_bwt(

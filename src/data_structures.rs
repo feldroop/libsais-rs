@@ -46,13 +46,13 @@ impl<I: SmallAlphabet> sealed::Sealed for Bwt<I> {}
 impl<I: SmallAlphabet> ResultStructures for Bwt<I> {}
 
 #[derive(Debug)]
-pub struct BwtAndAuxIndices<I: SmallAlphabet, O: OutputElement> {
+pub struct BwtWithAuxIndices<I: SmallAlphabet, O: OutputElement> {
     pub(crate) bwt_data: Vec<I>,
     pub(crate) bwt_primary_index: Option<usize>,
     pub(crate) aux_indices_data: Vec<O>,
 }
 
-impl<I: SmallAlphabet, O: OutputElement> BwtAndAuxIndices<I, O> {
+impl<I: SmallAlphabet, O: OutputElement> BwtWithAuxIndices<I, O> {
     pub fn bwt(&self) -> &[I] {
         &self.bwt_data
     }
@@ -70,9 +70,9 @@ impl<I: SmallAlphabet, O: OutputElement> BwtAndAuxIndices<I, O> {
     }
 }
 
-impl<I: SmallAlphabet, O: OutputElement> sealed::Sealed for BwtAndAuxIndices<I, O> {}
+impl<I: SmallAlphabet, O: OutputElement> sealed::Sealed for BwtWithAuxIndices<I, O> {}
 
-impl<I: SmallAlphabet, O: OutputElement> ResultStructures for BwtAndAuxIndices<I, O> {}
+impl<I: SmallAlphabet, O: OutputElement> ResultStructures for BwtWithAuxIndices<I, O> {}
 
 mod sealed {
     pub trait Sealed {}

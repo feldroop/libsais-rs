@@ -14,7 +14,9 @@ pub const LIBSAIS_I32_OUTPUT_MAXIMUM_SIZE: usize = 2147483647;
 pub const LIBSAIS_I64_OUTPUT_MAXIMUM_SIZE: usize = 9223372036854775807;
 
 #[doc(inline)]
-pub use construction::{BwtConstruction, ExtraSpace, SuffixArrayConstruction, ThreadCount}; //, suffix_array::SuffixArrayConstruction};
+pub use construction::{
+    ExtraSpace, SaisError, ThreadCount, bwt::BwtConstruction, suffix_array::SuffixArrayConstruction,
+};
 
 // functionality differences:
 // libsais: full
@@ -29,17 +31,18 @@ pub use construction::{BwtConstruction, ExtraSpace, SuffixArrayConstruction, Thr
 // other queries: lcp from plcp and sa, plcp from sa/gsa and text, unbwt
 
 // BIG TODOs:
-//      bwt + aux
-//      unbwt, plcp + lcp
+//      BWT/AUX
+//      UNBWT/LCP
 
 // SMALL TODOs:
-//      BWT/AUX: add way to replace text in place
-//      learning: bwt does not output suffix array -> split builders (find way to reuse impls, also needed for unbwt, maybe lcp)
+//      BWT/AUX: simply implement aux,
 
 //      find a way to make arguments such as extra_space, aux_indices_sampling_rate nicer:
-//          Buffer Mode : AllocateAndReturn, AllocateAndReturnWithExtraSpace, WithGivenBuffer, BWTInplace?
+//          Buffer Mode : AllocateAndReturn, AllocateAndReturnWithExtraSpace, WithGivenBuffer, BwtInplace?
 
-//      find a way to make secondary operations such as ubwt and lcp safe
+//      BWT/AUX: allow replacing text with bwt
+
+//      UNBWT/LCP find a way to make secondary operations such as ubwt and lcp safe
 
 //      more tests (bwt)
 //      seal traits
