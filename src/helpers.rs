@@ -1,4 +1,4 @@
-use crate::type_model::{InputBits, OutputBits};
+use crate::type_model::{InputElementDecided, OutputElementDecided};
 
 /// TODO doc
 pub fn concatenate_strings<'a>(iter: impl IntoIterator<Item = &'a [u8]>) -> Vec<u8> {
@@ -17,7 +17,10 @@ pub fn concatenate_strings<'a>(iter: impl IntoIterator<Item = &'a [u8]>) -> Vec<
 /// Computes the maximum value of the text and guarantees that all value are in the range
 /// [0, max_value]. Therefore the alphabet size returned is max_value + 1.
 /// Therefore the maximum value also has to be smaller than the maximum allowed value of `O`.
-pub(crate) fn compute_and_validate_alphabet_size<I: InputBits, O: OutputBits>(
+pub(crate) fn compute_and_validate_alphabet_size<
+    I: InputElementDecided,
+    O: OutputElementDecided,
+>(
     text: &[I],
 ) -> Result<O, &'static str> {
     let zero = I::try_from(0).unwrap();
@@ -43,7 +46,10 @@ pub(crate) fn compute_and_validate_alphabet_size<I: InputBits, O: OutputBits>(
     }
 }
 
-pub fn is_suffix_array<I: InputBits, O: OutputBits>(text: &[I], maybe_suffix_array: &[O]) -> bool {
+pub fn is_suffix_array<I: InputElementDecided, O: OutputElementDecided>(
+    text: &[I],
+    maybe_suffix_array: &[O],
+) -> bool {
     if text.is_empty() && maybe_suffix_array.is_empty() {
         return true;
     }
@@ -60,7 +66,7 @@ pub fn is_suffix_array<I: InputBits, O: OutputBits>(text: &[I], maybe_suffix_arr
     true
 }
 
-pub fn is_generalized_suffix_array<I: InputBits, O: OutputBits>(
+pub fn is_generalized_suffix_array<I: InputElementDecided, O: OutputElementDecided>(
     concatenated_text: &[I],
     maybe_suffix_array: &[O],
 ) -> bool {
@@ -83,6 +89,51 @@ pub fn is_generalized_suffix_array<I: InputBits, O: OutputBits>(
         if &concatenated_text[previous..] > &concatenated_text[current..] {
             return false;
         }
+    }
+
+    true
+}
+
+pub fn is_libsais_bwt<I: InputElementDecided, O: OutputElementDecided>(
+    text: &[I],
+    suffix_array: &[O],
+    maybe_bwt: &[I],
+) -> bool {
+    // this is a bit complicated, because the libsais output does not include the sentinel.
+    // neither its index in the suffix array, nor the char itself in the bwt
+    if text.is_empty() && maybe_bwt.is_empty() {
+        return true;
+    }
+
+    // first rotation in the burrows wheeler matrix always starts with the (virtual) sentinel.
+    // therefore the first text char is at the top of the last column (the BWT)
+    if maybe_bwt[0] != text[0] {
+        return false;
+    }
+
+    let mut i = 1;
+
+    for &bwt_char in maybe_bwt[1..].iter() {
+        let suffix_array_entry: i64 = suffix_array[i].into();
+
+        // this would be the sentinel in the bwt, which is not there (virtual sentinel)
+        if suffix_array_entry == 0 {
+            // i is deliberately not incremented
+            continue;
+        }
+
+        let rotated_index = if suffix_array_entry == 0 {
+            text.len() - 1
+        } else {
+            suffix_array_entry as usize - 1
+        };
+
+        println!("{suffix_array_entry} {rotated_index}");
+        if bwt_char.into() != text[rotated_index].into() {
+            return false;
+        }
+
+        i += 1;
     }
 
     true
