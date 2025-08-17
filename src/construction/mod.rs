@@ -3,6 +3,9 @@ pub mod suffix_array;
 
 use crate::type_model::*;
 
+// I know this macro is a bit naughty and code sharing like this should preferably done with traits
+// and default method implementations. However, with all of the typestate going on, that approach became
+// involved quite quickly and made the docs look even more noisy than they are now.
 macro_rules! construction_impl {
     ($struct_name:ident, $($extra_items:item)*) => {
         // -------------------- entry point to builder single threaded --------------------
@@ -223,6 +226,21 @@ fn allocate_suffix_array_and_bwt_buffer<I: InputElementDecided, O: OutputElement
     )
 }
 
+fn allocate_suffix_array_and_bwt_and_aux_buffer<I: InputElementDecided, O: OutputElementDecided>(
+    extra_space_in_buffer: ExtraSpace,
+    text_len: usize,
+    aux_sampling_rate: AuxSamplingRate<O>,
+) -> (Vec<O>, Vec<I>, Vec<O>) {
+    let (suffix_array_buffer, bwt_buffer) =
+        allocate_suffix_array_and_bwt_buffer(extra_space_in_buffer, text_len);
+
+    (
+        suffix_array_buffer,
+        bwt_buffer,
+        vec![O::try_from(0).unwrap(); aux_sampling_rate.aux_indices_buffer_size(text_len)],
+    )
+}
+
 fn free_extra_space<O: OutputElementDecided>(suffix_array_buffer: &mut Vec<O>, text_len: usize) {
     suffix_array_buffer.truncate(text_len);
     suffix_array_buffer.shrink_to_fit();
@@ -230,6 +248,17 @@ fn free_extra_space<O: OutputElementDecided>(suffix_array_buffer: &mut Vec<O>, t
 
 fn bwt_safety_checks<I: InputElementDecided>(text: &[I], bwt_buffer: &[I]) {
     assert_eq!(text.len(), bwt_buffer.len());
+}
+
+fn aux_indices_safety_checks<O: OutputElementDecided>(
+    text_len: usize,
+    aux_indices_buffer: &[O],
+    aux_sampling_rate: AuxSamplingRate<O>,
+) {
+    assert_eq!(
+        aux_indices_buffer.len(),
+        aux_sampling_rate.aux_indices_buffer_size(text_len)
+    );
 }
 
 // -------------------- various small structs and traits --------------------
@@ -339,6 +368,38 @@ impl<O: OutputElementDecided> IntoSaisResult for O {
             Err(SaisError::from_return_code(return_code))
         } else {
             Ok(Some(return_code as usize))
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct AuxSamplingRate<O: OutputElementDecided> {
+    value: O,
+}
+
+impl<O: OutputElementDecided> AuxSamplingRate<O> {
+    fn aux_indices_buffer_size(self, text_len: usize) -> usize {
+        let value_i64: i64 = self.value.into();
+        let value_usize = value_i64 as usize;
+
+        if text_len == 0 {
+            0
+        } else {
+            (text_len - 1) / value_usize + 1
+        }
+    }
+}
+
+impl<O: OutputElementDecided> From<O> for AuxSamplingRate<O> {
+    fn from(value: O) -> Self {
+        let value_i64: i64 = value.into();
+
+        if value_i64 < 2 {
+            panic!("Aux sampling rate must be greater than 1");
+        } else if value_i64.count_ones() != 1 {
+            panic!("Aux sampling rate must be a power of two");
+        } else {
+            Self { value }
         }
     }
 }

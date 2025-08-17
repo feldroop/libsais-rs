@@ -111,14 +111,15 @@ pub fn is_libsais_bwt<I: InputElementDecided, O: OutputElementDecided>(
         return false;
     }
 
+    // start with 1 because the index of the sentinel is not present at the beginning of the suffix array
     let mut i = 1;
 
-    for &bwt_char in maybe_bwt[1..].iter() {
-        let suffix_array_entry: i64 = suffix_array[i].into();
+    for &suffix_array_entry in suffix_array {
+        let suffix_array_entry: i64 = suffix_array_entry.into();
 
-        // this would be the sentinel in the bwt, which is not there (virtual sentinel)
         if suffix_array_entry == 0 {
-            // i is deliberately not incremented
+            // this would be the sentinel in the bwt, which is not there (virtual sentinel)
+            // i is delibaretly not incremented here
             continue;
         }
 
@@ -128,12 +129,33 @@ pub fn is_libsais_bwt<I: InputElementDecided, O: OutputElementDecided>(
             suffix_array_entry as usize - 1
         };
 
-        println!("{suffix_array_entry} {rotated_index}");
+        let bwt_char = maybe_bwt[i];
+
         if bwt_char.into() != text[rotated_index].into() {
             return false;
         }
 
         i += 1;
+    }
+
+    true
+}
+
+pub fn is_libsais_aux_indices<O: OutputElementDecided>(
+    aux_indices: &[O],
+    suffix_array: &[O],
+    sampling_rate: usize,
+) -> bool {
+    // this is what the aux indices are defined as:
+    // aux[i] == k => suffix_array[k - 1] = i * r
+
+    for (i, &aux_index) in aux_indices.iter().enumerate() {
+        let aux_index: i64 = aux_index.into();
+        let suffix_array_entry: i64 = suffix_array[aux_index as usize - 1].into();
+
+        if suffix_array_entry as usize != i * sampling_rate {
+            return false;
+        }
     }
 
     true

@@ -48,7 +48,6 @@ impl<I: SmallAlphabet> ResultStructures for Bwt<I> {}
 #[derive(Debug)]
 pub struct BwtWithAuxIndices<I: SmallAlphabet, O: OutputElement> {
     pub(crate) bwt_data: Vec<I>,
-    pub(crate) bwt_primary_index: Option<usize>,
     pub(crate) aux_indices_data: Vec<O>,
 }
 
@@ -57,16 +56,12 @@ impl<I: SmallAlphabet, O: OutputElement> BwtWithAuxIndices<I, O> {
         &self.bwt_data
     }
 
-    pub fn bwt_primary_index(&self) -> Option<usize> {
-        self.bwt_primary_index
-    }
-
     pub fn aux_indices(&self) -> &[O] {
         &self.aux_indices_data
     }
 
-    pub fn into_parts(self) -> (Vec<I>, Option<usize>, Vec<O>) {
-        (self.bwt_data, self.bwt_primary_index, self.aux_indices_data)
+    pub fn into_parts(self) -> (Vec<I>, Vec<O>) {
+        (self.bwt_data, self.aux_indices_data)
     }
 }
 

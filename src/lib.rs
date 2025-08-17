@@ -35,15 +35,18 @@ pub use construction::{
 //      UNBWT/LCP
 
 // SMALL TODOs:
-//      BWT/AUX: simply implement aux,
-
 //      find a way to make arguments such as extra_space, aux_indices_sampling_rate nicer:
 //          Buffer Mode : AllocateAndReturn, AllocateAndReturnWithExtraSpace, WithGivenBuffer, BwtInplace?
 
 //      BWT/AUX: allow replacing text with bwt
 
-//      UNBWT/LCP find a way to make secondary operations such as ubwt and lcp safe
+//      maybe actually go back to traits for builder code sharing
 
-//      more tests (bwt)
+//      UNBWT: add new context types
+//      UNBWT/LCP: wire operations on the backend
+//      UNBWT/LCP: implement Constructions
+//      UNBWT/LCP: find a way to make secondary operations such as unbwt and plcp/lcp safe
+
+//      more tests
 //      seal traits
 //      clean up using macros?
