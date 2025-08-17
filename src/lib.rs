@@ -31,21 +31,18 @@ pub use construction::{
 // other queries: lcp from plcp and sa, plcp from sa/gsa and text, unbwt
 
 // BIG TODOs:
-//      BWT/AUX
 //      UNBWT/LCP
 
 // SMALL TODOs:
-//      find a way to make arguments such as extra_space, aux_indices_sampling_rate nicer:
-//          Buffer Mode : AllocateAndReturn, AllocateAndReturnWithExtraSpace, WithGivenBuffer, BwtInplace?
-
-//      BWT/AUX: allow replacing text with bwt
-
-//      maybe actually go back to traits for builder code sharing
 
 //      UNBWT: add new context types
 //      UNBWT/LCP: wire operations on the backend
 //      UNBWT/LCP: implement Constructions
-//      UNBWT/LCP: find a way to make secondary operations such as unbwt and plcp/lcp safe
+//      UNBWT/LCP: find a way to make secondary operations such as unbwt and plcp/lcp safe?
+
+//      maybe actually go back to traits for builder code sharing
+//      find a way to make extra_space in bwt nicer
+//      add well-defined type decision setter for contructions that allow generic use
 
 //      more tests
 //      seal traits

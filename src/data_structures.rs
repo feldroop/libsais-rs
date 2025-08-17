@@ -1,13 +1,14 @@
-use crate::type_model::{OutputElement, SmallAlphabet};
-
-pub trait ResultStructures: sealed::Sealed {}
+use crate::{
+    construction::AuxIndicesSamplingRate,
+    type_model::{OutputElementDecided, SmallAlphabet},
+};
 
 #[derive(Debug)]
-pub struct SuffixArray<O: OutputElement> {
+pub struct SuffixArray<O: OutputElementDecided> {
     pub(crate) data: Vec<O>,
 }
 
-impl<O: OutputElement> SuffixArray<O> {
+impl<O: OutputElementDecided> SuffixArray<O> {
     pub fn as_slice(&self) -> &[O] {
         &self.data
     }
@@ -16,10 +17,6 @@ impl<O: OutputElement> SuffixArray<O> {
         self.data
     }
 }
-
-impl<O: OutputElement> sealed::Sealed for SuffixArray<O> {}
-
-impl<O: OutputElement> ResultStructures for SuffixArray<O> {}
 
 #[derive(Debug)]
 pub struct Bwt<I: SmallAlphabet> {
@@ -41,34 +38,43 @@ impl<I: SmallAlphabet> Bwt<I> {
     }
 }
 
-impl<I: SmallAlphabet> sealed::Sealed for Bwt<I> {}
-
-impl<I: SmallAlphabet> ResultStructures for Bwt<I> {}
-
 #[derive(Debug)]
-pub struct BwtWithAuxIndices<I: SmallAlphabet, O: OutputElement> {
-    pub(crate) bwt_data: Vec<I>,
-    pub(crate) aux_indices_data: Vec<O>,
+pub struct AuxIndices<O: OutputElementDecided> {
+    pub(crate) data: Vec<O>,
+    pub(crate) sampling_rate: AuxIndicesSamplingRate<O>,
 }
 
-impl<I: SmallAlphabet, O: OutputElement> BwtWithAuxIndices<I, O> {
+impl<O: OutputElementDecided> AuxIndices<O> {
+    pub fn as_slice(&self) -> &[O] {
+        &self.data
+    }
+
+    pub fn sampling_rate(&self) -> AuxIndicesSamplingRate<O> {
+        self.sampling_rate
+    }
+
+    pub fn into_parts(self) -> (Vec<O>, AuxIndicesSamplingRate<O>) {
+        (self.data, self.sampling_rate)
+    }
+}
+
+#[derive(Debug)]
+pub struct BwtWithAuxIndices<I: SmallAlphabet, O: OutputElementDecided> {
+    pub(crate) bwt_data: Vec<I>,
+    pub(crate) aux_indices: AuxIndices<O>,
+}
+
+impl<I: SmallAlphabet, O: OutputElementDecided> BwtWithAuxIndices<I, O> {
     pub fn bwt(&self) -> &[I] {
         &self.bwt_data
     }
 
     pub fn aux_indices(&self) -> &[O] {
-        &self.aux_indices_data
+        self.aux_indices.as_slice()
     }
 
-    pub fn into_parts(self) -> (Vec<I>, Vec<O>) {
-        (self.bwt_data, self.aux_indices_data)
+    pub fn into_parts(self) -> (Vec<I>, Vec<O>, AuxIndicesSamplingRate<O>) {
+        let (aux_indices_data, aux_indices_sampling_rate) = self.aux_indices.into_parts();
+        (self.bwt_data, aux_indices_data, aux_indices_sampling_rate)
     }
-}
-
-impl<I: SmallAlphabet, O: OutputElement> sealed::Sealed for BwtWithAuxIndices<I, O> {}
-
-impl<I: SmallAlphabet, O: OutputElement> ResultStructures for BwtWithAuxIndices<I, O> {}
-
-mod sealed {
-    pub trait Sealed {}
 }

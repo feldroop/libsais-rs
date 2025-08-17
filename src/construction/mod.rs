@@ -3,22 +3,19 @@ pub mod suffix_array;
 
 use crate::type_model::*;
 
+trait ConstructionInit {
+    fn init() -> Self;
+}
+
 // I know this macro is a bit naughty and code sharing like this should preferably done with traits
 // and default method implementations. However, with all of the typestate going on, that approach became
 // involved quite quickly and made the docs look even more noisy than they are now.
 macro_rules! construction_impl {
-    ($struct_name:ident, $($extra_items:item)*) => {
+    ($struct_name:ident) => {
         // -------------------- entry point to builder single threaded --------------------
         impl<'a> $struct_name<'a, SingleThreaded, Undecided, Undecided> {
             pub fn single_threaded() -> Self {
-                Self {
-                    frequency_table: None,
-                    thread_count: ThreadCount::fixed(1),
-                    generalized_suffix_array: false,
-                    alphabet_size: AlphabetSize::ComputeFromMaxOfText,
-                    context: None,
-                    _parallelism_marker: std::marker::PhantomData,
-                }
+                ConstructionInit::init()
             }
         }
 
@@ -26,14 +23,7 @@ macro_rules! construction_impl {
         #[cfg(feature = "openmp")]
         impl<'a> $struct_name<'a, MultiThreaded, Undecided, Undecided> {
             pub fn multi_threaded() -> Self {
-                Self {
-                    frequency_table: None,
-                    thread_count: ThreadCount::openmp_default(),
-                    generalized_suffix_array: false,
-                    alphabet_size: AlphabetSize::ComputeFromMaxOfText,
-                    context: None,
-                    _parallelism_marker: std::marker::PhantomData,
-                }
+                ConstructionInit::init()
             }
         }
 
@@ -42,62 +32,32 @@ macro_rules! construction_impl {
             pub fn input_8_bits(
                 self,
             ) -> $struct_name<'a, P, u8, Undecided> {
-                $struct_name {
-                    frequency_table: None,
-                    thread_count: self.thread_count,
-                    generalized_suffix_array: self.generalized_suffix_array,
-                    alphabet_size: self.alphabet_size,
-                    context: None,
-                    _parallelism_marker: std::marker::PhantomData,
-                }
+                ConstructionInit::init()
             }
 
             pub fn input_16_bits(
                 self,
             ) -> $struct_name<'a, P, u16, Undecided> {
-                $struct_name {
-                    frequency_table: None,
-                    thread_count: self.thread_count,
-                    generalized_suffix_array: self.generalized_suffix_array,
-                    alphabet_size: self.alphabet_size,
-                    context: None,
-                    _parallelism_marker: std::marker::PhantomData,
-                }
+                ConstructionInit::init()
             }
         }
-
-        $($extra_items)*
 
         // -------------------- second transition: choose output type --------------------
         impl<'a, P: Parallelism, I: InputElementDecided>
             $struct_name<'a, P, I, Undecided>
         {
             pub fn output_32_bits(self) -> $struct_name<'a, P, I, i32> {
-                $struct_name {
-                    frequency_table: None,
-                    thread_count: self.thread_count,
-                    generalized_suffix_array: self.generalized_suffix_array,
-                    alphabet_size: self.alphabet_size,
-                    context: self.context,
-                    _parallelism_marker: std::marker::PhantomData,
-                }
+                ConstructionInit::init()
             }
 
             pub fn output_64_bits(self) -> $struct_name<'a, P, I, i64> {
-                $struct_name {
-                    frequency_table: None,
-                    thread_count: self.thread_count,
-                    generalized_suffix_array: self.generalized_suffix_array,
-                    alphabet_size: self.alphabet_size,
-                    context: self.context,
-                    _parallelism_marker: std::marker::PhantomData,
-                }
+                ConstructionInit::init()
             }
         }
 
-        // -------------------- Choose threads at any time, but only with multithreaded config --------------------
+        // -------------------- Choose threads after choosing types and only with multithreaded config --------------------
         #[cfg(feature = "openmp")]
-        impl<'a, I: InputElement, O: OutputElement>
+        impl<'a, I: InputElementDecided, O: OutputElementDecided>
             $struct_name<'a, MultiThreaded, I, O>
         {
             /// Number of threads to use. Setting it to 0 will lead to the library choosing the
@@ -145,12 +105,12 @@ macro_rules! construction_impl {
         {
             fn cast_and_unpack_parameters(
                 &mut self,
-                text: &[I],
+                text_len: usize,
                 suffix_array_buffer: &[O],
             ) -> (O, O, O, *mut O) {
                 // all of these casts should succeed after the safety checks
-                let extra_space = (suffix_array_buffer.len() - text.len()).try_into().unwrap();
-                let text_len = O::try_from(text.len()).unwrap();
+                let extra_space = (suffix_array_buffer.len() - text_len).try_into().unwrap();
+                let text_len = O::try_from(text_len).unwrap();
                 let num_threads = O::try_from(self.thread_count.value as usize).unwrap();
 
                 let frequency_table_ptr = self
@@ -216,29 +176,25 @@ fn allocate_suffix_array_buffer<I: InputElementDecided, O: OutputElementDecided>
     vec![O::try_from(0).unwrap(); buffer_len]
 }
 
-fn allocate_suffix_array_and_bwt_buffer<I: InputElementDecided, O: OutputElementDecided>(
-    extra_space_in_buffer: ExtraSpace,
+fn allocate_bwt_buffer<I: InputElementDecided>(text_len: usize) -> Vec<I> {
+    vec![I::try_from(0).unwrap(); text_len]
+}
+
+fn allocate_bwt_with_aux_buffers<I: InputElementDecided, O: OutputElementDecided>(
     text_len: usize,
-) -> (Vec<O>, Vec<I>) {
+    aux_indices_sampling_rate: AuxIndicesSamplingRate<O>,
+) -> (Vec<I>, Vec<O>) {
     (
-        allocate_suffix_array_buffer::<I, O>(extra_space_in_buffer, text_len),
-        vec![I::try_from(0).unwrap(); text_len],
+        allocate_bwt_buffer(text_len),
+        allocate_aux_indices_buffer(text_len, aux_indices_sampling_rate),
     )
 }
 
-fn allocate_suffix_array_and_bwt_and_aux_buffer<I: InputElementDecided, O: OutputElementDecided>(
-    extra_space_in_buffer: ExtraSpace,
+fn allocate_aux_indices_buffer<O: OutputElementDecided>(
     text_len: usize,
-    aux_sampling_rate: AuxSamplingRate<O>,
-) -> (Vec<O>, Vec<I>, Vec<O>) {
-    let (suffix_array_buffer, bwt_buffer) =
-        allocate_suffix_array_and_bwt_buffer(extra_space_in_buffer, text_len);
-
-    (
-        suffix_array_buffer,
-        bwt_buffer,
-        vec![O::try_from(0).unwrap(); aux_sampling_rate.aux_indices_buffer_size(text_len)],
-    )
+    aux_indices_sampling_rate: AuxIndicesSamplingRate<O>,
+) -> Vec<O> {
+    vec![O::try_from(0).unwrap(); aux_indices_sampling_rate.aux_indices_buffer_size(text_len)]
 }
 
 fn free_extra_space<O: OutputElementDecided>(suffix_array_buffer: &mut Vec<O>, text_len: usize) {
@@ -253,11 +209,11 @@ fn bwt_safety_checks<I: InputElementDecided>(text: &[I], bwt_buffer: &[I]) {
 fn aux_indices_safety_checks<O: OutputElementDecided>(
     text_len: usize,
     aux_indices_buffer: &[O],
-    aux_sampling_rate: AuxSamplingRate<O>,
+    aux_indices_sampling_rate: AuxIndicesSamplingRate<O>,
 ) {
     assert_eq!(
         aux_indices_buffer.len(),
-        aux_sampling_rate.aux_indices_buffer_size(text_len)
+        aux_indices_sampling_rate.aux_indices_buffer_size(text_len)
     );
 }
 
@@ -287,7 +243,7 @@ pub struct ThreadCount {
 }
 
 impl ThreadCount {
-    pub fn fixed(thread_count: u16) -> Self {
+    pub const fn fixed(thread_count: u16) -> Self {
         if thread_count == 0 {
             panic!("Fixed thread count cannot be 0");
         }
@@ -297,7 +253,7 @@ impl ThreadCount {
         }
     }
 
-    pub fn openmp_default() -> Self {
+    pub const fn openmp_default() -> Self {
         Self { value: 0 }
     }
 }
@@ -373,11 +329,11 @@ impl<O: OutputElementDecided> IntoSaisResult for O {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct AuxSamplingRate<O: OutputElementDecided> {
+pub struct AuxIndicesSamplingRate<O: OutputElementDecided> {
     value: O,
 }
 
-impl<O: OutputElementDecided> AuxSamplingRate<O> {
+impl<O: OutputElementDecided> AuxIndicesSamplingRate<O> {
     fn aux_indices_buffer_size(self, text_len: usize) -> usize {
         let value_i64: i64 = self.value.into();
         let value_usize = value_i64 as usize;
@@ -390,7 +346,7 @@ impl<O: OutputElementDecided> AuxSamplingRate<O> {
     }
 }
 
-impl<O: OutputElementDecided> From<O> for AuxSamplingRate<O> {
+impl<O: OutputElementDecided> From<O> for AuxIndicesSamplingRate<O> {
     fn from(value: O) -> Self {
         let value_i64: i64 = value.into();
 

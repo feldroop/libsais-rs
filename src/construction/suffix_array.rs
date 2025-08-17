@@ -1,4 +1,4 @@
-use super::{AlphabetSize, ExtraSpace, IntoSaisResult, SaisError, ThreadCount};
+use super::{AlphabetSize, ConstructionInit, ExtraSpace, IntoSaisResult, SaisError, ThreadCount};
 use crate::context::SaisContext;
 use crate::data_structures::SuffixArray;
 use crate::helpers;
@@ -15,34 +15,33 @@ pub struct SuffixArrayConstruction<'a, P: Parallelism, I: InputElement, O: Outpu
     _parallelism_marker: PhantomData<P>,
 }
 
-super::construction_impl!(
-    SuffixArrayConstruction,
-    // -------------------- first transition: choose input type (with large alphabets allowed) --------------------
-    // impl block goes here to make it appear at the correct location in the docs
-    impl<'a, P: Parallelism> SuffixArrayConstruction<'a, P, Undecided, Undecided> {
-        pub fn input_and_output_32_bits(self) -> SuffixArrayConstruction<'a, P, i32, i32> {
-            SuffixArrayConstruction {
-                frequency_table: None,
-                thread_count: self.thread_count,
-                generalized_suffix_array: self.generalized_suffix_array,
-                alphabet_size: self.alphabet_size,
-                context: None,
-                _parallelism_marker: PhantomData,
-            }
-        }
-
-        pub fn input_and_output_64_bits(self) -> SuffixArrayConstruction<'a, P, i64, i64> {
-            SuffixArrayConstruction {
-                frequency_table: None,
-                thread_count: self.thread_count,
-                generalized_suffix_array: self.generalized_suffix_array,
-                alphabet_size: self.alphabet_size,
-                context: None,
-                _parallelism_marker: PhantomData,
-            }
+impl<'a, P: Parallelism, I: InputElement, O: OutputElement> ConstructionInit
+    for SuffixArrayConstruction<'a, P, I, O>
+{
+    fn init() -> Self {
+        Self {
+            frequency_table: None,
+            thread_count: P::DEFAULT_THREAD_COUNT,
+            generalized_suffix_array: false,
+            alphabet_size: AlphabetSize::ComputeFromMaxOfText,
+            context: None,
+            _parallelism_marker: std::marker::PhantomData,
         }
     }
-);
+}
+
+super::construction_impl!(SuffixArrayConstruction);
+
+// -------------------- first transition: choose input type (with large alphabets allowed) --------------------
+impl<'a, P: Parallelism> SuffixArrayConstruction<'a, P, Undecided, Undecided> {
+    pub fn input_and_output_32_bits(self) -> SuffixArrayConstruction<'a, P, i32, i32> {
+        ConstructionInit::init()
+    }
+
+    pub fn input_and_output_64_bits(self) -> SuffixArrayConstruction<'a, P, i64, i64> {
+        ConstructionInit::init()
+    }
+}
 
 // -------------------- operations and runners for only suffix array and small alphabets --------------------
 impl<'a, P: Parallelism, I: SmallAlphabet, O: OutputElementDecided>
@@ -93,7 +92,7 @@ impl<'a, P: Parallelism, I: SmallAlphabet, O: OutputElementDecided>
         self.safety_checks(text, suffix_array_buffer);
 
         let (extra_space, text_len, num_threads, frequency_table_ptr) =
-            self.cast_and_unpack_parameters(text, suffix_array_buffer);
+            self.cast_and_unpack_parameters(text.len(), suffix_array_buffer);
 
         // SAFETY:
         // text len is asserted to be in required range in safety checks
@@ -163,7 +162,7 @@ impl<'a, P: Parallelism, I: LargeAlphabet, O: OutputElementDecided>
         self.safety_checks(text, suffix_array_buffer);
 
         let (extra_space, text_len, num_threads, _) =
-            self.cast_and_unpack_parameters(text, suffix_array_buffer);
+            self.cast_and_unpack_parameters(text.len(), suffix_array_buffer);
 
         // TODO compute stuff about alphabet size, with little safety check
         let alphabet_size: O = match self.alphabet_size {

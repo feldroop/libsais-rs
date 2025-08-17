@@ -2,9 +2,12 @@ use std::{ffi::c_void, marker::PhantomData};
 
 use libsais_sys::{libsais, libsais16, libsais16x64, libsais64};
 
-use crate::context::{
-    ContextUnimplemented, SaisContext, SingleThreaded8InputSaisContext,
-    SingleThreaded16InputSaisContext,
+use crate::{
+    ThreadCount,
+    context::{
+        ContextUnimplemented, SaisContext, SingleThreaded8InputSaisContext,
+        SingleThreaded16InputSaisContext,
+    },
 };
 
 pub trait LibsaisFunctionsSmallAlphabet<I: InputElementDecided, O: OutputElementDecided> {
@@ -531,6 +534,7 @@ impl<I: InputElementDecided, O: OutputElementDecided> LibsaisFunctionsLargeAlpha
 // -------------------- Parallelism and implementations --------------------
 pub trait Parallelism {
     type WithInput<I: InputElementDecided, O: OutputElementDecided>: InputDispatch<I, O>;
+    const DEFAULT_THREAD_COUNT: ThreadCount;
 }
 
 pub enum SingleThreaded {}
@@ -538,6 +542,7 @@ pub enum SingleThreaded {}
 impl Parallelism for SingleThreaded {
     type WithInput<I: InputElementDecided, O: OutputElementDecided> =
         SingleThreadedInputDispatcher<I, O>;
+    const DEFAULT_THREAD_COUNT: ThreadCount = ThreadCount::fixed(1);
 }
 
 #[cfg(feature = "openmp")]
@@ -547,6 +552,7 @@ pub enum MultiThreaded {}
 impl Parallelism for MultiThreaded {
     type WithInput<I: InputElementDecided, O: OutputElementDecided> =
         MultiThreadedInputDispatcher<I, O>;
+    const DEFAULT_THREAD_COUNT: ThreadCount = ThreadCount::openmp_default();
 }
 
 // -------------------- Typestate traits for Builder API --------------------

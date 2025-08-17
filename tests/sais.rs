@@ -1,6 +1,6 @@
 use libsais::{
     BwtConstruction, ExtraSpace, SuffixArrayConstruction, ThreadCount,
-    construction::AuxSamplingRate, context::SingleThreaded8InputSaisContext, helpers,
+    construction::AuxIndicesSamplingRate, context::SingleThreaded8InputSaisContext, helpers,
 };
 
 fn setup_basic_example() -> (
@@ -194,14 +194,15 @@ fn libsais_bwt() {
     let mut config = BwtConstruction::single_threaded()
         .input_8_bits()
         .output_32_bits()
-        .with_context(&mut ctx);
+        .with_context(&mut ctx)
+        .with_temporary_suffix_array_buffer_extra_space(ExtraSpace::Fixed { value: extra_space });
 
     unsafe {
         config = config.frequency_table(&mut frequency_table);
     }
 
     let res = config
-        .construct(text.as_slice(), ExtraSpace::Fixed { value: extra_space })
+        .construct(text.as_slice())
         .expect("libsais should run without an error");
 
     let suffix_array = SuffixArrayConstruction::single_threaded()
@@ -226,18 +227,15 @@ fn libsais_bwt_aux() {
     let mut config = BwtConstruction::single_threaded()
         .input_8_bits()
         .output_32_bits()
-        .with_context(&mut ctx);
+        .with_context(&mut ctx)
+        .with_temporary_suffix_array_buffer_extra_space(ExtraSpace::Fixed { value: extra_space });
 
     unsafe {
         config = config.frequency_table(&mut frequency_table);
     }
 
     let res = config
-        .construct_with_aux_indices(
-            text.as_slice(),
-            ExtraSpace::Fixed { value: extra_space },
-            AuxSamplingRate::from(2),
-        )
+        .construct_with_aux_indices(text.as_slice(), AuxIndicesSamplingRate::from(2))
         .expect("libsais should run without an error");
 
     let suffix_array = SuffixArrayConstruction::single_threaded()
@@ -254,6 +252,81 @@ fn libsais_bwt_aux() {
 
     assert!(helpers::is_libsais_aux_indices(
         res.aux_indices(),
+        suffix_array.as_slice(),
+        2
+    ));
+}
+
+#[test]
+fn libsais_bwt_in_text() {
+    let (text, extra_space, mut frequency_table, mut ctx) = setup_basic_example();
+    let mut text_and_later_bwt = text.to_owned();
+
+    let mut config = BwtConstruction::single_threaded()
+        .input_8_bits()
+        .output_32_bits()
+        .with_context(&mut ctx)
+        .with_temporary_suffix_array_buffer_extra_space(ExtraSpace::Fixed { value: extra_space });
+
+    unsafe {
+        config = config.frequency_table(&mut frequency_table);
+    }
+
+    let res = config
+        .construct_in_text_buffer(text_and_later_bwt.as_mut_slice())
+        .expect("libsais should run without an error");
+
+    let suffix_array = SuffixArrayConstruction::single_threaded()
+        .input_8_bits()
+        .output_32_bits()
+        .construct(text.as_slice(), ExtraSpace::None)
+        .expect("libsais should run without an error");
+
+    assert_eq!(res.unwrap(), 2);
+
+    assert!(helpers::is_libsais_bwt(
+        text.as_slice(),
+        suffix_array.as_slice(),
+        &text_and_later_bwt
+    ));
+}
+
+#[test]
+fn libsais_bwt_with_aux_in_text() {
+    let (text, extra_space, mut frequency_table, mut ctx) = setup_basic_example();
+    let mut text_and_later_bwt = text.to_owned();
+
+    let mut config = BwtConstruction::single_threaded()
+        .input_8_bits()
+        .output_32_bits()
+        .with_context(&mut ctx)
+        .with_temporary_suffix_array_buffer_extra_space(ExtraSpace::Fixed { value: extra_space });
+
+    unsafe {
+        config = config.frequency_table(&mut frequency_table);
+    }
+
+    let aux_indices = config
+        .construct_with_aux_indices_in_text_buffer(
+            text_and_later_bwt.as_mut_slice(),
+            AuxIndicesSamplingRate::from(2),
+        )
+        .expect("libsais should run without an error");
+
+    let suffix_array = SuffixArrayConstruction::single_threaded()
+        .input_8_bits()
+        .output_32_bits()
+        .construct(text.as_slice(), ExtraSpace::None)
+        .expect("libsais should run without an error");
+
+    assert!(helpers::is_libsais_bwt(
+        text.as_slice(),
+        suffix_array.as_slice(),
+        &text_and_later_bwt
+    ));
+
+    assert!(helpers::is_libsais_aux_indices(
+        aux_indices.as_slice(),
         suffix_array.as_slice(),
         2
     ));
