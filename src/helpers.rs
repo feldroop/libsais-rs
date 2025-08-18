@@ -1,4 +1,4 @@
-use crate::type_model::{InputElementDecided, OutputElementDecided};
+use crate::type_model::{InputElement, OutputElementDecided};
 
 /// TODO doc
 pub fn concatenate_strings<'a>(iter: impl IntoIterator<Item = &'a [u8]>) -> Vec<u8> {
@@ -17,10 +17,7 @@ pub fn concatenate_strings<'a>(iter: impl IntoIterator<Item = &'a [u8]>) -> Vec<
 /// Computes the maximum value of the text and guarantees that all value are in the range
 /// [0, max_value]. Therefore the alphabet size returned is max_value + 1.
 /// Therefore the maximum value also has to be smaller than the maximum allowed value of `O`.
-pub(crate) fn compute_and_validate_alphabet_size<
-    I: InputElementDecided,
-    O: OutputElementDecided,
->(
+pub(crate) fn compute_and_validate_alphabet_size<I: InputElement, O: OutputElementDecided>(
     text: &[I],
 ) -> Result<O, &'static str> {
     let zero = I::try_from(0).unwrap();
@@ -46,7 +43,7 @@ pub(crate) fn compute_and_validate_alphabet_size<
     }
 }
 
-pub fn is_suffix_array<I: InputElementDecided, O: OutputElementDecided>(
+pub fn is_suffix_array<I: InputElement, O: OutputElementDecided>(
     text: &[I],
     maybe_suffix_array: &[O],
 ) -> bool {
@@ -66,7 +63,7 @@ pub fn is_suffix_array<I: InputElementDecided, O: OutputElementDecided>(
     true
 }
 
-pub fn is_generalized_suffix_array<I: InputElementDecided, O: OutputElementDecided>(
+pub fn is_generalized_suffix_array<I: InputElement, O: OutputElementDecided>(
     concatenated_text: &[I],
     maybe_suffix_array: &[O],
 ) -> bool {
@@ -94,7 +91,7 @@ pub fn is_generalized_suffix_array<I: InputElementDecided, O: OutputElementDecid
     true
 }
 
-pub fn is_libsais_bwt<I: InputElementDecided, O: OutputElementDecided>(
+pub fn is_libsais_bwt<I: InputElement, O: OutputElementDecided>(
     text: &[I],
     suffix_array: &[O],
     maybe_bwt: &[I],

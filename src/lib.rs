@@ -40,10 +40,10 @@ pub use construction::{
 //      UNBWT/LCP: implement Constructions
 //      UNBWT/LCP: find a way to make secondary operations such as unbwt and plcp/lcp safe?
 
-//      maybe actually go back to traits for builder code sharing
-//      find a way to make extra_space in bwt nicer
-//      add well-defined type decision setter for contructions that allow generic use
-
 //      more tests
+
 //      seal traits
-//      clean up using macros?
+//      put things in the right places (especially type_model) (with pub exports)
+//      good docs and examples, README
+//      release-plz release (also libsais-sys)
+//      liya grebnov questions

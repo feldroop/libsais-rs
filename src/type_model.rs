@@ -2,15 +2,12 @@ use std::{ffi::c_void, marker::PhantomData};
 
 use libsais_sys::{libsais, libsais16, libsais16x64, libsais64};
 
-use crate::{
-    ThreadCount,
-    context::{
-        ContextUnimplemented, SaisContext, SingleThreaded8InputSaisContext,
-        SingleThreaded16InputSaisContext,
-    },
+use crate::context::{
+    ContextUnimplemented, SaisContext, SingleThreaded8InputSaisContext,
+    SingleThreaded16InputSaisContext,
 };
 
-pub trait LibsaisFunctionsSmallAlphabet<I: InputElementDecided, O: OutputElementDecided> {
+pub trait LibsaisFunctionsSmallAlphabet<I: InputElement, O: OutputElementDecided> {
     unsafe fn run_libsais(
         text_ptr: *const I,
         suffix_array_buffer_ptr: *mut O,
@@ -373,7 +370,7 @@ libsais_functions_small_alphabet_impl!(
     feature = "openmp"
 );
 
-pub trait LibsaisFunctionsLargeAlphabet<I: InputElementDecided, O: OutputElementDecided> {
+pub trait LibsaisFunctionsLargeAlphabet<I: InputElement, O: OutputElementDecided> {
     unsafe fn run_libsais_large_alphabet(
         text_ptr: *mut I,
         suffix_array_buffer_ptr: *mut O,
@@ -463,7 +460,7 @@ libsais_functions_large_alphabet_impl!(
 // -------------------- placeholder type for output dispatch --------------------
 pub struct FunctionsUnimplemented {}
 
-impl<I: InputElementDecided, O: OutputElementDecided> LibsaisFunctionsSmallAlphabet<I, O>
+impl<I: InputElement, O: OutputElementDecided> LibsaisFunctionsSmallAlphabet<I, O>
     for FunctionsUnimplemented
 {
     unsafe fn run_libsais(
@@ -514,7 +511,7 @@ impl<I: InputElementDecided, O: OutputElementDecided> LibsaisFunctionsSmallAlpha
     }
 }
 
-impl<I: InputElementDecided, O: OutputElementDecided> LibsaisFunctionsLargeAlphabet<I, O>
+impl<I: InputElement, O: OutputElementDecided> LibsaisFunctionsLargeAlphabet<I, O>
     for FunctionsUnimplemented
 {
     unsafe fn run_libsais_large_alphabet(
@@ -531,50 +528,77 @@ impl<I: InputElementDecided, O: OutputElementDecided> LibsaisFunctionsLargeAlpha
     }
 }
 
-// -------------------- Parallelism and implementations --------------------
-pub trait Parallelism {
-    type WithInput<I: InputElementDecided, O: OutputElementDecided>: InputDispatch<I, O>;
-    const DEFAULT_THREAD_COUNT: ThreadCount;
+// -------------------- Typestate traits for Builder API --------------------
+pub enum Undecided {}
+
+impl sealed::Sealed for Undecided {}
+
+pub trait Parallelism: sealed::Sealed {
+    type WithInput<I: InputElement, O: OutputElementDecided>: InputDispatch<I, O>;
 }
 
 pub enum SingleThreaded {}
 
+impl sealed::Sealed for SingleThreaded {}
+
 impl Parallelism for SingleThreaded {
-    type WithInput<I: InputElementDecided, O: OutputElementDecided> =
-        SingleThreadedInputDispatcher<I, O>;
-    const DEFAULT_THREAD_COUNT: ThreadCount = ThreadCount::fixed(1);
+    type WithInput<I: InputElement, O: OutputElementDecided> = SingleThreadedInputDispatcher<I, O>;
 }
 
 #[cfg(feature = "openmp")]
 pub enum MultiThreaded {}
 
 #[cfg(feature = "openmp")]
-impl Parallelism for MultiThreaded {
-    type WithInput<I: InputElementDecided, O: OutputElementDecided> =
-        MultiThreadedInputDispatcher<I, O>;
-    const DEFAULT_THREAD_COUNT: ThreadCount = ThreadCount::openmp_default();
-}
+impl sealed::Sealed for MultiThreaded {}
 
-// -------------------- Typestate traits for Builder API --------------------
-pub trait InputElement: sealed::Sealed {
-    type SingleThreadedContext: SaisContext;
+#[cfg(feature = "openmp")]
+impl Parallelism for MultiThreaded {
+    type WithInput<I: InputElement, O: OutputElementDecided> = MultiThreadedInputDispatcher<I, O>;
 }
 
 pub trait OutputElement: sealed::Sealed {}
 
-pub enum Undecided {}
-
-impl sealed::Sealed for Undecided {}
-
-impl InputElement for Undecided {
-    type SingleThreadedContext = ContextUnimplemented;
-}
-
 impl OutputElement for Undecided {}
+
+pub trait BufferMode: sealed::Sealed {}
+
+impl BufferMode for Undecided {}
+
+pub struct BorrowedBuffer {}
+
+impl sealed::Sealed for BorrowedBuffer {}
+
+impl BufferMode for BorrowedBuffer {}
+
+pub struct OwnedBuffer {}
+
+impl sealed::Sealed for OwnedBuffer {}
+
+impl BufferMode for OwnedBuffer {}
+
+pub trait AuxIndicesMode: sealed::Sealed {}
+
+pub struct NoAuxIndices {}
+
+impl sealed::Sealed for NoAuxIndices {}
+
+impl AuxIndicesMode for NoAuxIndices {}
+
+pub struct AuxIndicesBorrowedBuffer {}
+
+impl sealed::Sealed for AuxIndicesBorrowedBuffer {}
+
+impl AuxIndicesMode for AuxIndicesBorrowedBuffer {}
+
+pub struct AuxIndicesOwnedBuffer {}
+
+impl sealed::Sealed for AuxIndicesOwnedBuffer {}
+
+impl AuxIndicesMode for AuxIndicesOwnedBuffer {}
 
 // -------------------- InputElementDecided and OutputElementDecided with implementations for u8, u16, i32, i64 --------------------
 // Unsafe trait because the context type has to be correct for this input type
-pub unsafe trait InputElementDecided:
+pub unsafe trait InputElement:
     sealed::Sealed + Copy + TryFrom<usize, Error: std::fmt::Debug> + Into<i64> + Clone + Ord
 {
     const RECOMMENDED_EXTRA_SPACE: usize;
@@ -583,10 +607,6 @@ pub unsafe trait InputElementDecided:
     type SingleThreadedOutputDispatcher<O: OutputElementDecided>: OutputDispatch<Self, O>;
     #[cfg(feature = "openmp")]
     type MultiThreadedOutputDispatcher<O: OutputElementDecided>: OutputDispatch<Self, O>;
-}
-
-impl<I: InputElementDecided> InputElement for I {
-    type SingleThreadedContext = <Self as InputElementDecided>::SingleThreadedContext;
 }
 
 pub trait OutputElementDecided:
@@ -618,7 +638,7 @@ impl<B: OutputElementDecided> OutputElement for B {}
 
 impl sealed::Sealed for u8 {}
 
-unsafe impl InputElementDecided for u8 {
+unsafe impl InputElement for u8 {
     const RECOMMENDED_EXTRA_SPACE: usize = 0;
 
     type SingleThreadedContext = SingleThreaded8InputSaisContext;
@@ -631,7 +651,7 @@ unsafe impl InputElementDecided for u8 {
 
 impl sealed::Sealed for u16 {}
 
-unsafe impl InputElementDecided for u16 {
+unsafe impl InputElement for u16 {
     const RECOMMENDED_EXTRA_SPACE: usize = 0;
 
     type SingleThreadedContext = SingleThreaded16InputSaisContext;
@@ -644,7 +664,7 @@ unsafe impl InputElementDecided for u16 {
 
 impl sealed::Sealed for i32 {}
 
-unsafe impl InputElementDecided for i32 {
+unsafe impl InputElement for i32 {
     const RECOMMENDED_EXTRA_SPACE: usize = 6_000;
 
     type SingleThreadedContext = ContextUnimplemented;
@@ -675,7 +695,7 @@ impl OutputElementDecided for i32 {
 
 impl sealed::Sealed for i64 {}
 
-unsafe impl InputElementDecided for i64 {
+unsafe impl InputElement for i64 {
     const RECOMMENDED_EXTRA_SPACE: usize = 6_000;
 
     type SingleThreadedContext = ContextUnimplemented;
@@ -704,8 +724,18 @@ impl OutputElementDecided for i64 {
     type MultiThreaded64InputFunctions = MultiThreaded64Input64Output;
 }
 
+pub trait IsValidOutputFor<I: InputElement>: sealed::Sealed + OutputElementDecided {}
+
+impl IsValidOutputFor<u8> for i32 {}
+impl IsValidOutputFor<u16> for i32 {}
+impl IsValidOutputFor<i32> for i32 {}
+
+impl IsValidOutputFor<u8> for i64 {}
+impl IsValidOutputFor<u16> for i64 {}
+impl IsValidOutputFor<i64> for i64 {}
+
 // -------------------- InputElementDecided refinement traits and implementations --------------------
-pub trait SmallAlphabet: InputElementDecided {
+pub trait SmallAlphabet: InputElement {
     const FREQUENCY_TABLE_SIZE: usize;
 }
 
@@ -717,13 +747,13 @@ impl SmallAlphabet for u16 {
     const FREQUENCY_TABLE_SIZE: usize = 65536;
 }
 
-pub trait LargeAlphabet: InputElementDecided {}
+pub trait LargeAlphabet: InputElement + OutputElementDecided {}
 
 impl LargeAlphabet for i32 {}
 impl LargeAlphabet for i64 {}
 
 // -------------------- InputDispatch and implementations --------------------
-pub trait InputDispatch<I: InputElementDecided, O: OutputElementDecided> {
+pub trait InputDispatch<I: InputElement, O: OutputElementDecided> {
     type WithOutput: OutputDispatch<I, O>;
 }
 
@@ -732,7 +762,7 @@ pub struct SingleThreadedInputDispatcher<I, O> {
     _output_marker: PhantomData<O>,
 }
 
-impl<I: InputElementDecided, O: OutputElementDecided> InputDispatch<I, O>
+impl<I: InputElement, O: OutputElementDecided> InputDispatch<I, O>
     for SingleThreadedInputDispatcher<I, O>
 {
     type WithOutput = I::SingleThreadedOutputDispatcher<O>;
@@ -745,14 +775,14 @@ pub struct MultiThreadedInputDispatcher<I, O> {
 }
 
 #[cfg(feature = "openmp")]
-impl<I: InputElementDecided, O: OutputElementDecided> InputDispatch<I, O>
+impl<I: InputElement, O: OutputElementDecided> InputDispatch<I, O>
     for MultiThreadedInputDispatcher<I, O>
 {
     type WithOutput = I::MultiThreadedOutputDispatcher<O>;
 }
 
 // -------------------- OutputDispatch and implementations --------------------
-pub trait OutputDispatch<I: InputElementDecided, O: OutputElementDecided> {
+pub trait OutputDispatch<I: InputElement, O: OutputElementDecided> {
     type SmallAlphabetFunctions: LibsaisFunctionsSmallAlphabet<I, O>;
     type LargeAlphabetFunctions: LibsaisFunctionsLargeAlphabet<I, O>;
 }
