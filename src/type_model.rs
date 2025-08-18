@@ -7,7 +7,9 @@ use crate::context::{
     SingleThreaded16InputSaisContext,
 };
 
-pub trait LibsaisFunctionsSmallAlphabet<I: InputElement, O: OutputElementDecided> {
+pub trait LibsaisFunctionsSmallAlphabet<I: InputElement, O: OutputElementDecided>:
+    sealed::Sealed
+{
     unsafe fn run_libsais(
         text_ptr: *const I,
         suffix_array_buffer_ptr: *mut O,
@@ -87,6 +89,9 @@ macro_rules! libsais_functions_small_alphabet_impl {
     ) => {
         #[cfg($($parallelism_tail)+)]
         pub struct $struct_name {}
+
+        #[cfg($($parallelism_tail)+)]
+        impl sealed::Sealed for $struct_name {}
 
         #[cfg($($parallelism_tail)+)]
         impl LibsaisFunctionsSmallAlphabet<$input_type, $output_type> for $struct_name {
@@ -370,7 +375,9 @@ libsais_functions_small_alphabet_impl!(
     feature = "openmp"
 );
 
-pub trait LibsaisFunctionsLargeAlphabet<I: InputElement, O: OutputElementDecided> {
+pub trait LibsaisFunctionsLargeAlphabet<I: InputElement, O: OutputElementDecided>:
+    sealed::Sealed
+{
     unsafe fn run_libsais_large_alphabet(
         text_ptr: *mut I,
         suffix_array_buffer_ptr: *mut O,
@@ -392,6 +399,9 @@ macro_rules! libsais_functions_large_alphabet_impl {
     ) => {
         #[cfg($($parallelism_tail)+)]
         pub struct $struct_name {}
+
+        #[cfg($($parallelism_tail)+)]
+        impl sealed::Sealed for $struct_name {}
 
         #[cfg($($parallelism_tail)+)]
         impl LibsaisFunctionsLargeAlphabet<$input_type, $output_type> for $struct_name {
@@ -459,6 +469,8 @@ libsais_functions_large_alphabet_impl!(
 
 // -------------------- placeholder type for output dispatch --------------------
 pub struct FunctionsUnimplemented {}
+
+impl sealed::Sealed for FunctionsUnimplemented {}
 
 impl<I: InputElement, O: OutputElementDecided> LibsaisFunctionsSmallAlphabet<I, O>
     for FunctionsUnimplemented
@@ -753,7 +765,7 @@ impl LargeAlphabet for i32 {}
 impl LargeAlphabet for i64 {}
 
 // -------------------- InputDispatch and implementations --------------------
-pub trait InputDispatch<I: InputElement, O: OutputElementDecided> {
+pub trait InputDispatch<I: InputElement, O: OutputElementDecided>: sealed::Sealed {
     type WithOutput: OutputDispatch<I, O>;
 }
 
@@ -761,6 +773,8 @@ pub struct SingleThreadedInputDispatcher<I, O> {
     _input_marker: PhantomData<I>,
     _output_marker: PhantomData<O>,
 }
+
+impl<I, O> sealed::Sealed for SingleThreadedInputDispatcher<I, O> {}
 
 impl<I: InputElement, O: OutputElementDecided> InputDispatch<I, O>
     for SingleThreadedInputDispatcher<I, O>
@@ -775,6 +789,9 @@ pub struct MultiThreadedInputDispatcher<I, O> {
 }
 
 #[cfg(feature = "openmp")]
+impl<I, O> sealed::Sealed for MultiThreadedInputDispatcher<I, O> {}
+
+#[cfg(feature = "openmp")]
 impl<I: InputElement, O: OutputElementDecided> InputDispatch<I, O>
     for MultiThreadedInputDispatcher<I, O>
 {
@@ -782,7 +799,7 @@ impl<I: InputElement, O: OutputElementDecided> InputDispatch<I, O>
 }
 
 // -------------------- OutputDispatch and implementations --------------------
-pub trait OutputDispatch<I: InputElement, O: OutputElementDecided> {
+pub trait OutputDispatch<I: InputElement, O: OutputElementDecided>: sealed::Sealed {
     type SmallAlphabetFunctions: LibsaisFunctionsSmallAlphabet<I, O>;
     type LargeAlphabetFunctions: LibsaisFunctionsLargeAlphabet<I, O>;
 }
@@ -790,6 +807,8 @@ pub trait OutputDispatch<I: InputElement, O: OutputElementDecided> {
 pub struct SingleThreaded8InputOutputDispatcher<O> {
     _output_marker: PhantomData<O>,
 }
+
+impl<O> sealed::Sealed for SingleThreaded8InputOutputDispatcher<O> {}
 
 impl<O: OutputElementDecided> OutputDispatch<u8, O> for SingleThreaded8InputOutputDispatcher<O> {
     type SmallAlphabetFunctions = O::SingleThreaded8InputFunctions;
@@ -800,6 +819,8 @@ pub struct SingleThreaded16InputOutputDispatcher<O> {
     _output_marker: PhantomData<O>,
 }
 
+impl<O> sealed::Sealed for SingleThreaded16InputOutputDispatcher<O> {}
+
 impl<O: OutputElementDecided> OutputDispatch<u16, O> for SingleThreaded16InputOutputDispatcher<O> {
     type SmallAlphabetFunctions = O::SingleThreaded16InputFunctions;
     type LargeAlphabetFunctions = FunctionsUnimplemented;
@@ -808,6 +829,8 @@ impl<O: OutputElementDecided> OutputDispatch<u16, O> for SingleThreaded16InputOu
 pub struct SingleThreaded32InputOutputDispatcher<O> {
     _output_marker: PhantomData<O>,
 }
+
+impl<O> sealed::Sealed for SingleThreaded32InputOutputDispatcher<O> {}
 
 impl<O: OutputElementDecided> OutputDispatch<i32, O> for SingleThreaded32InputOutputDispatcher<O> {
     type SmallAlphabetFunctions = FunctionsUnimplemented;
@@ -818,6 +841,8 @@ pub struct SingleThreaded64InputOutputDispatcher<O> {
     _output_marker: PhantomData<O>,
 }
 
+impl<O> sealed::Sealed for SingleThreaded64InputOutputDispatcher<O> {}
+
 impl<O: OutputElementDecided> OutputDispatch<i64, O> for SingleThreaded64InputOutputDispatcher<O> {
     type SmallAlphabetFunctions = FunctionsUnimplemented;
     type LargeAlphabetFunctions = O::SingleThreaded64InputFunctions;
@@ -827,6 +852,9 @@ impl<O: OutputElementDecided> OutputDispatch<i64, O> for SingleThreaded64InputOu
 pub struct MultiThreaded8InputOutputDispatcher<O> {
     _output_marker: PhantomData<O>,
 }
+
+#[cfg(feature = "openmp")]
+impl<O> sealed::Sealed for MultiThreaded8InputOutputDispatcher<O> {}
 
 #[cfg(feature = "openmp")]
 impl<O: OutputElementDecided> OutputDispatch<u8, O> for MultiThreaded8InputOutputDispatcher<O> {
@@ -840,6 +868,9 @@ pub struct MultiThreaded16InputOutputDispatcher<O> {
 }
 
 #[cfg(feature = "openmp")]
+impl<O> sealed::Sealed for MultiThreaded16InputOutputDispatcher<O> {}
+
+#[cfg(feature = "openmp")]
 impl<O: OutputElementDecided> OutputDispatch<u16, O> for MultiThreaded16InputOutputDispatcher<O> {
     type SmallAlphabetFunctions = O::MultiThreaded16InputFunctions;
     type LargeAlphabetFunctions = FunctionsUnimplemented;
@@ -851,6 +882,9 @@ pub struct MultiThreaded32InputOutputDispatcher<O> {
 }
 
 #[cfg(feature = "openmp")]
+impl<O> sealed::Sealed for MultiThreaded32InputOutputDispatcher<O> {}
+
+#[cfg(feature = "openmp")]
 impl<O: OutputElementDecided> OutputDispatch<i32, O> for MultiThreaded32InputOutputDispatcher<O> {
     type SmallAlphabetFunctions = FunctionsUnimplemented;
     type LargeAlphabetFunctions = O::MultiThreaded32InputFunctions;
@@ -860,6 +894,9 @@ impl<O: OutputElementDecided> OutputDispatch<i32, O> for MultiThreaded32InputOut
 pub struct MultiThreaded64InputOutputDispatcher<O> {
     _output_marker: PhantomData<O>,
 }
+
+#[cfg(feature = "openmp")]
+impl<O> sealed::Sealed for MultiThreaded64InputOutputDispatcher<O> {}
 
 #[cfg(feature = "openmp")]
 impl<O: OutputElementDecided> OutputDispatch<i64, O> for MultiThreaded64InputOutputDispatcher<O> {
