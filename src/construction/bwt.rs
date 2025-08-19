@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 pub struct BwtConstruction<
     'a,
     I: InputElement,
-    O: OutputElement,
+    O: OutputElementOrUndecided,
     B: BufferMode,
     P: Parallelism,
     A: AuxIndicesMode,
@@ -27,8 +27,14 @@ pub struct BwtConstruction<
     _aux_indices_mode_marker: PhantomData<A>,
 }
 
-impl<'a, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelism, A: AuxIndicesMode>
-    BwtConstruction<'a, I, O, B, P, A>
+impl<
+    'a,
+    I: InputElement,
+    O: OutputElementOrUndecided,
+    B: BufferMode,
+    P: Parallelism,
+    A: AuxIndicesMode,
+> BwtConstruction<'a, I, O, B, P, A>
 {
     fn init() -> Self {
         Self {
@@ -48,8 +54,14 @@ impl<'a, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelism, A: Au
     }
 }
 
-impl<'a, I: InputElement, O: OutputElement, B1: BufferMode, P1: Parallelism, A1: AuxIndicesMode>
-    BwtConstruction<'a, I, O, B1, P1, A1>
+impl<
+    'a,
+    I: InputElement,
+    O: OutputElementOrUndecided,
+    B1: BufferMode,
+    P1: Parallelism,
+    A1: AuxIndicesMode,
+> BwtConstruction<'a, I, O, B1, P1, A1>
 {
     fn into_other_marker_type<B2: BufferMode, P2: Parallelism, A2: AuxIndicesMode>(
         self,
@@ -119,7 +131,7 @@ impl<'a, I: SmallAlphabet>
 impl<'a, I: SmallAlphabet, B: BufferMode>
     BwtConstruction<'a, I, Undecided, B, SingleThreaded, NoAuxIndices>
 {
-    pub fn with_borrowed_temporary_suffix_array_buffer<O: OutputElementDecided>(
+    pub fn with_borrowed_temporary_suffix_array_buffer<O: OutputElement>(
         self,
         temporary_suffix_array_buffer: &'a mut [O],
     ) -> BwtConstruction<'a, I, O, B, SingleThreaded, NoAuxIndices> {
@@ -132,7 +144,7 @@ impl<'a, I: SmallAlphabet, B: BufferMode>
         }
     }
 
-    pub fn with_owned_temporary_suffix_array_buffer<O: OutputElementDecided>(
+    pub fn with_owned_temporary_suffix_array_buffer<O: OutputElement>(
         self,
         extra_space: ExtraSpace,
     ) -> BwtConstruction<'a, I, O, B, SingleThreaded, NoAuxIndices> {
@@ -147,7 +159,7 @@ impl<'a, I: SmallAlphabet, B: BufferMode>
 }
 
 // optional choice at any time: with auxiliary indices
-impl<'a, I: SmallAlphabet, O: OutputElementDecided, B: BufferMode, P: Parallelism>
+impl<'a, I: SmallAlphabet, O: OutputElement, B: BufferMode, P: Parallelism>
     BwtConstruction<'a, I, O, B, P, NoAuxIndices>
 {
     pub fn with_aux_indices(
@@ -170,7 +182,7 @@ impl<'a, I: SmallAlphabet, O: OutputElementDecided, B: BufferMode, P: Parallelis
 }
 
 // optional choice at any time: threading
-impl<'a, I: SmallAlphabet, O: OutputElementDecided, B: BufferMode, A: AuxIndicesMode>
+impl<'a, I: SmallAlphabet, O: OutputElement, B: BufferMode, A: AuxIndicesMode>
     BwtConstruction<'a, I, O, B, SingleThreaded, A>
 {
     pub fn multi_threaded(
@@ -198,7 +210,7 @@ impl<'a, I: SmallAlphabet, B: BufferMode, A: AuxIndicesMode>
 impl<
     'a,
     I: SmallAlphabet,
-    O: OutputElementDecided,
+    O: OutputElement,
     B: BufferMode,
     P: Parallelism,
     A: AuxIndicesMode,
@@ -217,7 +229,7 @@ impl<
     }
 }
 
-impl<'a, I: SmallAlphabet, O: OutputElementDecided, P: Parallelism>
+impl<'a, I: SmallAlphabet, O: OutputElement, P: Parallelism>
     BwtConstruction<'a, I, O, OwnedBuffer, P, NoAuxIndices>
 {
     pub fn construct(self) -> Result<Bwt<I>, SaisError> {
@@ -235,7 +247,7 @@ impl<'a, I: SmallAlphabet, O: OutputElementDecided, P: Parallelism>
     }
 }
 
-impl<'a, I: SmallAlphabet, O: OutputElementDecided, P: Parallelism>
+impl<'a, I: SmallAlphabet, O: OutputElement, P: Parallelism>
     BwtConstruction<'a, I, O, BorrowedBuffer, P, NoAuxIndices>
 {
     pub fn construct_in_borrowed_buffer(mut self) -> Result<Option<usize>, SaisError> {
@@ -262,7 +274,7 @@ impl<'a, I: SmallAlphabet, O: OutputElementDecided, P: Parallelism>
         );
 
         if let Some(text) = self.text {
-            super::safety_checks(
+            super::sais_safety_checks(
                 text,
                 temporary_suffix_array_buffer,
                 &self.context,
@@ -271,7 +283,7 @@ impl<'a, I: SmallAlphabet, O: OutputElementDecided, P: Parallelism>
             );
             super::bwt_safety_checks(text, bwt_buffer);
         } else {
-            super::safety_checks(
+            super::sais_safety_checks(
                 bwt_buffer,
                 temporary_suffix_array_buffer,
                 &self.context,
@@ -317,7 +329,7 @@ impl<'a, I: SmallAlphabet, O: OutputElementDecided, P: Parallelism>
     }
 }
 
-impl<'a, I: SmallAlphabet, O: OutputElementDecided, P: Parallelism>
+impl<'a, I: SmallAlphabet, O: OutputElement, P: Parallelism>
     BwtConstruction<'a, I, O, OwnedBuffer, P, AuxIndicesOwnedBuffer>
 {
     pub fn construct_with_aux_indices(self) -> Result<BwtWithAuxIndices<I, O>, SaisError> {
@@ -345,7 +357,7 @@ impl<'a, I: SmallAlphabet, O: OutputElementDecided, P: Parallelism>
     }
 }
 
-impl<'a, I: SmallAlphabet, O: OutputElementDecided, P: Parallelism>
+impl<'a, I: SmallAlphabet, O: OutputElement, P: Parallelism>
     BwtConstruction<'a, I, O, OwnedBuffer, P, AuxIndicesBorrowedBuffer>
 {
     pub fn construct_with_aux_indices_in_owned_and_borrowed_buffers(
@@ -366,7 +378,7 @@ impl<'a, I: SmallAlphabet, O: OutputElementDecided, P: Parallelism>
     }
 }
 
-impl<'a, I: SmallAlphabet, O: OutputElementDecided, P: Parallelism>
+impl<'a, I: SmallAlphabet, O: OutputElement, P: Parallelism>
     BwtConstruction<'a, I, O, BorrowedBuffer, P, AuxIndicesOwnedBuffer>
 {
     pub fn construct_with_aux_indices_in_borrowed_and_owned_buffers(
@@ -390,7 +402,7 @@ impl<'a, I: SmallAlphabet, O: OutputElementDecided, P: Parallelism>
     }
 }
 
-impl<'a, I: SmallAlphabet, O: OutputElementDecided, P: Parallelism>
+impl<'a, I: SmallAlphabet, O: OutputElement, P: Parallelism>
     BwtConstruction<'a, I, O, BorrowedBuffer, P, AuxIndicesBorrowedBuffer>
 {
     pub fn construct_with_aux_indices_in_borrowed_and_borrowed_buffers(
@@ -419,7 +431,7 @@ impl<'a, I: SmallAlphabet, O: OutputElementDecided, P: Parallelism>
         );
 
         if let Some(text) = self.text {
-            super::safety_checks(
+            super::sais_safety_checks(
                 text,
                 temporary_suffix_array_buffer,
                 &self.context,
@@ -428,7 +440,7 @@ impl<'a, I: SmallAlphabet, O: OutputElementDecided, P: Parallelism>
             );
             super::bwt_safety_checks(text, bwt_buffer);
         } else {
-            super::safety_checks(
+            super::sais_safety_checks(
                 bwt_buffer,
                 temporary_suffix_array_buffer,
                 &self.context,
@@ -485,7 +497,7 @@ impl<'a, I: SmallAlphabet, O: OutputElementDecided, P: Parallelism>
 impl<
     'a,
     I: SmallAlphabet,
-    O: OutputElementDecided,
+    O: OutputElement,
     B: BufferMode,
     P: Parallelism,
     A: AuxIndicesMode,

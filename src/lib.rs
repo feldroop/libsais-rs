@@ -35,6 +35,8 @@ pub use construction::{
 
 // SMALL TODOs:
 
+//      LCP:
+
 //      UNBWT: add new context types
 //      UNBWT/LCP: wire operations on the backend
 //      UNBWT/LCP: implement Constructions
@@ -42,8 +44,9 @@ pub use construction::{
 
 //      more tests
 
-//      seal traits
 //      put things in the right places (especially type_model) (with pub exports)
 //      good docs and examples, README
 //      release-plz release (also libsais-sys)
-//      liya grebnov questions
+//      small benchmarks
+//      test without openmp
+//      ilya grebnov questions

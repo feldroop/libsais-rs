@@ -1,37 +1,10 @@
 use libsais::{
-    ExtraSpace, SuffixArrayConstruction, ThreadCount, context::SingleThreaded8InputSaisContext,
-    data_structures::SuffixArray, helpers,
+    ExtraSpace, SuffixArrayConstruction, ThreadCount, data_structures::SuffixArrayWithText, helpers,
 };
 
-fn setup_basic_example() -> (
-    &'static [u8; 11],
-    usize,
-    [i32; 256],
-    SingleThreaded8InputSaisContext,
-) {
-    let text = b"abababcabba";
-    let extra_space = 10;
-    let mut frequency_table = [0; 256];
-    frequency_table[b'a' as usize] = 5;
-    frequency_table[b'b' as usize] = 5;
-    frequency_table[b'c' as usize] = 1;
-    let ctx = SingleThreaded8InputSaisContext::new();
+mod common;
 
-    (text, extra_space, frequency_table, ctx)
-}
-
-fn setup_generalized_suffix_array_example()
--> (Vec<u8>, usize, [i32; 256], SingleThreaded8InputSaisContext) {
-    let text = helpers::concatenate_strings([b"abababcabba".as_slice(), b"babaabccbac"]);
-    let extra_space = 20;
-    let mut frequency_table = [0; 256];
-    frequency_table[b'a' as usize] = 9;
-    frequency_table[b'b' as usize] = 9;
-    frequency_table[b'c' as usize] = 4;
-    let ctx = SingleThreaded8InputSaisContext::new();
-
-    (text, extra_space, frequency_table, ctx)
-}
+use common::{setup_basic_example, setup_generalized_suffix_array_example};
 
 #[test]
 fn libsais_basic() {
@@ -42,16 +15,16 @@ fn libsais_basic() {
         .with_context(&mut ctx)
         .with_extra_space_in_buffer(ExtraSpace::Fixed { value: extra_space });
 
-    // SAFETY: the frequency table defined above is valid
+    // SAFETY: the frequency table defined in the example is valid
     unsafe {
         config = config.with_frequency_table(&mut frequency_table);
     }
 
-    let suffix_array = config
+    let res = config
         .construct()
         .expect("libsais should run without an error");
 
-    assert!(helpers::is_suffix_array(text, suffix_array.as_slice()));
+    assert!(helpers::is_suffix_array(text, res.suffix_array()));
 }
 
 #[test]
@@ -65,18 +38,18 @@ fn libsais_generalized_suffix_array() {
         .with_extra_space_in_buffer(ExtraSpace::Fixed { value: extra_space })
         .generalized_suffix_array();
 
-    // SAFETY: the frequency table defined above is valid
+    // SAFETY: the frequency table defined in the example is valid
     unsafe {
         config = config.with_frequency_table(&mut frequency_table);
     }
 
-    let suffix_array = config
+    let res = config
         .construct()
         .expect("libsais should run without an error");
 
     assert!(helpers::is_generalized_suffix_array(
         &text,
-        suffix_array.as_slice()
+        res.suffix_array()
     ));
 }
 
@@ -115,42 +88,42 @@ fn libsais_omp() {
         .multi_threaded(ThreadCount::openmp_default())
         .with_extra_space_in_buffer(ExtraSpace::Fixed { value: extra_space });
 
-    // SAFETY: the frequency table defined above is valid
+    // SAFETY: the frequency table defined in the example is valid
     unsafe {
         config = config.with_frequency_table(&mut frequency_table);
     }
 
-    let suffix_array = config
+    let res = config
         .construct()
         .expect("libsais should run without an error");
 
-    assert!(helpers::is_suffix_array(text, suffix_array.as_slice()));
+    assert!(helpers::is_suffix_array(text, res.suffix_array()));
 }
 
 #[test]
 fn libsais_16input_extra_space_fixed() {
     let text = [3u16, 5, 2, 65, 1, 3, 2, 51, 2, 34, 51];
 
-    let suffix_array: SuffixArray<i32> = SuffixArrayConstruction::for_text(&text)
+    let res: SuffixArrayWithText<_, i32> = SuffixArrayConstruction::for_text(&text)
         .in_owned_buffer()
         .with_extra_space_in_buffer(ExtraSpace::Fixed { value: 200 })
         .construct()
         .expect("libsais should run without an error");
 
-    assert!(helpers::is_suffix_array(&text, suffix_array.as_slice()));
+    assert!(helpers::is_suffix_array(&text, res.suffix_array()));
 }
 
 #[test]
 fn libsais_32input_no_extra_space() {
     let mut text = [3i32, 5, 2, 65, 1, 3, 2, 51, 2, 34, 51];
 
-    let suffix_array: SuffixArray<i32> = SuffixArrayConstruction::for_text_mut(&mut text)
+    let res: SuffixArrayWithText<_, i32> = SuffixArrayConstruction::for_text_mut(&mut text)
         .in_owned_buffer()
         .with_extra_space_in_buffer(ExtraSpace::None)
         .construct()
         .expect("libsais should run without an error");
 
-    assert!(helpers::is_suffix_array(&text, suffix_array.as_slice()));
+    assert!(helpers::is_suffix_array(res.text(), res.suffix_array()));
 }
 
 #[test]
@@ -164,11 +137,11 @@ fn libsais_64input_alphabet_size() {
         config = config.with_alphabet_size(66);
     }
 
-    let suffix_array: SuffixArray<i64> = config
+    let res: SuffixArrayWithText<_, i64> = config
         .construct()
         .expect("libsais should run without an error");
 
-    assert!(helpers::is_suffix_array(&text, suffix_array.as_slice()));
+    assert!(helpers::is_suffix_array(res.text(), res.suffix_array()));
 }
 
 #[cfg(feature = "openmp")]
@@ -176,11 +149,11 @@ fn libsais_64input_alphabet_size() {
 fn libsais_64input_omp() {
     let mut text = [3i64, 5, 2, 65, 1, 3, 2, 51, 2, 34, 51];
 
-    let suffix_array: SuffixArray<i64> = SuffixArrayConstruction::for_text_mut(&mut text)
+    let res: SuffixArrayWithText<_, i64> = SuffixArrayConstruction::for_text_mut(&mut text)
         .in_owned_buffer()
         .multi_threaded(ThreadCount::fixed(2))
         .construct()
         .expect("libsais should run without an error");
 
-    assert!(helpers::is_suffix_array(&text, suffix_array.as_slice()));
+    assert!(helpers::is_suffix_array(res.text(), res.suffix_array()));
 }

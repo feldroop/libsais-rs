@@ -6,7 +6,7 @@ mod sealed {
     pub trait Sealed {}
 }
 
-// TODO unbwt contexts, libsais16 contexts
+// TODO unbwt contexts, libsais16 contexts (probably needs to be property of Parallelism and generic over input type)
 
 pub trait SaisContext: sealed::Sealed {
     fn as_mut_ptr(&mut self) -> *mut c_void;

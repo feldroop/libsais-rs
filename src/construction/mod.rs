@@ -1,11 +1,14 @@
 pub mod bwt;
+pub mod lcp;
+pub mod plcp;
 pub mod suffix_array;
+pub mod unbwt;
 
 use crate::context::SaisContext;
 use crate::type_model::*;
 
 // -------------------- free helper functions for all configs --------------------
-fn allocate_suffix_array_buffer<I: InputElement, O: OutputElementDecided>(
+fn allocate_suffix_array_buffer<I: InputElement, O: OutputElement>(
     extra_space_in_buffer: ExtraSpace,
     text_len: usize,
 ) -> Vec<O> {
@@ -17,7 +20,7 @@ fn allocate_bwt_buffer<I: InputElement>(text_len: usize) -> Vec<I> {
     vec![I::try_from(0).unwrap(); text_len]
 }
 
-fn allocate_bwt_with_aux_buffers<I: InputElement, O: OutputElementDecided>(
+fn allocate_bwt_with_aux_buffers<I: InputElement, O: OutputElement>(
     text_len: usize,
     aux_indices_sampling_rate: AuxIndicesSamplingRate<O>,
 ) -> (Vec<I>, Vec<O>) {
@@ -27,19 +30,19 @@ fn allocate_bwt_with_aux_buffers<I: InputElement, O: OutputElementDecided>(
     )
 }
 
-fn allocate_aux_indices_buffer<O: OutputElementDecided>(
+fn allocate_aux_indices_buffer<O: OutputElement>(
     text_len: usize,
     aux_indices_sampling_rate: AuxIndicesSamplingRate<O>,
 ) -> Vec<O> {
     vec![O::try_from(0).unwrap(); aux_indices_sampling_rate.aux_indices_buffer_size(text_len)]
 }
 
-fn free_extra_space<O: OutputElementDecided>(suffix_array_buffer: &mut Vec<O>, text_len: usize) {
+fn free_extra_space<O: OutputElement>(suffix_array_buffer: &mut Vec<O>, text_len: usize) {
     suffix_array_buffer.truncate(text_len);
     suffix_array_buffer.shrink_to_fit();
 }
 
-fn cast_and_unpack_parameters<O: OutputElementDecided>(
+fn cast_and_unpack_parameters<O: OutputElement>(
     text_len: usize,
     suffix_array_buffer: &[O],
     thread_count: ThreadCount,
@@ -56,7 +59,7 @@ fn cast_and_unpack_parameters<O: OutputElementDecided>(
     (extra_space, text_len, num_threads, frequency_table_ptr)
 }
 
-fn safety_checks<I: InputElement, O: OutputElementDecided>(
+fn sais_safety_checks<I: InputElement, O: OutputElement>(
     text: &[I],
     suffix_array_buffer: &mut [O],
     context: &Option<&mut I::SingleThreadedContext>,
@@ -105,7 +108,7 @@ fn bwt_safety_checks<I: InputElement>(text: &[I], bwt_buffer: &[I]) {
     assert_eq!(text.len(), bwt_buffer.len());
 }
 
-fn aux_indices_safety_checks<O: OutputElementDecided>(
+fn aux_indices_safety_checks<O: OutputElement>(
     text_len: usize,
     aux_indices_buffer: &[O],
     aux_indices_sampling_rate: AuxIndicesSamplingRate<O>,
@@ -165,7 +168,7 @@ pub enum ExtraSpace {
 }
 
 impl ExtraSpace {
-    fn compute_buffer_size<I: InputElement, O: OutputElementDecided>(
+    fn compute_buffer_size<I: InputElement, O: OutputElement>(
         &self,
         text_len: usize,
     ) -> usize {
@@ -205,7 +208,7 @@ trait IntoSaisResult {
     fn into_primary_index_sais_result(self) -> Result<Option<usize>, SaisError>;
 }
 
-impl<O: OutputElementDecided> IntoSaisResult for O {
+impl<O: OutputElement> IntoSaisResult for O {
     fn into_empty_sais_result(self) -> Result<(), SaisError> {
         let return_code: i64 = self.into();
 
@@ -228,11 +231,11 @@ impl<O: OutputElementDecided> IntoSaisResult for O {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct AuxIndicesSamplingRate<O: OutputElement> {
+pub struct AuxIndicesSamplingRate<O: OutputElementOrUndecided> {
     value: O,
 }
 
-impl<O: OutputElementDecided> AuxIndicesSamplingRate<O> {
+impl<O: OutputElement> AuxIndicesSamplingRate<O> {
     fn aux_indices_buffer_size(self, text_len: usize) -> usize {
         let value_i64: i64 = self.value.into();
         let value_usize = value_i64 as usize;
@@ -245,7 +248,7 @@ impl<O: OutputElementDecided> AuxIndicesSamplingRate<O> {
     }
 }
 
-impl<O: OutputElementDecided> From<O> for AuxIndicesSamplingRate<O> {
+impl<O: OutputElement> From<O> for AuxIndicesSamplingRate<O> {
     fn from(value: O) -> Self {
         let value_i64: i64 = value.into();
 
