@@ -289,7 +289,7 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelis
         if let Some(text) = self.text {
             // small alphabets
             unsafe {
-                <<P::WithInput<I, O> as InputDispatch<I, O>>::WithOutput as OutputDispatch<I,O>>::SmallAlphabetFunctions::run_libsais(
+                <<P::WithInput<I, O> as InputDispatch<I, O>>::WithOutput as OutputDispatch<I,O>>::SmallAlphabetFunctions::libsais(
                     text.as_ptr(),
                     suffix_array_buffer.as_mut_ptr(),
                     text_len,
@@ -314,7 +314,7 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelis
             };
 
             unsafe {
-                <<P::WithInput<I, O> as InputDispatch<I, O>>::WithOutput as OutputDispatch<I,O>>::LargeAlphabetFunctions::run_libsais_large_alphabet(
+                <<P::WithInput<I, O> as InputDispatch<I, O>>::WithOutput as OutputDispatch<I,O>>::LargeAlphabetFunctions::libsais_large_alphabet(
                     (*text).as_mut_ptr(),
                     suffix_array_buffer.as_mut_ptr(),
                     text_len,

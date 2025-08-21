@@ -192,7 +192,7 @@ impl<
         // either claiming so in an unsafe fn or by constructing them using the appropriate functions of
         // this library
         unsafe {
-            <<P::WithInput<u8, O> as InputDispatch<u8, O>>::WithOutput as OutputDispatch<u8,O>>::LcpFunctions::run_libsais_lcp(
+            <<P::WithInput<u8, O> as InputDispatch<u8, O>>::WithOutput as OutputDispatch<u8,O>>::LcpFunctions::libsais_lcp(
                 self.plcp_buffer.buffer.as_ptr(),
                 self.suffix_array_buffer.buffer.as_ptr(),
                 lcp_ptr,

@@ -123,7 +123,7 @@ impl<
         // either claiming so in an unsafe fn or by constructing them using the appropriate functions of
         // this library
         unsafe {
-            <<P::WithInput<I, O> as InputDispatch<I, O>>::WithOutput as OutputDispatch<I,O>>::LcpFunctions::run_libsais_plcp(
+            <<P::WithInput<I, O> as InputDispatch<I, O>>::WithOutput as OutputDispatch<I,O>>::LcpFunctions::libsais_plcp(
                 self.text.as_ptr(),
                 self.suffix_array_buffer.buffer.as_ptr(),
                 plcp_buffer.as_mut_ptr(),

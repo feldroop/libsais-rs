@@ -36,10 +36,9 @@ pub use construction::{ExtraSpace, SaisError, ThreadCount, suffix_array::SuffixA
 //      make context sound and safe again (force threading decision for sa and bwt and unbwt builder, use type dispatch)
 
 //      UNBWT: add new context types
-//      UNBWT: wire operations on the backend
-//      UNBWT: implement Construction
+//      UNBWT: implement Construction, unbwt temp array must be n+1
 
-//      more tests (e.g. empty text, untested combinations)
+//      more tests (e.g. empty text, untested combinations, all contexts + drop)
 
 //      put things in the right places (especially type_model) (with pub exports)
 //      derives of public types

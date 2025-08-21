@@ -9,7 +9,7 @@ use crate::context::{
 };
 
 pub trait LibsaisFunctionsSmallAlphabet<I: InputElement, O: OutputElement>: sealed::Sealed {
-    unsafe fn run_libsais(
+    unsafe fn libsais(
         text_ptr: *const I,
         suffix_array_buffer_ptr: *mut O,
         text_len: O,
@@ -20,7 +20,7 @@ pub trait LibsaisFunctionsSmallAlphabet<I: InputElement, O: OutputElement>: seal
         context: Option<*mut c_void>,
     ) -> O;
 
-    unsafe fn run_libsais_bwt(
+    unsafe fn libsais_bwt(
         text_ptr: *const I,
         bwt_buffer_ptr: *mut I,
         suffix_array_buffer_ptr: *mut O,
@@ -31,7 +31,7 @@ pub trait LibsaisFunctionsSmallAlphabet<I: InputElement, O: OutputElement>: seal
         context: Option<*mut c_void>,
     ) -> O;
 
-    unsafe fn run_libsais_bwt_aux(
+    unsafe fn libsais_bwt_aux(
         text_ptr: *const I,
         bwt_buffer_ptr: *mut I,
         suffix_array_buffer_ptr: *mut O,
@@ -43,10 +43,50 @@ pub trait LibsaisFunctionsSmallAlphabet<I: InputElement, O: OutputElement>: seal
         num_threads: O,
         context: Option<*mut c_void>,
     ) -> O;
+
+    unsafe fn libsais_create_ctx(num_threads: O) -> *mut c_void;
+    unsafe fn libsais_free_ctx(ctx: *mut c_void);
+
+    unsafe fn libsais_unbwt(
+        bwt_ptr: *const I,
+        text_buffer_ptr: *mut I,
+        suffix_array_buffer_ptr: *mut O,
+        bwt_len: O,
+        frequency_table_ptr: *const O,
+        primary_index: O,
+        num_threads: O,
+        context: Option<*mut c_void>,
+    ) -> O;
+
+    unsafe fn libsais_unbwt_aux(
+        bwt_ptr: *const I,
+        text_buffer_ptr: *mut I,
+        suffix_array_buffer_ptr: *mut O,
+        bwt_len: O,
+        frequency_table_ptr: *const O,
+        aux_indices_sampling_rate: O,
+        aux_indices_buffer_ptr: *const O,
+        num_threads: O,
+        context: Option<*mut c_void>,
+    ) -> O;
+
+    unsafe fn libsais_unbwt_create_ctx(num_threads: O) -> *mut c_void;
+    unsafe fn libsais_unbwt_free_ctx(ctx: *mut c_void);
+}
+
+pub trait LibsaisFunctionsLargeAlphabet<I: InputElement, O: OutputElement>: sealed::Sealed {
+    unsafe fn libsais_large_alphabet(
+        text_ptr: *mut I,
+        suffix_array_buffer_ptr: *mut O,
+        text_len: O,
+        alphabet_size: O,
+        extra_space: O,
+        num_threads: O,
+    ) -> O;
 }
 
 pub trait LibsaisLcpFunctions<I: InputElement, O: OutputElement>: sealed::Sealed {
-    unsafe fn run_libsais_plcp(
+    unsafe fn libsais_plcp(
         text_ptr: *const I,
         suffix_array_ptr: *const O,
         plcp_ptr: *mut O,
@@ -55,7 +95,7 @@ pub trait LibsaisLcpFunctions<I: InputElement, O: OutputElement>: sealed::Sealed
         generalized_suffix_array: bool,
     ) -> O;
 
-    unsafe fn run_libsais_lcp(
+    unsafe fn libsais_lcp(
         plcp_ptr: *const O,
         suffix_array_ptr: *const O,
         lcp_ptr: *mut O,
@@ -79,6 +119,11 @@ macro_rules! fn_with_or_without_threads {
     ($mod_name:ident, $libsais_fn:ident, $($parameter:ident),*; $num_threads:ident, all()) => {
         $mod_name::$libsais_fn(
             $($parameter),*
+        )
+    };
+    ($mod_name:ident, $libsais_fn:ident,; $num_threads:ident, feature = "openmp") => {
+        $mod_name::$libsais_fn(
+            $num_threads
         )
     };
     ($mod_name:ident, $libsais_fn:ident, $($parameter:ident),*; $num_threads:ident, feature = "openmp") => {
@@ -111,7 +156,7 @@ macro_rules! lcp_functions_impl {
     ) => {
         #[cfg($($parallelism_tail)+)]
         impl LibsaisLcpFunctions<$input_type, $output_type> for $struct_name {
-            unsafe fn run_libsais_plcp(
+            unsafe fn libsais_plcp(
                 _text_ptr: *const $input_type,
                 _suffix_array_ptr: *const $output_type,
                 _plcp_ptr: *mut $output_type,
@@ -147,7 +192,7 @@ macro_rules! lcp_functions_impl {
                 }
             }
 
-            unsafe fn run_libsais_lcp(
+            unsafe fn libsais_lcp(
                 plcp_ptr: *const $output_type,
                 suffix_array_ptr: *const $output_type,
                 lcp_ptr: *mut $output_type,
@@ -188,6 +233,14 @@ macro_rules! libsais_functions_small_alphabet_impl {
         $libsais_plcp_fn:ident,
         $libsais_plcp_gsa_fn:ident,
         $libsais_lcp_fn:ident,
+        $libsais_create_ctx_fn:ident,
+        $libsais_free_ctx_fn:ident,
+        $libsais_unbwt_fn:ident,
+        $libsais_unbwt_ctx_fn:ident,
+        $libsais_unbwt_aux_fn:ident,
+        $libsais_unbwt_aux_ctx_fn:ident,
+        $libsais_unbwt_create_ctx_fn:ident,
+        $libsais_unbwt_free_ctx_fn:ident,
         $($parallelism_tail:tt)+
     ) => {
         #[cfg($($parallelism_tail)+)]
@@ -198,7 +251,7 @@ macro_rules! libsais_functions_small_alphabet_impl {
 
         #[cfg($($parallelism_tail)+)]
         impl LibsaisFunctionsSmallAlphabet<$input_type, $output_type> for $struct_name {
-            unsafe fn run_libsais(
+            unsafe fn libsais(
                 text_ptr: *const $input_type,
                 suffix_array_buffer_ptr: *mut $output_type,
                 text_len: $output_type,
@@ -261,7 +314,7 @@ macro_rules! libsais_functions_small_alphabet_impl {
                 }
             }
 
-            unsafe fn run_libsais_bwt(
+            unsafe fn libsais_bwt(
                 text_ptr: *const $input_type,
                 bwt_buffer_ptr: *mut $input_type,
                 suffix_array_buffer_ptr: *mut $output_type,
@@ -301,7 +354,7 @@ macro_rules! libsais_functions_small_alphabet_impl {
                 }
             }
 
-            unsafe fn run_libsais_bwt_aux(
+            unsafe fn libsais_bwt_aux(
                 text_ptr: *const $input_type,
                 bwt_buffer_ptr: *mut $input_type,
                 suffix_array_buffer_ptr: *mut $output_type,
@@ -346,6 +399,135 @@ macro_rules! libsais_functions_small_alphabet_impl {
                     }
                 }
             }
+
+            unsafe fn libsais_create_ctx(_num_threads: $output_type) -> *mut c_void {
+                #[allow(unused_unsafe)]
+                unsafe {
+                    fn_or_unimplemented_with_or_without_threads!(
+                        $libsais_mod,
+                        $libsais_create_ctx_fn,;
+                        _num_threads,
+                        $($parallelism_tail)+
+                    )
+                }
+            }
+
+            unsafe fn libsais_free_ctx(_ctx: *mut c_void) {
+                #[allow(unused_unsafe)]
+                unsafe {
+                    fn_or_unimplemented!(
+                        $libsais_mod,
+                        $libsais_free_ctx_fn,
+                        _ctx
+                    )
+                }
+            }
+
+            unsafe fn libsais_unbwt(
+                bwt_ptr: *const $input_type,
+                text_buffer_ptr: *mut $input_type,
+                suffix_array_buffer_ptr: *mut $output_type,
+                bwt_len: $output_type,
+                frequency_table_ptr: *const $output_type,
+                primary_index: $output_type,
+                _num_threads: $output_type,
+                context: Option<*mut c_void>,
+            ) -> $output_type {
+                unsafe {
+                    if let Some(_context) = context {
+                        fn_or_unimplemented!(
+                            $libsais_mod,
+                            $libsais_unbwt_ctx_fn,
+                            _context,
+                            bwt_ptr,
+                            text_buffer_ptr,
+                            suffix_array_buffer_ptr,
+                            bwt_len,
+                            frequency_table_ptr,
+                            primary_index
+                        )
+                    } else {
+                        fn_with_or_without_threads!(
+                            $libsais_mod,
+                            $libsais_unbwt_fn,
+                            bwt_ptr,
+                            text_buffer_ptr,
+                            suffix_array_buffer_ptr,
+                            bwt_len,
+                            frequency_table_ptr,
+                            primary_index;
+                            _num_threads,
+                            $($parallelism_tail)+
+                        )
+                    }
+                }
+            }
+
+            unsafe fn libsais_unbwt_aux(
+                bwt_ptr: *const $input_type,
+                text_buffer_ptr: *mut $input_type,
+                suffix_array_buffer_ptr: *mut $output_type,
+                bwt_len: $output_type,
+                frequency_table_ptr: *const $output_type,
+                aux_indices_sampling_rate: $output_type,
+                aux_indices_buffer_ptr: *const $output_type,
+                _num_threads: $output_type,
+                context: Option<*mut c_void>,
+            ) -> $output_type {
+                unsafe {
+                    if let Some(_context) = context {
+                        fn_or_unimplemented!(
+                            $libsais_mod,
+                            $libsais_unbwt_aux_ctx_fn,
+                            _context,
+                            bwt_ptr,
+                            text_buffer_ptr,
+                            suffix_array_buffer_ptr,
+                            bwt_len,
+                            frequency_table_ptr,
+                            aux_indices_sampling_rate,
+                            aux_indices_buffer_ptr
+                        )
+                    } else {
+                        fn_with_or_without_threads!(
+                            $libsais_mod,
+                            $libsais_unbwt_aux_fn,
+                            bwt_ptr,
+                            text_buffer_ptr,
+                            suffix_array_buffer_ptr,
+                            bwt_len,
+                            frequency_table_ptr,
+                            aux_indices_sampling_rate,
+                            aux_indices_buffer_ptr;
+                            _num_threads,
+                            $($parallelism_tail)+
+                        )
+                    }
+                }
+            }
+
+            unsafe fn libsais_unbwt_create_ctx(_num_threads: $output_type) -> *mut c_void {
+                #[allow(unused_unsafe)]
+                unsafe {
+                    fn_or_unimplemented_with_or_without_threads!(
+                        $libsais_mod,
+                        $libsais_unbwt_create_ctx_fn,;
+                        _num_threads,
+                        $($parallelism_tail)+
+                    )
+                }
+            }
+
+            unsafe fn libsais_unbwt_free_ctx(_ctx: *mut c_void) {
+                #[allow(unused_unsafe)]
+                unsafe {
+                    fn_or_unimplemented!(
+                        $libsais_mod,
+                        $libsais_unbwt_free_ctx_fn,
+                        _ctx
+                    )
+                }
+            }
         }
 
         lcp_functions_impl!(
@@ -359,169 +541,6 @@ macro_rules! libsais_functions_small_alphabet_impl {
             $($parallelism_tail)+
         );
     };
-}
-
-libsais_functions_small_alphabet_impl!(
-    SingleThreaded8Input32Output,
-    u8,
-    i32,
-    libsais,
-    libsais,
-    libsais_gsa,
-    libsais_bwt,
-    libsais_bwt_aux,
-    libsais_ctx,
-    libsais_gsa_ctx,
-    libsais_bwt_ctx,
-    libsais_bwt_aux_ctx,
-    libsais_plcp,
-    libsais_plcp_gsa,
-    libsais_lcp,
-    all()
-);
-
-libsais_functions_small_alphabet_impl!(
-    SingleThreaded8Input64Output,
-    u8,
-    i64,
-    libsais64,
-    libsais64,
-    libsais64_gsa,
-    libsais64_bwt,
-    libsais64_bwt_aux,
-    unimplemented,
-    unimplemented,
-    unimplemented,
-    unimplemented,
-    libsais64_plcp,
-    libsais64_plcp_gsa,
-    libsais64_lcp,
-    all()
-);
-
-libsais_functions_small_alphabet_impl!(
-    SingleThreaded16Input32Output,
-    u16,
-    i32,
-    libsais16,
-    libsais16,
-    libsais16_gsa,
-    libsais16_bwt,
-    libsais16_bwt_aux,
-    libsais16_ctx,
-    libsais16_gsa_ctx,
-    libsais16_bwt_ctx,
-    libsais16_bwt_aux_ctx,
-    libsais16_plcp,
-    libsais16_plcp_gsa,
-    libsais16_lcp,
-    all()
-);
-
-libsais_functions_small_alphabet_impl!(
-    SingleThreaded16Input64Output,
-    u16,
-    i64,
-    libsais16x64,
-    libsais16x64,
-    libsais16x64_gsa,
-    libsais16x64_bwt,
-    libsais16x64_bwt_aux,
-    unimplemented,
-    unimplemented,
-    unimplemented,
-    unimplemented,
-    libsais16x64_plcp,
-    libsais16x64_plcp_gsa,
-    libsais16x64_lcp,
-    all()
-);
-
-libsais_functions_small_alphabet_impl!(
-    MultiThreaded8Input32Output,
-    u8,
-    i32,
-    libsais,
-    libsais_omp,
-    libsais_gsa_omp,
-    libsais_bwt_omp,
-    libsais_bwt_aux_omp,
-    unimplemented,
-    unimplemented,
-    unimplemented,
-    unimplemented,
-    libsais_plcp_omp,
-    libsais_plcp_gsa_omp,
-    libsais_lcp_omp,
-    feature = "openmp"
-);
-
-libsais_functions_small_alphabet_impl!(
-    MultiThreaded8Input64Output,
-    u8,
-    i64,
-    libsais64,
-    libsais64_omp,
-    libsais64_gsa_omp,
-    libsais64_bwt_omp,
-    libsais64_bwt_aux_omp,
-    unimplemented,
-    unimplemented,
-    unimplemented,
-    unimplemented,
-    libsais64_plcp_omp,
-    libsais64_plcp_gsa_omp,
-    libsais64_lcp_omp,
-    feature = "openmp"
-);
-
-libsais_functions_small_alphabet_impl!(
-    MultiThreaded16Input32Output,
-    u16,
-    i32,
-    libsais16,
-    libsais16_omp,
-    libsais16_gsa_omp,
-    libsais16_bwt_omp,
-    libsais16_bwt_aux_omp,
-    unimplemented,
-    unimplemented,
-    unimplemented,
-    unimplemented,
-    libsais16_plcp_omp,
-    libsais16_plcp_gsa_omp,
-    libsais16_lcp_omp,
-    feature = "openmp"
-);
-
-libsais_functions_small_alphabet_impl!(
-    MultiThreaded16Input64Output,
-    u16,
-    i64,
-    libsais16x64,
-    libsais16x64_omp,
-    libsais16x64_gsa_omp,
-    libsais16x64_bwt_omp,
-    libsais16x64_bwt_aux_omp,
-    unimplemented,
-    unimplemented,
-    unimplemented,
-    unimplemented,
-    libsais16x64_plcp_omp,
-    libsais16x64_plcp_gsa_omp,
-    libsais16x64_lcp_omp,
-    feature = "openmp"
-);
-
-pub trait LibsaisFunctionsLargeAlphabet<I: InputElement, O: OutputElement>: sealed::Sealed {
-    unsafe fn run_libsais_large_alphabet(
-        text_ptr: *mut I,
-        suffix_array_buffer_ptr: *mut O,
-        text_len: O,
-        alphabet_size: O,
-        extra_space: O,
-        num_threads: O,
-    ) -> O;
 }
 
 macro_rules! libsais_functions_large_alphabet_impl {
@@ -544,7 +563,7 @@ macro_rules! libsais_functions_large_alphabet_impl {
 
         #[cfg($($parallelism_tail)+)]
         impl LibsaisFunctionsLargeAlphabet<$input_type, $output_type> for $struct_name {
-            unsafe fn run_libsais_large_alphabet(
+            unsafe fn libsais_large_alphabet(
                 text_ptr: *mut $input_type,
                 suffix_array_buffer_ptr: *mut $output_type,
                 text_len: $output_type,
@@ -580,6 +599,222 @@ macro_rules! libsais_functions_large_alphabet_impl {
         );
     }
 }
+
+libsais_functions_small_alphabet_impl!(
+    SingleThreaded8Input32Output,
+    u8,
+    i32,
+    libsais,
+    libsais,
+    libsais_gsa,
+    libsais_bwt,
+    libsais_bwt_aux,
+    libsais_ctx,
+    libsais_gsa_ctx,
+    libsais_bwt_ctx,
+    libsais_bwt_aux_ctx,
+    libsais_plcp,
+    libsais_plcp_gsa,
+    libsais_lcp,
+    libsais_create_ctx,
+    libsais_free_ctx,
+    libsais_unbwt,
+    libsais_unbwt_ctx,
+    libsais_unbwt_aux,
+    libsais_unbwt_aux_ctx,
+    libsais_unbwt_create_ctx,
+    libsais_unbwt_free_ctx,
+    all()
+);
+
+libsais_functions_small_alphabet_impl!(
+    SingleThreaded8Input64Output,
+    u8,
+    i64,
+    libsais64,
+    libsais64,
+    libsais64_gsa,
+    libsais64_bwt,
+    libsais64_bwt_aux,
+    unimplemented,
+    unimplemented,
+    unimplemented,
+    unimplemented,
+    libsais64_plcp,
+    libsais64_plcp_gsa,
+    libsais64_lcp,
+    unimplemented,
+    unimplemented,
+    libsais64_unbwt,
+    unimplemented,
+    libsais64_unbwt_aux,
+    unimplemented,
+    unimplemented,
+    unimplemented,
+    all()
+);
+
+libsais_functions_small_alphabet_impl!(
+    SingleThreaded16Input32Output,
+    u16,
+    i32,
+    libsais16,
+    libsais16,
+    libsais16_gsa,
+    libsais16_bwt,
+    libsais16_bwt_aux,
+    libsais16_ctx,
+    libsais16_gsa_ctx,
+    libsais16_bwt_ctx,
+    libsais16_bwt_aux_ctx,
+    libsais16_plcp,
+    libsais16_plcp_gsa,
+    libsais16_lcp,
+    libsais16_create_ctx,
+    libsais16_free_ctx,
+    libsais16_unbwt,
+    libsais16_unbwt_ctx,
+    libsais16_unbwt_aux,
+    libsais16_unbwt_aux_ctx,
+    libsais16_unbwt_create_ctx,
+    libsais16_unbwt_free_ctx,
+    all()
+);
+
+libsais_functions_small_alphabet_impl!(
+    SingleThreaded16Input64Output,
+    u16,
+    i64,
+    libsais16x64,
+    libsais16x64,
+    libsais16x64_gsa,
+    libsais16x64_bwt,
+    libsais16x64_bwt_aux,
+    unimplemented,
+    unimplemented,
+    unimplemented,
+    unimplemented,
+    libsais16x64_plcp,
+    libsais16x64_plcp_gsa,
+    libsais16x64_lcp,
+    unimplemented,
+    unimplemented,
+    libsais16x64_unbwt,
+    unimplemented,
+    libsais16x64_unbwt_aux,
+    unimplemented,
+    unimplemented,
+    unimplemented,
+    all()
+);
+
+libsais_functions_small_alphabet_impl!(
+    MultiThreaded8Input32Output,
+    u8,
+    i32,
+    libsais,
+    libsais_omp,
+    libsais_gsa_omp,
+    libsais_bwt_omp,
+    libsais_bwt_aux_omp,
+    unimplemented,
+    unimplemented,
+    unimplemented,
+    unimplemented,
+    libsais_plcp_omp,
+    libsais_plcp_gsa_omp,
+    libsais_lcp_omp,
+    libsais_create_ctx_omp,
+    libsais_free_ctx,
+    libsais_unbwt_omp,
+    unimplemented,
+    libsais_unbwt_aux_omp,
+    unimplemented,
+    libsais_unbwt_create_ctx_omp,
+    libsais_unbwt_free_ctx,
+    feature = "openmp"
+);
+
+libsais_functions_small_alphabet_impl!(
+    MultiThreaded8Input64Output,
+    u8,
+    i64,
+    libsais64,
+    libsais64_omp,
+    libsais64_gsa_omp,
+    libsais64_bwt_omp,
+    libsais64_bwt_aux_omp,
+    unimplemented,
+    unimplemented,
+    unimplemented,
+    unimplemented,
+    libsais64_plcp_omp,
+    libsais64_plcp_gsa_omp,
+    libsais64_lcp_omp,
+    unimplemented,
+    unimplemented,
+    libsais64_unbwt_omp,
+    unimplemented,
+    libsais64_unbwt_aux_omp,
+    unimplemented,
+    unimplemented,
+    unimplemented,
+    feature = "openmp"
+);
+
+libsais_functions_small_alphabet_impl!(
+    MultiThreaded16Input32Output,
+    u16,
+    i32,
+    libsais16,
+    libsais16_omp,
+    libsais16_gsa_omp,
+    libsais16_bwt_omp,
+    libsais16_bwt_aux_omp,
+    unimplemented,
+    unimplemented,
+    unimplemented,
+    unimplemented,
+    libsais16_plcp_omp,
+    libsais16_plcp_gsa_omp,
+    libsais16_lcp_omp,
+    libsais16_create_ctx_omp,
+    libsais16_free_ctx,
+    libsais16_unbwt_omp,
+    unimplemented,
+    libsais16_unbwt_aux_omp,
+    unimplemented,
+    libsais16_unbwt_create_ctx_omp,
+    libsais16_unbwt_free_ctx,
+    feature = "openmp"
+);
+
+libsais_functions_small_alphabet_impl!(
+    MultiThreaded16Input64Output,
+    u16,
+    i64,
+    libsais16x64,
+    libsais16x64_omp,
+    libsais16x64_gsa_omp,
+    libsais16x64_bwt_omp,
+    libsais16x64_bwt_aux_omp,
+    unimplemented,
+    unimplemented,
+    unimplemented,
+    unimplemented,
+    libsais16x64_plcp_omp,
+    libsais16x64_plcp_gsa_omp,
+    libsais16x64_lcp_omp,
+    unimplemented,
+    unimplemented,
+    libsais16x64_unbwt_omp,
+    unimplemented,
+    libsais16x64_unbwt_aux_omp,
+    unimplemented,
+    unimplemented,
+    unimplemented,
+    feature = "openmp"
+);
 
 libsais_functions_large_alphabet_impl!(
     SingleThreaded32Input32Output,
@@ -637,7 +872,7 @@ impl sealed::Sealed for FunctionsUnimplemented {}
 impl<I: InputElement, O: OutputElement> LibsaisFunctionsSmallAlphabet<I, O>
     for FunctionsUnimplemented
 {
-    unsafe fn run_libsais(
+    unsafe fn libsais(
         _text_ptr: *const I,
         _suffix_array_buffer_ptr: *mut O,
         _text_len: O,
@@ -652,7 +887,7 @@ impl<I: InputElement, O: OutputElement> LibsaisFunctionsSmallAlphabet<I, O>
         );
     }
 
-    unsafe fn run_libsais_bwt(
+    unsafe fn libsais_bwt(
         _text_ptr: *const I,
         _bwt_buffer_ptr: *mut I,
         _suffix_array_buffer_ptr: *mut O,
@@ -667,7 +902,7 @@ impl<I: InputElement, O: OutputElement> LibsaisFunctionsSmallAlphabet<I, O>
         );
     }
 
-    unsafe fn run_libsais_bwt_aux(
+    unsafe fn libsais_bwt_aux(
         _text_ptr: *const I,
         _bwt_buffer_ptr: *mut I,
         _suffix_array_buffer_ptr: *mut O,
@@ -683,12 +918,67 @@ impl<I: InputElement, O: OutputElement> LibsaisFunctionsSmallAlphabet<I, O>
             "There is no libsais bwt aux implementation for this combination of input and output types.",
         );
     }
+
+    unsafe fn libsais_create_ctx(_num_threads: O) -> *mut c_void {
+        unimplemented!(
+            "There is no libsais create ctx implementation for this combination of input and output types.",
+        );
+    }
+
+    unsafe fn libsais_free_ctx(_ctx: *mut c_void) {
+        unimplemented!(
+            "There is no libsais free ctx implementation for this combination of input and output types.",
+        );
+    }
+
+    unsafe fn libsais_unbwt(
+        _bwt_ptr: *const I,
+        _text_ptr: *mut I,
+        _suffix_array_buffer_ptr: *mut O,
+        _bwt_len: O,
+        _frequency_table_ptr: *const O,
+        _primary_index: O,
+        _num_threads: O,
+        _context: Option<*mut c_void>,
+    ) -> O {
+        unimplemented!(
+            "There is no libsais unbwt implementation for this combination of input and output types.",
+        );
+    }
+
+    unsafe fn libsais_unbwt_aux(
+        _bwt_ptr: *const I,
+        _text_ptr: *mut I,
+        _suffix_array_buffer_ptr: *mut O,
+        _bwt_len: O,
+        _frequency_table_ptr: *const O,
+        _aux_indices_sampling_rate: O,
+        _aux_indices_buffer_ptr: *const O,
+        _num_threads: O,
+        _context: Option<*mut c_void>,
+    ) -> O {
+        unimplemented!(
+            "There is no libsais unbwt aux implementation for this combination of input and output types.",
+        );
+    }
+
+    unsafe fn libsais_unbwt_create_ctx(_num_threads: O) -> *mut c_void {
+        unimplemented!(
+            "There is no libsais unbwt create ctx implementation for this combination of input and output types.",
+        );
+    }
+
+    unsafe fn libsais_unbwt_free_ctx(_ctx: *mut c_void) {
+        unimplemented!(
+            "There is no libsais unbwt free ctx implementation for this combination of input and output types.",
+        );
+    }
 }
 
 impl<I: InputElement, O: OutputElement> LibsaisFunctionsLargeAlphabet<I, O>
     for FunctionsUnimplemented
 {
-    unsafe fn run_libsais_large_alphabet(
+    unsafe fn libsais_large_alphabet(
         _text_ptr: *mut I,
         _suffix_array_buffer_ptr: *mut O,
         _text_len: O,
@@ -703,7 +993,7 @@ impl<I: InputElement, O: OutputElement> LibsaisFunctionsLargeAlphabet<I, O>
 }
 
 impl<I: InputElement, O: OutputElement> LibsaisLcpFunctions<I, O> for FunctionsUnimplemented {
-    unsafe fn run_libsais_plcp(
+    unsafe fn libsais_plcp(
         _text_ptr: *const I,
         _suffix_array_ptr: *const O,
         _plcp_ptr: *mut O,
@@ -716,7 +1006,7 @@ impl<I: InputElement, O: OutputElement> LibsaisLcpFunctions<I, O> for FunctionsU
         )
     }
 
-    unsafe fn run_libsais_lcp(
+    unsafe fn libsais_lcp(
         _plcp_ptr: *const O,
         _suffix_array_ptr: *const O,
         _lcp_ptr: *mut O,
