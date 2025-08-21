@@ -20,16 +20,15 @@ pub fn concatenate_strings<'a>(iter: impl IntoIterator<Item = &'a [u8]>) -> Vec<
 pub(crate) fn compute_and_validate_alphabet_size<I: InputElement, O: OutputElement>(
     text: &[I],
 ) -> Result<O, &'static str> {
-    let zero = I::try_from(0).unwrap();
-    let mut min = zero;
-    let mut max = zero;
+    let mut min = I::ZERO;
+    let mut max = I::ZERO;
 
     for c in text {
         min = min.min(*c);
         max = max.max(*c);
     }
 
-    if min < zero {
+    if min < I::ZERO {
         Err("Text cannot contain negative chars")
     } else {
         let found_max: i64 = max.into();
@@ -71,15 +70,13 @@ pub fn is_generalized_suffix_array<I: InputElement, O: OutputElement>(
         return true;
     }
 
-    let zero = I::try_from(0).unwrap();
-
     for indices in maybe_suffix_array.windows(2) {
         let previous = indices[0].into() as usize;
         let current = indices[1].into() as usize;
 
         // for the generalized suffix array, the zero char borders can be in a different order than
         // they would be in the normal suffix array
-        if concatenated_text[previous] == zero && concatenated_text[current] == zero {
+        if concatenated_text[previous] == I::ZERO && concatenated_text[current] == I::ZERO {
             continue;
         }
 
@@ -156,4 +153,58 @@ pub fn is_libsais_aux_indices<O: OutputElement>(
     }
 
     true
+}
+
+pub fn is_libsais_lcp<I: InputElement, O: OutputElement>(
+    text: &[I],
+    suffix_array: &[O],
+    lcp: &[O],
+    is_generalized_suffix_array: bool,
+) -> bool {
+    for (i, indices) in suffix_array.windows(2).enumerate() {
+        let first = indices[0].into() as usize;
+        let second = indices[1].into() as usize;
+
+        let lcp_value = lcp[i + 1].into();
+
+        if is_generalized_suffix_array {
+            if longest_common_prefix_gsa(&text[first..], &text[second..]) != lcp_value as usize {
+                return false;
+            }
+        } else {
+            if longest_common_prefix(&text[first..], &text[second..]) != lcp_value as usize {
+                return false;
+            }
+        }
+    }
+
+    true
+}
+
+fn longest_common_prefix<I: InputElement>(t1: &[I], t2: &[I]) -> usize {
+    let mut lcp = 0;
+
+    for (c1, c2) in std::iter::zip(t1, t2) {
+        if c1 != c2 {
+            break;
+        }
+
+        lcp += 1;
+    }
+
+    lcp
+}
+
+fn longest_common_prefix_gsa<I: InputElement>(t1: &[I], t2: &[I]) -> usize {
+    let mut lcp = 0;
+
+    for (c1, c2) in std::iter::zip(t1, t2) {
+        if c1 != c2 || *c1 == I::ZERO || *c2 == I::ZERO {
+            break;
+        }
+
+        lcp += 1;
+    }
+
+    lcp
 }

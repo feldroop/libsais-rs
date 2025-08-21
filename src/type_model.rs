@@ -1,5 +1,6 @@
 use std::{ffi::c_void, marker::PhantomData};
 
+use either::Either;
 use libsais_sys::{libsais, libsais16, libsais16x64, libsais64};
 
 use crate::context::{
@@ -44,7 +45,7 @@ pub trait LibsaisFunctionsSmallAlphabet<I: InputElement, O: OutputElement>: seal
     ) -> O;
 }
 
-pub trait LcpFunctions<I: InputElement, O: OutputElement>: sealed::Sealed {
+pub trait LibsaisLcpFunctions<I: InputElement, O: OutputElement>: sealed::Sealed {
     unsafe fn run_libsais_plcp(
         text_ptr: *const I,
         suffix_array_ptr: *const O,
@@ -58,7 +59,7 @@ pub trait LcpFunctions<I: InputElement, O: OutputElement>: sealed::Sealed {
         plcp_ptr: *const O,
         suffix_array_ptr: *const O,
         lcp_ptr: *mut O,
-        text_len: O,
+        suffix_array_len: O,
         num_threads: O,
     ) -> O;
 }
@@ -97,7 +98,7 @@ macro_rules! fn_or_unimplemented_with_or_without_threads {
     };
 }
 
-macro_rules! plcp_functions_impl {
+macro_rules! lcp_functions_impl {
     (
         $struct_name:ident,
         $input_type:ty,
@@ -109,7 +110,7 @@ macro_rules! plcp_functions_impl {
         $($parallelism_tail:tt)+
     ) => {
         #[cfg($($parallelism_tail)+)]
-        impl LcpFunctions<$input_type, $output_type> for $struct_name {
+        impl LibsaisLcpFunctions<$input_type, $output_type> for $struct_name {
             unsafe fn run_libsais_plcp(
                 _text_ptr: *const $input_type,
                 _suffix_array_ptr: *const $output_type,
@@ -150,7 +151,7 @@ macro_rules! plcp_functions_impl {
                 plcp_ptr: *const $output_type,
                 suffix_array_ptr: *const $output_type,
                 lcp_ptr: *mut $output_type,
-                text_len: $output_type,
+                suffix_array_len: $output_type,
                 _num_threads: $output_type,
             ) -> $output_type {
                 unsafe {
@@ -160,7 +161,7 @@ macro_rules! plcp_functions_impl {
                         plcp_ptr,
                         suffix_array_ptr,
                         lcp_ptr,
-                        text_len;
+                        suffix_array_len;
                         _num_threads,
                         $($parallelism_tail)+
                     )
@@ -347,7 +348,7 @@ macro_rules! libsais_functions_small_alphabet_impl {
             }
         }
 
-        plcp_functions_impl!(
+        lcp_functions_impl!(
             $struct_name,
             $input_type,
             $output_type,
@@ -567,7 +568,7 @@ macro_rules! libsais_functions_large_alphabet_impl {
             }
         }
 
-        plcp_functions_impl!(
+        lcp_functions_impl!(
             $struct_name,
             $input_type,
             $output_type,
@@ -701,7 +702,7 @@ impl<I: InputElement, O: OutputElement> LibsaisFunctionsLargeAlphabet<I, O>
     }
 }
 
-impl<I: InputElement, O: OutputElement> LcpFunctions<I, O> for FunctionsUnimplemented {
+impl<I: InputElement, O: OutputElement> LibsaisLcpFunctions<I, O> for FunctionsUnimplemented {
     unsafe fn run_libsais_plcp(
         _text_ptr: *const I,
         _suffix_array_ptr: *const O,
@@ -760,21 +761,88 @@ pub trait OutputElementOrUndecided: sealed::Sealed {}
 
 impl OutputElementOrUndecided for Undecided {}
 
-pub trait BufferMode: sealed::Sealed {}
+pub trait BufferModeOrUndecided: sealed::Sealed {}
 
-impl BufferMode for Undecided {}
+impl BufferModeOrUndecided for Undecided {}
+
+pub trait BufferMode: sealed::Sealed {
+    type Buffer<'a, T: 'a>;
+
+    fn buffer_to_either<'a, T>(buffer: Self::Buffer<'a, T>) -> Either<Vec<T>, &'a mut [T]>;
+
+    fn either_to_buffer<'a, T: std::fmt::Debug>(
+        either_: Either<Vec<T>, &'a mut [T]>,
+    ) -> Self::Buffer<'a, T>;
+
+    fn unwrap_or_allocate<'a, T, F>(opt: Option<&'a mut [T]>, f: F) -> Self::Buffer<'a, T>
+    where
+        T: TryFrom<usize, Error: std::fmt::Debug> + Clone,
+        F: FnOnce() -> Vec<T>;
+}
+
+impl<B: BufferMode> BufferModeOrUndecided for B {}
 
 pub struct BorrowedBuffer {}
 
 impl sealed::Sealed for BorrowedBuffer {}
 
-impl BufferMode for BorrowedBuffer {}
+impl BufferMode for BorrowedBuffer {
+    type Buffer<'a, T: 'a> = &'a mut [T];
+
+    fn buffer_to_either<'a, T>(buffer: Self::Buffer<'a, T>) -> Either<Vec<T>, &'a mut [T]> {
+        Either::Right(buffer)
+    }
+
+    fn either_to_buffer<'a, T: std::fmt::Debug>(
+        either_: Either<Vec<T>, &'a mut [T]>,
+    ) -> Self::Buffer<'a, T> {
+        either_.unwrap_right()
+    }
+
+    fn unwrap_or_allocate<'a, T, F>(opt: Option<&'a mut [T]>, _f: F) -> Self::Buffer<'a, T>
+    where
+        T: TryFrom<usize, Error: std::fmt::Debug> + Clone,
+        F: FnOnce() -> Vec<T>,
+    {
+        opt.unwrap()
+    }
+}
 
 pub struct OwnedBuffer {}
 
 impl sealed::Sealed for OwnedBuffer {}
 
-impl BufferMode for OwnedBuffer {}
+impl BufferMode for OwnedBuffer {
+    type Buffer<'a, T: 'a> = Vec<T>;
+
+    fn buffer_to_either<'a, T>(buffer: Self::Buffer<'a, T>) -> Either<Vec<T>, &'a mut [T]> {
+        Either::Left(buffer)
+    }
+
+    fn either_to_buffer<'a, T: std::fmt::Debug>(
+        either_: Either<Vec<T>, &'a mut [T]>,
+    ) -> Self::Buffer<'a, T> {
+        either_.unwrap_left()
+    }
+
+    fn unwrap_or_allocate<'a, T, F>(_opt: Option<&'a mut [T]>, f: F) -> Self::Buffer<'a, T>
+    where
+        T: TryFrom<usize, Error: std::fmt::Debug> + Clone,
+        F: FnOnce() -> Vec<T>,
+    {
+        f()
+    }
+}
+
+pub trait BufferModeOrReplaceInput: sealed::Sealed {}
+
+impl<B: BufferMode> BufferModeOrReplaceInput for B {}
+
+pub struct ReplaceInput {}
+
+impl sealed::Sealed for ReplaceInput {}
+
+impl BufferModeOrReplaceInput for ReplaceInput {}
 
 pub trait AuxIndicesMode: sealed::Sealed {}
 
@@ -799,9 +867,16 @@ impl AuxIndicesMode for AuxIndicesOwnedBuffer {}
 // -------------------- InputElement and OutputElement with implementations for u8, u16, i32, i64 --------------------
 // Unsafe trait because the context type has to be correct for this input type
 pub unsafe trait InputElement:
-    sealed::Sealed + Copy + TryFrom<usize, Error: std::fmt::Debug> + Into<i64> + Clone + Ord
+    sealed::Sealed
+    + std::fmt::Debug
+    + Copy
+    + TryFrom<usize, Error: std::fmt::Debug>
+    + Into<i64>
+    + Clone
+    + Ord
 {
     const RECOMMENDED_EXTRA_SPACE: usize;
+    const ZERO: Self;
 
     type SingleThreadedContext: SaisContext;
     type SingleThreadedOutputDispatcher<O: OutputElement>: OutputDispatch<Self, O>;
@@ -811,6 +886,7 @@ pub unsafe trait InputElement:
 
 pub trait OutputElement:
     sealed::Sealed
+    + std::fmt::Debug
     + Copy
     + TryFrom<usize, Error: std::fmt::Debug>
     + Into<i64>
@@ -818,28 +894,29 @@ pub trait OutputElement:
     + std::fmt::Display
 {
     const MAX: Self;
+    const ZERO: Self;
 
     type SingleThreaded8InputFunctions: LibsaisFunctionsSmallAlphabet<u8, Self>
-        + LcpFunctions<u8, Self>;
+        + LibsaisLcpFunctions<u8, Self>;
     type SingleThreaded16InputFunctions: LibsaisFunctionsSmallAlphabet<u16, Self>
-        + LcpFunctions<u16, Self>;
+        + LibsaisLcpFunctions<u16, Self>;
     type SingleThreaded32InputFunctions: LibsaisFunctionsLargeAlphabet<i32, Self>
-        + LcpFunctions<i32, Self>;
+        + LibsaisLcpFunctions<i32, Self>;
     type SingleThreaded64InputFunctions: LibsaisFunctionsLargeAlphabet<i64, Self>
-        + LcpFunctions<i64, Self>;
+        + LibsaisLcpFunctions<i64, Self>;
 
     #[cfg(feature = "openmp")]
     type MultiThreaded8InputFunctions: LibsaisFunctionsSmallAlphabet<u8, Self>
-        + LcpFunctions<u8, Self>;
+        + LibsaisLcpFunctions<u8, Self>;
     #[cfg(feature = "openmp")]
     type MultiThreaded16InputFunctions: LibsaisFunctionsSmallAlphabet<u16, Self>
-        + LcpFunctions<u16, Self>;
+        + LibsaisLcpFunctions<u16, Self>;
     #[cfg(feature = "openmp")]
     type MultiThreaded32InputFunctions: LibsaisFunctionsLargeAlphabet<i32, Self>
-        + LcpFunctions<i32, Self>;
+        + LibsaisLcpFunctions<i32, Self>;
     #[cfg(feature = "openmp")]
     type MultiThreaded64InputFunctions: LibsaisFunctionsLargeAlphabet<i64, Self>
-        + LcpFunctions<i64, Self>;
+        + LibsaisLcpFunctions<i64, Self>;
 }
 
 impl<B: OutputElement> OutputElementOrUndecided for B {}
@@ -848,6 +925,7 @@ impl sealed::Sealed for u8 {}
 
 unsafe impl InputElement for u8 {
     const RECOMMENDED_EXTRA_SPACE: usize = 0;
+    const ZERO: Self = 0;
 
     type SingleThreadedContext = SingleThreaded8InputSaisContext;
     type SingleThreadedOutputDispatcher<O: OutputElement> = SingleThreaded8InputOutputDispatcher<O>;
@@ -859,6 +937,7 @@ impl sealed::Sealed for u16 {}
 
 unsafe impl InputElement for u16 {
     const RECOMMENDED_EXTRA_SPACE: usize = 0;
+    const ZERO: Self = 0;
 
     type SingleThreadedContext = SingleThreaded16InputSaisContext;
     type SingleThreadedOutputDispatcher<O: OutputElement> =
@@ -871,6 +950,7 @@ impl sealed::Sealed for i32 {}
 
 unsafe impl InputElement for i32 {
     const RECOMMENDED_EXTRA_SPACE: usize = 6_000;
+    const ZERO: Self = 0;
 
     type SingleThreadedContext = ContextUnimplemented;
     type SingleThreadedOutputDispatcher<O: OutputElement> =
@@ -881,6 +961,7 @@ unsafe impl InputElement for i32 {
 
 impl OutputElement for i32 {
     const MAX: Self = Self::MAX;
+    const ZERO: Self = 0;
 
     type SingleThreaded8InputFunctions = SingleThreaded8Input32Output;
     type SingleThreaded16InputFunctions = SingleThreaded16Input32Output;
@@ -901,6 +982,7 @@ impl sealed::Sealed for i64 {}
 
 unsafe impl InputElement for i64 {
     const RECOMMENDED_EXTRA_SPACE: usize = 6_000;
+    const ZERO: Self = 0;
 
     type SingleThreadedContext = ContextUnimplemented;
     type SingleThreadedOutputDispatcher<O: OutputElement> =
@@ -911,6 +993,7 @@ unsafe impl InputElement for i64 {
 
 impl OutputElement for i64 {
     const MAX: Self = Self::MAX;
+    const ZERO: Self = 0;
 
     type SingleThreaded8InputFunctions = SingleThreaded8Input64Output;
     type SingleThreaded16InputFunctions = SingleThreaded16Input64Output;
@@ -1000,7 +1083,7 @@ impl<I: InputElement, O: OutputElement> InputDispatch<I, O> for MultiThreadedInp
 pub trait OutputDispatch<I: InputElement, O: OutputElement>: sealed::Sealed {
     type SmallAlphabetFunctions: LibsaisFunctionsSmallAlphabet<I, O>;
     type LargeAlphabetFunctions: LibsaisFunctionsLargeAlphabet<I, O>;
-    type LcpFunctions: LcpFunctions<I, O>;
+    type LcpFunctions: LibsaisLcpFunctions<I, O>;
 }
 
 pub struct SingleThreaded8InputOutputDispatcher<O> {

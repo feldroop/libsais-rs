@@ -14,9 +14,7 @@ pub const LIBSAIS_I32_OUTPUT_MAXIMUM_SIZE: usize = 2147483647;
 pub const LIBSAIS_I64_OUTPUT_MAXIMUM_SIZE: usize = 9223372036854775807;
 
 #[doc(inline)]
-pub use construction::{
-    ExtraSpace, SaisError, ThreadCount, bwt::BwtConstruction, suffix_array::SuffixArrayConstruction,
-};
+pub use construction::{ExtraSpace, SaisError, ThreadCount, suffix_array::SuffixArrayConstruction};
 
 // functionality differences:
 // libsais: full
@@ -31,22 +29,22 @@ pub use construction::{
 // other queries: lcp from plcp and sa, plcp from sa/gsa and text, unbwt
 
 // BIG TODOs:
-//      UNBWT/LCP
+//      UNBWT
 
 // SMALL TODOs:
 
-//      LCP:
+//      make context sound and safe again (force threading decision for sa and bwt and unbwt builder, use type dispatch)
 
 //      UNBWT: add new context types
-//      UNBWT/LCP: wire operations on the backend
-//      UNBWT/LCP: implement Constructions
-//      UNBWT/LCP: find a way to make secondary operations such as unbwt and plcp/lcp safe?
+//      UNBWT: wire operations on the backend
+//      UNBWT: implement Construction
 
-//      more tests
+//      more tests (e.g. empty text, untested combinations)
 
 //      put things in the right places (especially type_model) (with pub exports)
-//      good docs and examples, README
-//      release-plz release (also libsais-sys)
+//      derives of public types
 //      small benchmarks
+//      good docs and examples, README
 //      test without openmp
+//      release-plz good release (also libsais-sys)
 //      ilya grebnov questions

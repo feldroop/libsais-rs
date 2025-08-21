@@ -1,4 +1,4 @@
-pub mod bwt;
+// pub mod bwt;
 pub mod lcp;
 pub mod plcp;
 pub mod suffix_array;
@@ -13,11 +13,11 @@ fn allocate_suffix_array_buffer<I: InputElement, O: OutputElement>(
     text_len: usize,
 ) -> Vec<O> {
     let buffer_len = extra_space_in_buffer.compute_buffer_size::<I, O>(text_len);
-    vec![O::try_from(0).unwrap(); buffer_len]
+    vec![O::ZERO; buffer_len]
 }
 
 fn allocate_bwt_buffer<I: InputElement>(text_len: usize) -> Vec<I> {
-    vec![I::try_from(0).unwrap(); text_len]
+    vec![I::ZERO; text_len]
 }
 
 fn allocate_bwt_with_aux_buffers<I: InputElement, O: OutputElement>(
@@ -34,10 +34,10 @@ fn allocate_aux_indices_buffer<O: OutputElement>(
     text_len: usize,
     aux_indices_sampling_rate: AuxIndicesSamplingRate<O>,
 ) -> Vec<O> {
-    vec![O::try_from(0).unwrap(); aux_indices_sampling_rate.aux_indices_buffer_size(text_len)]
+    vec![O::ZERO; aux_indices_sampling_rate.aux_indices_buffer_size(text_len)]
 }
 
-fn free_extra_space<O: OutputElement>(suffix_array_buffer: &mut Vec<O>, text_len: usize) {
+pub(crate) fn free_extra_space<T>(suffix_array_buffer: &mut Vec<T>, text_len: usize) {
     suffix_array_buffer.truncate(text_len);
     suffix_array_buffer.shrink_to_fit();
 }
@@ -168,10 +168,7 @@ pub enum ExtraSpace {
 }
 
 impl ExtraSpace {
-    fn compute_buffer_size<I: InputElement, O: OutputElement>(
-        &self,
-        text_len: usize,
-    ) -> usize {
+    fn compute_buffer_size<I: InputElement, O: OutputElement>(&self, text_len: usize) -> usize {
         match *self {
             ExtraSpace::None => text_len,
             ExtraSpace::Recommended => {
