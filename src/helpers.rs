@@ -74,13 +74,35 @@ pub fn is_generalized_suffix_array<I: InputElement, O: OutputElement>(
         let previous = indices[0].into() as usize;
         let current = indices[1].into() as usize;
 
-        // for the generalized suffix array, the zero char borders can be in a different order than
-        // they would be in the normal suffix array
-        if concatenated_text[previous] == I::ZERO && concatenated_text[current] == I::ZERO {
+        let previous_full_suffix = &concatenated_text[previous..];
+        let current_full_suffix = &concatenated_text[current..];
+
+        let end_previous = previous_full_suffix
+            .iter()
+            .position(|&c| c == I::ZERO)
+            .unwrap();
+
+        let end_current = current_full_suffix
+            .iter()
+            .position(|&c| c == I::ZERO)
+            .unwrap();
+
+        let previous_suffix = if end_previous == previous_full_suffix.len() {
+            previous_full_suffix
+        } else {
+            &previous_full_suffix[..end_previous]
+        };
+        let current_suffix = if end_current == current_full_suffix.len() {
+            current_full_suffix
+        } else {
+            &current_full_suffix[..end_current]
+        };
+
+        if previous_suffix.is_empty() && current_suffix.is_empty() {
             continue;
         }
 
-        if &concatenated_text[previous..] > &concatenated_text[current..] {
+        if previous_suffix > current_suffix {
             return false;
         }
     }
