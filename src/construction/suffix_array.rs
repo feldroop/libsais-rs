@@ -240,30 +240,18 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelis
                 super::allocate_suffix_array_buffer::<I, O>(self.extra_space, text_len)
             });
 
-        let res = self.construct_in_buffer(&mut suffix_array.buffer);
-
-        suffix_array.shorten_buffer_to(text_len);
-
-        res.map(|_| SuffixArrayWithText {
-            suffix_array,
-            text: self.take_text(),
-            is_generalized_suffix_array: self.generalized_suffix_array,
-        })
-    }
-
-    fn construct_in_buffer(&mut self, suffix_array_buffer: &mut [O]) -> Result<(), SaisError> {
         super::sais_safety_checks(
             self.text(),
-            suffix_array_buffer,
+            &suffix_array.buffer,
             &self.context,
             self.thread_count,
             self.generalized_suffix_array,
         );
 
-        let (extra_space, text_len, num_threads, frequency_table_ptr) =
+        let (extra_space, text_len_output_type, num_threads, frequency_table_ptr) =
             super::cast_and_unpack_parameters(
                 self.text().len(),
-                suffix_array_buffer,
+                &suffix_array.buffer,
                 self.thread_count,
                 self.frequency_table.take(),
             );
@@ -275,15 +263,15 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelis
         // alphabet size was either set as the max of the text + 1 or claimed to be
         // correct in an unsafe function (only large alphabets).
         // TODO context
-        match self.text.as_mut() {
+        let res = match self.text.as_mut() {
             None => unreachable!("There always needs to be a text provided for this object."),
             Some(Either::Left(text)) => {
                 // small alphabets
                 unsafe {
                     SmallAlphabetFunctionsDispatch::<I, O, P>::libsais(
                         text.as_ptr(),
-                        suffix_array_buffer.as_mut_ptr(),
-                        text_len,
+                        suffix_array.buffer.as_mut_ptr(),
+                        text_len_output_type,
                         extra_space,
                         frequency_table_ptr,
                         num_threads,
@@ -306,8 +294,8 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelis
                 unsafe {
                     LargeAlphabetFunctionsDispatch::<I, O, P>::libsais_large_alphabet(
                         (*text).as_mut_ptr(),
-                        suffix_array_buffer.as_mut_ptr(),
-                        text_len,
+                        suffix_array.buffer.as_mut_ptr(),
+                        text_len_output_type,
                         alphabet_size,
                         extra_space,
                         num_threads,
@@ -315,7 +303,15 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelis
                 }
             }
         }
-        .into_empty_sais_result()
+        .into_empty_sais_result();
+
+        suffix_array.shorten_buffer_to(text_len);
+
+        res.map(|_| SuffixArrayWithText {
+            suffix_array,
+            text: self.take_text(),
+            is_generalized_suffix_array: self.generalized_suffix_array,
+        })
     }
 
     fn text(&self) -> &[I] {
