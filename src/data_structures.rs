@@ -89,64 +89,71 @@ impl<'s, 't, I: InputElement, O: SupportsPlcpOutputFor<I>, SaB: BufferMode>
 
 // -------------------- bwt (with aux indices) --------------------
 #[derive(Debug)]
-pub struct Bwt<I: SmallAlphabet> {
-    pub(crate) bwt_data: Vec<I>,
-    pub(crate) bwt_primary_index: Option<usize>,
+pub struct Bwt<'b, I: SmallAlphabet, B: BufferMode> {
+    pub(crate) bwt: OwnedOrBorrowed<'b, I, B>,
+    pub(crate) primary_index: usize,
 }
 
-impl<I: SmallAlphabet> Bwt<I> {
+impl<'b, I: SmallAlphabet, B: BufferMode> Bwt<'b, I, B> {
     pub fn bwt(&self) -> &[I] {
-        &self.bwt_data
+        &self.bwt.buffer
     }
 
-    pub fn bwt_primary_index(&self) -> Option<usize> {
-        self.bwt_primary_index
+    pub fn primary_index(&self) -> usize {
+        self.primary_index
     }
 
-    pub fn into_parts(self) -> (Vec<I>, Option<usize>) {
-        (self.bwt_data, self.bwt_primary_index)
+    pub fn into_parts(self) -> (B::Buffer<'b, I>, usize) {
+        (self.bwt.into_inner(), self.primary_index)
     }
+
+    // TODO from_parts, unbwt
 }
 
 #[derive(Debug)]
-pub struct AuxIndices<O: OutputElement> {
-    pub(crate) data: Vec<O>,
-    pub(crate) sampling_rate: AuxIndicesSamplingRate<O>,
+pub struct BwtWithAuxIndices<
+    'a,
+    'b,
+    I: SmallAlphabet,
+    O: OutputElement,
+    AuxB: BufferMode,
+    BwtB: BufferMode,
+> {
+    pub(crate) bwt: OwnedOrBorrowed<'b, I, BwtB>,
+    pub(crate) aux_indices: OwnedOrBorrowed<'a, O, AuxB>,
+    pub(crate) aux_indices_sampling_rate: AuxIndicesSamplingRate,
 }
 
-impl<O: OutputElement> AuxIndices<O> {
-    pub fn as_slice(&self) -> &[O] {
-        &self.data
-    }
-
-    pub fn sampling_rate(&self) -> AuxIndicesSamplingRate<O> {
-        self.sampling_rate
-    }
-
-    pub fn into_parts(self) -> (Vec<O>, AuxIndicesSamplingRate<O>) {
-        (self.data, self.sampling_rate)
-    }
-}
-
-#[derive(Debug)]
-pub struct BwtWithAuxIndices<I: SmallAlphabet, O: OutputElement> {
-    pub(crate) bwt_data: Vec<I>,
-    pub(crate) aux_indices: AuxIndices<O>,
-}
-
-impl<I: SmallAlphabet, O: OutputElement> BwtWithAuxIndices<I, O> {
+impl<'a, 'b, I: SmallAlphabet, O: OutputElement, AuxB: BufferMode, BwtB: BufferMode>
+    BwtWithAuxIndices<'a, 'b, I, O, AuxB, BwtB>
+{
     pub fn bwt(&self) -> &[I] {
-        &self.bwt_data
+        &self.bwt.buffer
     }
 
     pub fn aux_indices(&self) -> &[O] {
-        self.aux_indices.as_slice()
+        &self.aux_indices.buffer
     }
 
-    pub fn into_parts(self) -> (Vec<I>, Vec<O>, AuxIndicesSamplingRate<O>) {
-        let (aux_indices_data, aux_indices_sampling_rate) = self.aux_indices.into_parts();
-        (self.bwt_data, aux_indices_data, aux_indices_sampling_rate)
+    pub fn aux_indices_sampling_rate(&self) -> AuxIndicesSamplingRate {
+        self.aux_indices_sampling_rate
     }
+
+    pub fn into_parts(
+        self,
+    ) -> (
+        BwtB::Buffer<'b, I>,
+        AuxB::Buffer<'a, O>,
+        AuxIndicesSamplingRate,
+    ) {
+        (
+            self.bwt.into_inner(),
+            self.aux_indices.into_inner(),
+            self.aux_indices_sampling_rate,
+        )
+    }
+
+    // TODO from_parts, unbwt
 }
 
 // -------------------- suffix array with plcp --------------------

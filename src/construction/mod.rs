@@ -1,11 +1,10 @@
-// pub mod bwt;
+pub mod bwt;
 pub mod lcp;
 pub mod plcp;
 pub mod suffix_array;
 pub mod unbwt;
 
-use crate::context::SaisContext;
-use crate::type_model::*;
+use crate::{context::Context, type_model::*};
 
 // -------------------- free helper functions for all configs --------------------
 fn allocate_suffix_array_buffer<I: InputElement, O: OutputElement>(
@@ -14,27 +13,6 @@ fn allocate_suffix_array_buffer<I: InputElement, O: OutputElement>(
 ) -> Vec<O> {
     let buffer_len = extra_space_in_buffer.compute_buffer_size::<I, O>(text_len);
     vec![O::ZERO; buffer_len]
-}
-
-fn allocate_bwt_buffer<I: InputElement>(text_len: usize) -> Vec<I> {
-    vec![I::ZERO; text_len]
-}
-
-fn allocate_bwt_with_aux_buffers<I: InputElement, O: OutputElement>(
-    text_len: usize,
-    aux_indices_sampling_rate: AuxIndicesSamplingRate<O>,
-) -> (Vec<I>, Vec<O>) {
-    (
-        allocate_bwt_buffer(text_len),
-        allocate_aux_indices_buffer(text_len, aux_indices_sampling_rate),
-    )
-}
-
-fn allocate_aux_indices_buffer<O: OutputElement>(
-    text_len: usize,
-    aux_indices_sampling_rate: AuxIndicesSamplingRate<O>,
-) -> Vec<O> {
-    vec![O::ZERO; aux_indices_sampling_rate.aux_indices_buffer_size(text_len)]
 }
 
 pub(crate) fn free_extra_space<T>(suffix_array_buffer: &mut Vec<T>, text_len: usize) {
@@ -59,10 +37,10 @@ fn cast_and_unpack_parameters<O: OutputElement>(
     (extra_space, text_len, num_threads, frequency_table_ptr)
 }
 
-fn sais_safety_checks<I: InputElement, O: OutputElement>(
+fn sais_safety_checks<I: InputElement, O: OutputElement, P: Parallelism>(
     text: &[I],
-    suffix_array_buffer: &mut [O],
-    context: &Option<&mut I::SingleThreadedContext>,
+    suffix_array_buffer: &[O],
+    context: &Option<&mut Context<I, O, P>>,
     thread_count: ThreadCount,
     generalized_suffix_array: bool,
 ) {
@@ -104,19 +82,18 @@ fn sais_safety_checks<I: InputElement, O: OutputElement>(
     }
 }
 
-fn bwt_safety_checks<I: InputElement>(text: &[I], bwt_buffer: &[I]) {
-    assert_eq!(text.len(), bwt_buffer.len());
-}
-
-fn aux_indices_safety_checks<O: OutputElement>(
+fn aux_indices_safety_checks_and_cast_sampling_rate<O: OutputElement>(
     text_len: usize,
     aux_indices_buffer: &[O],
-    aux_indices_sampling_rate: AuxIndicesSamplingRate<O>,
-) {
+    aux_indices_sampling_rate: AuxIndicesSamplingRate,
+) -> O {
     assert_eq!(
         aux_indices_buffer.len(),
         aux_indices_sampling_rate.aux_indices_buffer_size(text_len)
     );
+
+    O::try_from(aux_indices_sampling_rate.value)
+        .expect("Auxiliary indices sampling rate needs to fit into output element type")
 }
 
 // -------------------- various small structs and traits --------------------
@@ -141,7 +118,7 @@ impl SaisError {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ThreadCount {
-    value: u16,
+    pub(crate) value: u16,
 }
 
 impl ThreadCount {
@@ -202,7 +179,7 @@ enum AlphabetSize {
 trait IntoSaisResult {
     fn into_empty_sais_result(self) -> Result<(), SaisError>;
 
-    fn into_primary_index_sais_result(self) -> Result<Option<usize>, SaisError>;
+    fn into_primary_index_sais_result(self) -> Result<usize, SaisError>;
 }
 
 impl<O: OutputElement> IntoSaisResult for O {
@@ -216,42 +193,41 @@ impl<O: OutputElement> IntoSaisResult for O {
         }
     }
 
-    fn into_primary_index_sais_result(self) -> Result<Option<usize>, SaisError> {
+    fn into_primary_index_sais_result(self) -> Result<usize, SaisError> {
         let return_code: i64 = self.into();
 
         if return_code < 0 {
             Err(SaisError::from_return_code(return_code))
         } else {
-            Ok(Some(return_code as usize))
+            Ok(return_code as usize)
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct AuxIndicesSamplingRate<O: OutputElementOrUndecided> {
-    value: O,
+pub struct AuxIndicesSamplingRate {
+    value: usize,
 }
 
-impl<O: OutputElement> AuxIndicesSamplingRate<O> {
-    fn aux_indices_buffer_size(self, text_len: usize) -> usize {
-        let value_i64: i64 = self.value.into();
-        let value_usize = value_i64 as usize;
+impl AuxIndicesSamplingRate {
+    pub fn value(&self) -> usize {
+        self.value
+    }
 
+    fn aux_indices_buffer_size(self, text_len: usize) -> usize {
         if text_len == 0 {
             0
         } else {
-            (text_len - 1) / value_usize + 1
+            (text_len - 1) / self.value + 1
         }
     }
 }
 
-impl<O: OutputElement> From<O> for AuxIndicesSamplingRate<O> {
-    fn from(value: O) -> Self {
-        let value_i64: i64 = value.into();
-
-        if value_i64 < 2 {
+impl From<usize> for AuxIndicesSamplingRate {
+    fn from(value: usize) -> Self {
+        if value < 2 {
             panic!("Aux sampling rate must be greater than 1");
-        } else if value_i64.count_ones() != 1 {
+        } else if value.count_ones() != 1 {
             panic!("Aux sampling rate must be a power of two");
         } else {
             Self { value }

@@ -1,5 +1,7 @@
+use either::Either;
+
 use super::{AlphabetSize, ExtraSpace, IntoSaisResult, SaisError, ThreadCount};
-use crate::context::SaisContext;
+use crate::context::Context;
 use crate::data_structures::{OwnedOrBorrowed, SuffixArrayWithText};
 use crate::helpers;
 use crate::type_model::*;
@@ -13,17 +15,16 @@ pub struct SuffixArrayConstruction<
     I: InputElement,
     O: OutputElementOrUndecided,
     B: BufferModeOrUndecided,
-    P: Parallelism,
+    P: ParallelismOrUndecided,
 > {
-    text: Option<&'t [I]>,
-    text_mut: Option<&'t mut [I]>,
+    text: Option<Either<&'t [I], &'t mut [I]>>,
     suffix_array_buffer: Option<&'s mut [O]>,
     frequency_table: Option<&'r mut [O]>,
     thread_count: ThreadCount,
     generalized_suffix_array: bool,
     alphabet_size: AlphabetSize,
     extra_space: ExtraSpace,
-    context: Option<&'r mut I::SingleThreadedContext>,
+    context: Option<&'r mut Context<I, O, P>>,
     _parallelism_marker: PhantomData<P>,
     _buffer_mode_marker: PhantomData<B>,
 }
@@ -41,7 +42,6 @@ impl<
     fn init() -> Self {
         Self {
             text: None,
-            text_mut: None,
             suffix_array_buffer: None,
             frequency_table: None,
             thread_count: ThreadCount::fixed(1),
@@ -61,7 +61,7 @@ impl<'t, I: SmallAlphabet>
 {
     pub fn for_text(text: &'t [I]) -> Self {
         Self {
-            text: Some(text),
+            text: Some(Either::Left(text)),
             ..Self::init()
         }
     }
@@ -73,7 +73,7 @@ impl<'t, I: LargeAlphabet>
 {
     pub fn for_text_mut(text: &'t mut [I]) -> Self {
         Self {
-            text_mut: Some(text),
+            text: Some(Either::Right(text)),
             ..Self::init()
         }
     }
@@ -93,7 +93,6 @@ impl<'t, I: InputElement>
         SuffixArrayConstruction {
             suffix_array_buffer: Some(suffix_array_buffer),
             text: self.text,
-            text_mut: self.text_mut,
             thread_count: self.thread_count,
             ..SuffixArrayConstruction::init()
         }
@@ -107,7 +106,6 @@ impl<'t, I: InputElement>
     {
         SuffixArrayConstruction {
             text: self.text,
-            text_mut: self.text_mut,
             thread_count: self.thread_count,
             ..SuffixArrayConstruction::init()
         }
@@ -121,7 +119,6 @@ impl<'t, I: InputElement>
     {
         SuffixArrayConstruction {
             text: self.text,
-            text_mut: self.text_mut,
             thread_count: self.thread_count,
             ..SuffixArrayConstruction::init()
         }
@@ -135,7 +132,6 @@ impl<'t, I: InputElement>
     {
         SuffixArrayConstruction {
             text: self.text,
-            text_mut: self.text_mut,
             thread_count: self.thread_count,
             ..SuffixArrayConstruction::init()
         }
@@ -153,14 +149,13 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode>
     ) -> SuffixArrayConstruction<'r, 's, 't, I, O, B, MultiThreaded> {
         SuffixArrayConstruction {
             text: self.text,
-            text_mut: self.text_mut,
             suffix_array_buffer: self.suffix_array_buffer,
             frequency_table: self.frequency_table,
             thread_count,
             generalized_suffix_array: self.generalized_suffix_array,
             alphabet_size: self.alphabet_size,
             extra_space: self.extra_space,
-            context: self.context,
+            context: None, // self.context, TODO
             _parallelism_marker: PhantomData,
             _buffer_mode_marker: PhantomData,
         }
@@ -172,7 +167,7 @@ impl<'r, 's, 't, I: SmallAlphabet, B: BufferMode>
 {
     /// Uses a context object that allows reusing memory across runs of the algorithm.
     /// Currently, this is only available for the single threaded 32-bit output version.
-    pub fn with_context(self, context: &'r mut I::SingleThreadedContext) -> Self {
+    pub fn with_context(self, context: &'r mut Context<I, i32, SingleThreaded>) -> Self {
         Self {
             context: Some(context),
             ..self
@@ -257,10 +252,6 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelis
     }
 
     fn construct_in_buffer(&mut self, suffix_array_buffer: &mut [O]) -> Result<(), SaisError> {
-        if self.text().is_empty() {
-            return Ok(());
-        }
-
         super::sais_safety_checks(
             self.text(),
             suffix_array_buffer,
@@ -278,61 +269,63 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelis
             );
 
         // SAFETY:
-        // text len is asserted to be in required range in safety checks.
-        // suffix array buffer is at least as large as text, asserted in safety checks.
-        // if there is a context it has the correct type, because that was claimed in an unsafe impl
-        // for InputElementDecided.
+        // buffer lens are safety checked (text and suffix array) with extra space in mind
         // the library user claimed earlier that the frequency table is correct by calling an unsafe function
         // and the frequency table was asserted to be the correct size (only small alphabets).
         // alphabet size was either set as the max of the text + 1 or claimed to be
         // correct in an unsafe function (only large alphabets).
-        if let Some(text) = self.text {
-            // small alphabets
-            unsafe {
-                <<P::WithInput<I, O> as InputDispatch<I, O>>::WithOutput as OutputDispatch<I,O>>::SmallAlphabetFunctions::libsais(
-                    text.as_ptr(),
-                    suffix_array_buffer.as_mut_ptr(),
-                    text_len,
-                    extra_space,
-                    frequency_table_ptr,
-                    num_threads,
-                    self.generalized_suffix_array,
-                    self.context.take().map(|ctx| ctx.as_mut_ptr()),
-                )
-            }
-        } else {
-            // large alphabets
-            let text = self.text_mut.as_mut().expect("A text shared or mutable reference must have been given in the builder process");
-
-            let alphabet_size: O = match self.alphabet_size {
-                AlphabetSize::ComputeFromMaxOfText => {
-                    helpers::compute_and_validate_alphabet_size(text).unwrap_or_else(|e| panic!("{e}"))
+        // TODO context
+        match self.text.as_mut() {
+            None => unreachable!("There always needs to be a text provided for this object."),
+            Some(Either::Left(text)) => {
+                // small alphabets
+                unsafe {
+                    SmallAlphabetFunctionsDispatch::<I, O, P>::libsais(
+                        text.as_ptr(),
+                        suffix_array_buffer.as_mut_ptr(),
+                        text_len,
+                        extra_space,
+                        frequency_table_ptr,
+                        num_threads,
+                        self.generalized_suffix_array,
+                        self.context.take().map(|ctx| ctx.as_mut_ptr()),
+                    )
                 }
-                AlphabetSize::Fixed { value } => value
-                    .try_into()
-                    .expect("The alphabet size needs to fit into the output type."),
-            };
-
-            unsafe {
-                <<P::WithInput<I, O> as InputDispatch<I, O>>::WithOutput as OutputDispatch<I,O>>::LargeAlphabetFunctions::libsais_large_alphabet(
-                    (*text).as_mut_ptr(),
-                    suffix_array_buffer.as_mut_ptr(),
-                    text_len,
-                    alphabet_size,
-                    extra_space,
-                    num_threads,
-                )
             }
-        }.into_empty_sais_result()
+            Some(Either::Right(text)) => {
+                let alphabet_size: O = match self.alphabet_size {
+                    AlphabetSize::ComputeFromMaxOfText => {
+                        helpers::compute_and_validate_alphabet_size(text)
+                            .unwrap_or_else(|e| panic!("{e}"))
+                    }
+                    AlphabetSize::Fixed { value } => value
+                        .try_into()
+                        .expect("The alphabet size needs to fit into the output type."),
+                };
+
+                unsafe {
+                    LargeAlphabetFunctionsDispatch::<I, O, P>::libsais_large_alphabet(
+                        (*text).as_mut_ptr(),
+                        suffix_array_buffer.as_mut_ptr(),
+                        text_len,
+                        alphabet_size,
+                        extra_space,
+                        num_threads,
+                    )
+                }
+            }
+        }
+        .into_empty_sais_result()
     }
 
     fn text(&self) -> &[I] {
-        self.text.unwrap_or_else(|| self.text_mut.as_ref().unwrap())
+        self.text.as_ref().unwrap()
     }
 
     fn take_text(&mut self) -> &'t [I] {
-        self.text
-            .take()
-            .unwrap_or_else(|| self.text_mut.take().unwrap())
+        match self.text.take().unwrap() {
+            Either::Left(t) => t,
+            Either::Right(t) => t,
+        }
     }
 }

@@ -5,8 +5,8 @@ use crate::{
     SaisError, ThreadCount,
     data_structures::{LcpAndPlcp, OwnedOrBorrowed, SuffixArrayWithLcpAndPlcp},
     type_model::{
-        BorrowedBuffer, BufferMode, BufferModeOrReplaceInput, InputDispatch, LibsaisLcpFunctions,
-        MultiThreaded, OutputDispatch, OutputElement, OwnedBuffer, Parallelism, ReplaceInput,
+        BorrowedBuffer, BufferMode, BufferModeOrReplaceInput, LcpFunctionsDispatch,
+        LibsaisLcpFunctions, MultiThreaded, OutputElement, OwnedBuffer, Parallelism, ReplaceInput,
         SingleThreaded,
     },
 };
@@ -181,7 +181,8 @@ impl<
 
         let num_threads = O::try_from(self.thread_count.value as usize).unwrap();
 
-        // this breaks Rust's borrowing rules, but the pointers are only used in the C code
+        // this and the below break Rust's borrowing rules for suffix_array_buffer
+        // but the pointers are only used in the C code
         let lcp_ptr = lcp_buffer_opt.map_or_else(
             || self.suffix_array_buffer.buffer.as_mut_ptr(),
             |lcp_buffer| lcp_buffer.as_mut_ptr(),
@@ -192,13 +193,14 @@ impl<
         // either claiming so in an unsafe fn or by constructing them using the appropriate functions of
         // this library
         unsafe {
-            <<P::WithInput<u8, O> as InputDispatch<u8, O>>::WithOutput as OutputDispatch<u8,O>>::LcpFunctions::libsais_lcp(
+            LcpFunctionsDispatch::<u8, O, P>::libsais_lcp(
                 self.plcp_buffer.buffer.as_ptr(),
                 self.suffix_array_buffer.buffer.as_ptr(),
                 lcp_ptr,
                 suffix_array_len,
-                num_threads
+                num_threads,
             )
-        }.into_empty_sais_result()
+        }
+        .into_empty_sais_result()
     }
 }

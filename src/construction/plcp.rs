@@ -4,7 +4,7 @@ use crate::data_structures::{OwnedOrBorrowed, SuffixArrayWithPlcp};
 #[cfg(feature = "openmp")]
 use crate::type_model::MultiThreaded;
 use crate::type_model::{
-    BorrowedBuffer, BufferMode, InputDispatch, InputElement, LibsaisLcpFunctions, OutputDispatch,
+    BorrowedBuffer, BufferMode, InputElement, LcpFunctionsDispatch, LibsaisLcpFunctions,
     OutputElement, OwnedBuffer, Parallelism,
 };
 use crate::{ThreadCount, type_model::SingleThreaded};
@@ -123,14 +123,15 @@ impl<
         // either claiming so in an unsafe fn or by constructing them using the appropriate functions of
         // this library
         unsafe {
-            <<P::WithInput<I, O> as InputDispatch<I, O>>::WithOutput as OutputDispatch<I,O>>::LcpFunctions::libsais_plcp(
+            LcpFunctionsDispatch::<I, O, P>::libsais_plcp(
                 self.text.as_ptr(),
                 self.suffix_array_buffer.buffer.as_ptr(),
                 plcp_buffer.as_mut_ptr(),
                 text_len,
                 num_threads,
-                self.generalized_suffix_array
+                self.generalized_suffix_array,
             )
-        }.into_empty_sais_result()
+        }
+        .into_empty_sais_result()
     }
 }

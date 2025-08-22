@@ -14,7 +14,9 @@ pub const LIBSAIS_I32_OUTPUT_MAXIMUM_SIZE: usize = 2147483647;
 pub const LIBSAIS_I64_OUTPUT_MAXIMUM_SIZE: usize = 9223372036854775807;
 
 #[doc(inline)]
-pub use construction::{ExtraSpace, SaisError, ThreadCount, suffix_array::SuffixArrayConstruction};
+pub use construction::{
+    ExtraSpace, SaisError, ThreadCount, bwt::BwtConstruction, suffix_array::SuffixArrayConstruction,
+};
 
 // functionality differences:
 // libsais: full
@@ -28,22 +30,24 @@ pub use construction::{ExtraSpace, SaisError, ThreadCount, suffix_array::SuffixA
 
 // other queries: lcp from plcp and sa, plcp from sa/gsa and text, unbwt
 
-// BIG TODOs:
-//      UNBWT
+// TODOs:
 
-// SMALL TODOs:
-
-//      make context sound and safe again (force threading decision for sa and bwt and unbwt builder, use type dispatch)
-
-//      UNBWT: add new context types
+//      BWT: recover with all necessary changes
 //      UNBWT: implement Construction, unbwt temp array must be n+1
 
-//      more tests (e.g. empty text, untested combinations, all contexts + drop)
+//      wait for answers on ilya grebnov questions
+//      figure out whether to use ParallelismUndebiced or no Parallelism at all
+//      fix context drop/undecided issue in drop (also TODOs in safe comment)
+//      make context sound via forcing parallelism decision before supplying context (probably for all contructions)
 
+//      more tests (e.g. (empty text, bwt and sa), untested combinations, all contexts + drop, bwt with temp sa buf)
+//      primary_index option? (what about empty text)
+
+//      think about refactor: do safety checks as early as possible?
 //      put things in the right places (especially type_model) (with pub exports)
 //      derives of public types
 //      small benchmarks
+//      setup CI and such
 //      good docs and examples, README
 //      test without openmp
 //      release-plz good release (also libsais-sys)
-//      ilya grebnov questions

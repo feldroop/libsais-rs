@@ -3,10 +3,22 @@ use std::{ffi::c_void, marker::PhantomData};
 use either::Either;
 use libsais_sys::{libsais, libsais16, libsais16x64, libsais64};
 
-use crate::context::{
-    ContextUnimplemented, SaisContext, SingleThreaded8InputSaisContext,
-    SingleThreaded16InputSaisContext,
-};
+pub type SmallAlphabetFunctionsDispatch<I, O, P> =
+    <<<P as Parallelism>::WithInput<I, O> as InputDispatch<I, O>>::WithOutput as OutputDispatch<
+        I,
+        O,
+    >>::SmallAlphabetFunctions;
+
+pub type LargeAlphabetFunctionsDispatch<I, O, P> =
+    <<<P as Parallelism>::WithInput<I, O> as InputDispatch<I, O>>::WithOutput as OutputDispatch<
+        I,
+        O,
+    >>::LargeAlphabetFunctions;
+
+pub type LcpFunctionsDispatch<I, O, P> = <<<P as Parallelism>::WithInput<I, O> as InputDispatch<
+    I,
+    O,
+>>::WithOutput as OutputDispatch<I, O>>::LcpFunctions;
 
 pub trait LibsaisFunctionsSmallAlphabet<I: InputElement, O: OutputElement>: sealed::Sealed {
     unsafe fn libsais(
@@ -1024,6 +1036,14 @@ pub enum Undecided {}
 
 impl sealed::Sealed for Undecided {}
 
+pub trait ParallelismOrUndecided: sealed::Sealed {
+    // TODO fn free_ctx<I,O>
+}
+
+impl ParallelismOrUndecided for Undecided {}
+
+impl<P: Parallelism> ParallelismOrUndecided for P {}
+
 pub trait Parallelism: sealed::Sealed {
     type WithInput<I: InputElement, O: OutputElement>: InputDispatch<I, O>;
 }
@@ -1142,17 +1162,7 @@ impl sealed::Sealed for NoAuxIndices {}
 
 impl AuxIndicesMode for NoAuxIndices {}
 
-pub struct AuxIndicesBorrowedBuffer {}
-
-impl sealed::Sealed for AuxIndicesBorrowedBuffer {}
-
-impl AuxIndicesMode for AuxIndicesBorrowedBuffer {}
-
-pub struct AuxIndicesOwnedBuffer {}
-
-impl sealed::Sealed for AuxIndicesOwnedBuffer {}
-
-impl AuxIndicesMode for AuxIndicesOwnedBuffer {}
+impl<B: BufferMode> AuxIndicesMode for B {}
 
 // -------------------- InputElement and OutputElement with implementations for u8, u16, i32, i64 --------------------
 // Unsafe trait because the context type has to be correct for this input type
@@ -1168,7 +1178,6 @@ pub unsafe trait InputElement:
     const RECOMMENDED_EXTRA_SPACE: usize;
     const ZERO: Self;
 
-    type SingleThreadedContext: SaisContext;
     type SingleThreadedOutputDispatcher<O: OutputElement>: OutputDispatch<Self, O>;
     #[cfg(feature = "openmp")]
     type MultiThreadedOutputDispatcher<O: OutputElement>: OutputDispatch<Self, O>;
@@ -1217,7 +1226,6 @@ unsafe impl InputElement for u8 {
     const RECOMMENDED_EXTRA_SPACE: usize = 0;
     const ZERO: Self = 0;
 
-    type SingleThreadedContext = SingleThreaded8InputSaisContext;
     type SingleThreadedOutputDispatcher<O: OutputElement> = SingleThreaded8InputOutputDispatcher<O>;
     #[cfg(feature = "openmp")]
     type MultiThreadedOutputDispatcher<O: OutputElement> = MultiThreaded8InputOutputDispatcher<O>;
@@ -1229,7 +1237,6 @@ unsafe impl InputElement for u16 {
     const RECOMMENDED_EXTRA_SPACE: usize = 0;
     const ZERO: Self = 0;
 
-    type SingleThreadedContext = SingleThreaded16InputSaisContext;
     type SingleThreadedOutputDispatcher<O: OutputElement> =
         SingleThreaded16InputOutputDispatcher<O>;
     #[cfg(feature = "openmp")]
@@ -1242,7 +1249,6 @@ unsafe impl InputElement for i32 {
     const RECOMMENDED_EXTRA_SPACE: usize = 6_000;
     const ZERO: Self = 0;
 
-    type SingleThreadedContext = ContextUnimplemented;
     type SingleThreadedOutputDispatcher<O: OutputElement> =
         SingleThreaded32InputOutputDispatcher<O>;
     #[cfg(feature = "openmp")]
@@ -1274,7 +1280,6 @@ unsafe impl InputElement for i64 {
     const RECOMMENDED_EXTRA_SPACE: usize = 6_000;
     const ZERO: Self = 0;
 
-    type SingleThreadedContext = ContextUnimplemented;
     type SingleThreadedOutputDispatcher<O: OutputElement> =
         SingleThreaded64InputOutputDispatcher<O>;
     #[cfg(feature = "openmp")]
