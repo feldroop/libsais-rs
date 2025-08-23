@@ -1,7 +1,8 @@
+use libsais::{SuffixArrayConstruction, suffix_array::ExtraSpace};
+
 mod common;
 
-use common::{setup_basic_example, setup_generalized_suffix_array_example};
-use libsais::{ExtraSpace, SuffixArrayConstruction, helpers};
+use common::*;
 
 #[test]
 fn empty_text_plcp_lcp() {
@@ -21,12 +22,7 @@ fn empty_text_plcp_lcp() {
     assert!(res.suffix_array().is_empty());
     assert!(res.lcp().is_empty());
 
-    assert!(helpers::is_libsais_lcp(
-        &text,
-        res.suffix_array(),
-        res.lcp(),
-        false
-    ));
+    assert!(is_libsais_lcp(&text, res.suffix_array(), res.lcp(), false));
 }
 
 #[test]
@@ -57,12 +53,7 @@ fn plcp_lcp_in_buffers() {
         .run()
         .expect("libsais lcp should run without an error");
 
-    assert!(helpers::is_libsais_lcp(
-        text,
-        res.suffix_array(),
-        res.lcp(),
-        false
-    ));
+    assert!(is_libsais_lcp(text, res.suffix_array(), res.lcp(), false));
 }
 
 #[test]
@@ -90,10 +81,5 @@ fn plcp_lcp_gsa() {
         .run()
         .expect("libsais lcp should run without an error");
 
-    assert!(helpers::is_libsais_lcp(
-        &text,
-        res.suffix_array(),
-        res.lcp(),
-        true
-    ));
+    assert!(is_libsais_lcp(&text, res.suffix_array(), res.lcp(), true));
 }

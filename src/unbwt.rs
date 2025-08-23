@@ -1,15 +1,16 @@
-use std::marker::PhantomData;
-
 use either::Either;
 
-use super::{IntoSaisResult, LibsaisError};
+use std::marker::PhantomData;
+
 use crate::{
     ThreadCount,
-    construction::AuxIndicesSamplingRate,
+    bwt::AuxIndicesSamplingRate,
     context::UnBwtContext,
-    data_structures::{OwnedOrBorrowed, Text},
+    error::{IntoSaisResult, LibsaisError},
+    owned_or_borrowed::OwnedOrBorrowed,
+    suffix_array,
     type_model::{
-        BorrowedBuffer, BufferMode, LibsaisFunctionsSmallAlphabet, OutputElement,
+        BorrowedBuffer, BufferMode, InputElement, LibsaisFunctionsSmallAlphabet, OutputElement,
         OutputElementOrUndecided, OwnedBuffer, Parallelism, ParallelismOrUndecided, SingleThreaded,
         SmallAlphabet, SmallAlphabetFunctionsDispatch, Undecided,
     },
@@ -273,7 +274,7 @@ impl<
         }
 
         let (_, bwt_len_output_type, num_threads, frequency_table_ptr) =
-            super::cast_and_unpack_parameters(
+            suffix_array::cast_and_unpack_parameters(
                 bwt_len,
                 &temporary_array_buffer,
                 self.thread_count,
@@ -313,7 +314,7 @@ impl<
             let aux_indices_sampling_rate = self.aux_indices_sampling_rate.unwrap();
 
             let aux_indices_sampling_rate_output_type =
-                super::aux_indices_safety_checks_and_cast_sampling_rate(
+                crate::bwt::aux_indices_safety_checks_and_cast_sampling_rate(
                     bwt_len,
                     &aux_indices_buffer,
                     aux_indices_sampling_rate,
@@ -335,5 +336,26 @@ impl<
         }
         .into_empty_sais_result()
         .map(|_| Text { text })
+    }
+}
+
+#[derive(Debug)]
+pub struct Text<'t, I: InputElement, B: BufferMode> {
+    pub(crate) text: OwnedOrBorrowed<'t, I, B>,
+}
+
+impl<'t, I: InputElement, B: BufferMode> Text<'t, I, B> {
+    pub fn as_slice(&self) -> &[I] {
+        &self.text.buffer
+    }
+
+    pub fn into_inner(self) -> B::Buffer<'t, I> {
+        self.text.into_inner()
+    }
+}
+
+impl<'t, I: InputElement> Text<'t, I, OwnedBuffer> {
+    pub fn into_vec(self) -> Vec<I> {
+        self.text.into_inner()
     }
 }

@@ -1,9 +1,9 @@
 use std::marker::PhantomData;
 
-use super::IntoSaisResult;
 use crate::{
-    LibsaisError, ThreadCount,
-    data_structures::{LcpAndPlcp, OwnedOrBorrowed, SuffixArrayWithLcpAndPlcp},
+    ThreadCount,
+    error::{IntoSaisResult, LibsaisError},
+    owned_or_borrowed::OwnedOrBorrowed,
     type_model::{
         BorrowedBuffer, BufferMode, BufferModeOrReplaceInput, LcpFunctionsDispatch,
         LibsaisLcpFunctions, OutputElement, OwnedBuffer, Parallelism, ReplaceInput,
@@ -202,5 +202,77 @@ impl<
             )
         }
         .into_empty_sais_result()
+    }
+}
+
+pub struct SuffixArrayWithLcpAndPlcp<
+    'l,
+    'p,
+    's,
+    O: OutputElement,
+    LcpB: BufferMode,
+    PlcpB: BufferMode,
+    SaB: BufferMode,
+> {
+    pub(crate) lcp: OwnedOrBorrowed<'l, O, LcpB>,
+    pub(crate) plcp: OwnedOrBorrowed<'p, O, PlcpB>,
+    pub(crate) suffix_array: OwnedOrBorrowed<'s, O, SaB>,
+    pub(crate) is_generalized_suffix_array: bool,
+}
+
+impl<'l, 'p, 's, O: OutputElement, LcpB: BufferMode, PlcpB: BufferMode, SaB: BufferMode>
+    SuffixArrayWithLcpAndPlcp<'l, 'p, 's, O, LcpB, PlcpB, SaB>
+{
+    pub fn lcp(&self) -> &[O] {
+        &self.lcp.buffer
+    }
+
+    pub fn plcp(&self) -> &[O] {
+        &self.plcp.buffer
+    }
+
+    pub fn suffix_array(&self) -> &[O] {
+        &self.suffix_array.buffer
+    }
+
+    pub fn is_generalized_suffix_array(&self) -> bool {
+        self.is_generalized_suffix_array
+    }
+
+    pub fn into_parts(
+        self,
+    ) -> (
+        SaB::Buffer<'s, O>,
+        LcpB::Buffer<'l, O>,
+        PlcpB::Buffer<'p, O>,
+        bool,
+    ) {
+        (
+            self.suffix_array.into_inner(),
+            self.lcp.into_inner(),
+            self.plcp.into_inner(),
+            self.is_generalized_suffix_array,
+        )
+    }
+}
+
+pub struct LcpAndPlcp<'l, 'p, O: OutputElement, LcpB: BufferMode, PlcpB: BufferMode> {
+    pub(crate) lcp: OwnedOrBorrowed<'l, O, LcpB>,
+    pub(crate) plcp: OwnedOrBorrowed<'p, O, PlcpB>,
+}
+
+impl<'l, 'p, O: OutputElement, LcpB: BufferMode, PlcpB: BufferMode>
+    LcpAndPlcp<'l, 'p, O, LcpB, PlcpB>
+{
+    pub fn lcp(&self) -> &[O] {
+        &self.lcp.buffer
+    }
+
+    pub fn plcp(&self) -> &[O] {
+        &self.plcp.buffer
+    }
+
+    pub fn into_parts(self) -> (LcpB::Buffer<'l, O>, PlcpB::Buffer<'p, O>) {
+        (self.lcp.into_inner(), self.plcp.into_inner())
     }
 }

@@ -1,11 +1,10 @@
 use libsais::{
-    BwtConstruction, ExtraSpace, SuffixArrayConstruction, construction::AuxIndicesSamplingRate,
-    helpers,
+    BwtConstruction, SuffixArrayConstruction, bwt::AuxIndicesSamplingRate, suffix_array::ExtraSpace,
 };
 
 mod common;
 
-use common::setup_basic_example;
+use common::*;
 
 #[test]
 fn libsais_bwt_with_borrowed_temporary_array_buffer() {
@@ -36,11 +35,7 @@ fn libsais_bwt_with_borrowed_temporary_array_buffer() {
 
     assert_eq!(res.primary_index(), 2);
 
-    assert!(helpers::is_libsais_bwt(
-        text.as_slice(),
-        &suffix_array,
-        res.bwt()
-    ));
+    assert!(is_libsais_bwt(text.as_slice(), &suffix_array, res.bwt()));
 }
 
 #[test]
@@ -69,17 +64,9 @@ fn libsais_bwt_aux() {
         .expect("libsais should run without an error")
         .into_vec();
 
-    assert!(helpers::is_libsais_bwt(
-        text.as_slice(),
-        &suffix_array,
-        res.bwt()
-    ));
+    assert!(is_libsais_bwt(text.as_slice(), &suffix_array, res.bwt()));
 
-    assert!(helpers::is_libsais_aux_indices(
-        res.aux_indices(),
-        &suffix_array,
-        2
-    ));
+    assert!(is_libsais_aux_indices(res.aux_indices(), &suffix_array, 2));
 }
 
 #[test]
@@ -109,7 +96,7 @@ fn libsais_bwt_in_text() {
 
     assert_eq!(res.primary_index(), 2);
 
-    assert!(helpers::is_libsais_bwt(
+    assert!(is_libsais_bwt(
         text.as_slice(),
         &suffix_array,
         &text_and_later_bwt
@@ -142,15 +129,7 @@ fn libsais_bwt_with_aux_in_text() {
         .expect("libsais should run without an error")
         .into_vec();
 
-    assert!(helpers::is_libsais_bwt(
-        text.as_slice(),
-        &suffix_array,
-        res.bwt()
-    ));
+    assert!(is_libsais_bwt(text.as_slice(), &suffix_array, res.bwt()));
 
-    assert!(helpers::is_libsais_aux_indices(
-        res.aux_indices(),
-        &suffix_array,
-        2
-    ));
+    assert!(is_libsais_aux_indices(res.aux_indices(), &suffix_array, 2));
 }

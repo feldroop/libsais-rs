@@ -1,10 +1,13 @@
 use either::Either;
 
-use super::{AlphabetSize, ExtraSpace, IntoSaisResult, LibsaisError, ThreadCount};
-use crate::context::Context;
-use crate::data_structures::{OwnedOrBorrowed, SuffixArrayWithText};
-use crate::helpers;
-use crate::type_model::*;
+use crate::{
+    ThreadCount,
+    context::Context,
+    error::{IntoSaisResult, LibsaisError},
+    owned_or_borrowed::OwnedOrBorrowed,
+    plcp::PlcpConstruction,
+    type_model::*,
+};
 
 use std::marker::PhantomData;
 
@@ -237,10 +240,10 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelis
         let text_len = self.text().len();
         let mut suffix_array =
             OwnedOrBorrowed::take_buffer_or_allocate(self.suffix_array_buffer.take(), || {
-                super::allocate_suffix_array_buffer::<I, O>(self.extra_space, text_len)
+                allocate_suffix_array_buffer::<I, O>(self.extra_space, text_len)
             });
 
-        super::sais_safety_checks(
+        sais_safety_checks(
             self.text(),
             &suffix_array.buffer,
             &self.context,
@@ -249,7 +252,7 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelis
         );
 
         let (extra_space, text_len_output_type, num_threads, frequency_table_ptr) =
-            super::cast_and_unpack_parameters(
+            cast_and_unpack_parameters(
                 self.text().len(),
                 &suffix_array.buffer,
                 self.thread_count,
@@ -283,8 +286,7 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelis
             Some(Either::Right(text)) => {
                 let alphabet_size: O = match self.alphabet_size {
                     AlphabetSize::ComputeFromMaxOfText => {
-                        helpers::compute_and_validate_alphabet_size(text)
-                            .unwrap_or_else(|e| panic!("{e}"))
+                        compute_and_validate_alphabet_size(text).unwrap_or_else(|e| panic!("{e}"))
                     }
                     AlphabetSize::Fixed { value } => value
                         .try_into()
@@ -322,6 +324,218 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelis
         match self.text.take().unwrap() {
             Either::Left(t) => t,
             Either::Right(t) => t,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct SuffixArrayWithText<'s, 't, I: InputElement, O: OutputElement, B: BufferMode> {
+    pub(crate) suffix_array: OwnedOrBorrowed<'s, O, B>,
+    pub(crate) text: &'t [I],
+    pub(crate) is_generalized_suffix_array: bool,
+}
+
+impl<'s, 't, I: InputElement, O: OutputElement, B: BufferMode>
+    SuffixArrayWithText<'s, 't, I, O, B>
+{
+    pub fn suffix_array(&self) -> &[O] {
+        &self.suffix_array.buffer
+    }
+
+    pub fn text(&self) -> &'t [I] {
+        self.text
+    }
+
+    pub fn is_generalized_suffix_array(&self) -> bool {
+        self.is_generalized_suffix_array
+    }
+}
+
+impl<'t, I: InputElement, O: OutputElement> SuffixArrayWithText<'static, 't, I, O, OwnedBuffer> {
+    pub fn into_vec(self) -> Vec<O> {
+        self.suffix_array.into_inner()
+    }
+}
+
+impl<'s, 't, I: InputElement, O: OutputElement, B: BufferMode>
+    SuffixArrayWithText<'s, 't, I, O, B>
+{
+    pub fn into_parts(self) -> (B::Buffer<'s, O>, &'t [I], bool) {
+        (
+            self.suffix_array.into_inner(),
+            self.text,
+            self.is_generalized_suffix_array,
+        )
+    }
+}
+
+impl<'s, 't, I: InputElement, O: IsValidOutputFor<I>, B: BufferMode>
+    SuffixArrayWithText<'s, 't, I, O, B>
+{
+    pub unsafe fn from_parts(
+        suffix_array: B::Buffer<'s, O>,
+        text: &'t [I],
+        is_generalized_suffix_array: bool,
+    ) -> Self {
+        Self {
+            suffix_array: OwnedOrBorrowed::new(suffix_array),
+            text,
+            is_generalized_suffix_array,
+        }
+    }
+}
+
+impl<'s, 't, I: InputElement, O: SupportsPlcpOutputFor<I>, SaB: BufferMode>
+    SuffixArrayWithText<'s, 't, I, O, SaB>
+{
+    pub fn plcp_construction(
+        self,
+    ) -> PlcpConstruction<'static, 's, 't, I, O, OwnedBuffer, SaB, SingleThreaded> {
+        PlcpConstruction {
+            text: self.text,
+            suffix_array_buffer: self.suffix_array,
+            generalized_suffix_array: self.is_generalized_suffix_array,
+            plcp_buffer: None,
+            thread_count: ThreadCount::fixed(1),
+            _parallelism_marker: PhantomData,
+            _plcp_buffer_mode_marker: PhantomData,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ExtraSpace {
+    None,
+    Recommended,
+    Fixed { value: usize },
+}
+
+impl ExtraSpace {
+    fn compute_buffer_size<I: InputElement, O: OutputElement>(&self, text_len: usize) -> usize {
+        match *self {
+            ExtraSpace::None => text_len,
+            ExtraSpace::Recommended => {
+                if text_len <= 10_000 {
+                    text_len
+                } else {
+                    let max_buffer_len_in_usize = O::MAX.into() as usize;
+                    let desired_buffer_len = text_len + I::RECOMMENDED_EXTRA_SPACE;
+
+                    if desired_buffer_len <= max_buffer_len_in_usize {
+                        desired_buffer_len
+                    } else if text_len <= max_buffer_len_in_usize {
+                        max_buffer_len_in_usize
+                    } else {
+                        // if text_len was already too big, just return in and let safety checks later handle it
+                        text_len
+                    }
+                }
+            }
+            ExtraSpace::Fixed { value } => text_len + value,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AlphabetSize {
+    ComputeFromMaxOfText,
+    Fixed { value: usize },
+}
+
+pub(crate) fn allocate_suffix_array_buffer<I: InputElement, O: OutputElement>(
+    extra_space_in_buffer: ExtraSpace,
+    text_len: usize,
+) -> Vec<O> {
+    let buffer_len = extra_space_in_buffer.compute_buffer_size::<I, O>(text_len);
+    vec![O::ZERO; buffer_len]
+}
+
+pub(crate) fn sais_safety_checks<I: InputElement, O: OutputElement, P: Parallelism>(
+    text: &[I],
+    suffix_array_buffer: &[O],
+    context: &Option<&mut Context<I, O, P>>,
+    thread_count: ThreadCount,
+    generalized_suffix_array: bool,
+) {
+    // the try_into implementations fail exactly when the value is too large for the respective libsais version
+    let Ok(_): Result<O, _> = text.len().try_into() else {
+        panic!(
+            "The text is too long for the chosen output type. Text len: {}, Max allowed len: {}",
+            text.len(),
+            O::MAX
+        );
+    };
+
+    let Ok(_): Result<O, _> = suffix_array_buffer.len().try_into() else {
+        panic!(
+            "The suffix array buffer is too long for chosen output type. Buffer len: {}, Max allowed len: {}",
+            suffix_array_buffer.len(),
+            O::MAX
+        );
+    };
+
+    assert!(
+        suffix_array_buffer.len() >= text.len(),
+        "suffix_array_buffer must be at least as large as text"
+    );
+
+    if let Some(context) = context {
+        assert_eq!(
+            context.num_threads(),
+            thread_count.value,
+            "context needs to have the same number of threads as this config"
+        );
+    }
+
+    if generalized_suffix_array && let Some(c) = text.last() {
+        assert!(
+            c.clone().into() == 0i64,
+            "For the generalized suffix array, the last character of the text needs to be 0 (not ASCII '0')"
+        );
+    }
+}
+
+pub(crate) fn cast_and_unpack_parameters<O: OutputElement>(
+    text_len: usize,
+    suffix_array_buffer: &[O],
+    thread_count: ThreadCount,
+    frequency_table: Option<&mut [O]>,
+) -> (O, O, O, *mut O) {
+    // all of these casts should succeed after the safety checks
+    let extra_space = (suffix_array_buffer.len() - text_len).try_into().unwrap();
+    let text_len = O::try_from(text_len).unwrap();
+    let num_threads = O::try_from(thread_count.value as usize).unwrap();
+
+    let frequency_table_ptr =
+        frequency_table.map_or(std::ptr::null_mut(), |freq| freq.as_mut_ptr());
+
+    (extra_space, text_len, num_threads, frequency_table_ptr)
+}
+
+// Computes the maximum value of the text and guarantees that all value are in the range
+// [0, max_value]. Therefore the alphabet size returned is max_value + 1.
+// Therefore the maximum value also has to be smaller than the maximum allowed value of `O`.
+pub(crate) fn compute_and_validate_alphabet_size<I: InputElement, O: OutputElement>(
+    text: &[I],
+) -> Result<O, &'static str> {
+    let mut min = I::ZERO;
+    let mut max = I::ZERO;
+
+    for c in text {
+        min = min.min(*c);
+        max = max.max(*c);
+    }
+
+    if min < I::ZERO {
+        Err("Text cannot contain negative chars")
+    } else {
+        let found_max: i64 = max.into();
+        let max_allowed: i64 = O::MAX.into();
+
+        if found_max == max_allowed {
+            Err("Text cannot contain the maximum value as a character")
+        } else {
+            Ok(O::try_from(found_max as usize + 1).unwrap())
         }
     }
 }

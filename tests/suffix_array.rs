@@ -1,10 +1,10 @@
-use libsais::data_structures::SuffixArrayWithText;
+use libsais::suffix_array::SuffixArrayWithText;
 #[allow(unused)]
-use libsais::{ExtraSpace, SuffixArrayConstruction, ThreadCount, helpers};
+use libsais::{SuffixArrayConstruction, ThreadCount, suffix_array::ExtraSpace};
 
 mod common;
 
-use common::{setup_basic_example, setup_generalized_suffix_array_example};
+use common::*;
 
 #[test]
 fn empty_text() {
@@ -15,7 +15,7 @@ fn empty_text() {
 
     assert!(res.suffix_array().is_empty());
 
-    assert!(helpers::is_suffix_array(res.text(), res.suffix_array()));
+    assert!(is_suffix_array(res.text(), res.suffix_array()));
 }
 
 #[test]
@@ -36,7 +36,7 @@ fn libsais_basic() {
         .run()
         .expect("libsais should run without an error");
 
-    assert!(helpers::is_suffix_array(text, res.suffix_array()));
+    assert!(is_suffix_array(text, res.suffix_array()));
 }
 
 #[test]
@@ -59,10 +59,7 @@ fn libsais_generalized_suffix_array() {
         .run()
         .expect("libsais should run without an error");
 
-    assert!(helpers::is_generalized_suffix_array(
-        &text,
-        res.suffix_array()
-    ));
+    assert!(is_generalized_suffix_array(&text, res.suffix_array()));
 }
 
 #[test]
@@ -84,10 +81,7 @@ fn libsais_with_output_buffer() {
         .run()
         .expect("libsais should run without an error");
 
-    assert!(helpers::is_suffix_array(
-        text,
-        &suffix_array_buffer[..text.len()]
-    ));
+    assert!(is_suffix_array(text, &suffix_array_buffer[..text.len()]));
 }
 
 #[cfg(feature = "openmp")]
@@ -109,7 +103,7 @@ fn libsais_omp() {
         .run()
         .expect("libsais should run without an error");
 
-    assert!(helpers::is_suffix_array(text, res.suffix_array()));
+    assert!(is_suffix_array(text, res.suffix_array()));
 }
 
 #[test]
@@ -122,7 +116,7 @@ fn libsais_16input_extra_space_fixed() {
         .run()
         .expect("libsais should run without an error");
 
-    assert!(helpers::is_suffix_array(&text, res.suffix_array()));
+    assert!(is_suffix_array(&text, res.suffix_array()));
 }
 
 #[test]
@@ -135,7 +129,7 @@ fn libsais_32input_no_extra_space() {
         .run()
         .expect("libsais should run without an error");
 
-    assert!(helpers::is_suffix_array(res.text(), res.suffix_array()));
+    assert!(is_suffix_array(res.text(), res.suffix_array()));
 }
 
 #[test]
@@ -153,7 +147,7 @@ fn libsais_64input_alphabet_size() {
         .run()
         .expect("libsais should run without an error");
 
-    assert!(helpers::is_suffix_array(res.text(), res.suffix_array()));
+    assert!(is_suffix_array(res.text(), res.suffix_array()));
 }
 
 #[cfg(feature = "openmp")]
@@ -167,5 +161,5 @@ fn libsais_64input_omp() {
         .run()
         .expect("libsais should run without an error");
 
-    assert!(helpers::is_suffix_array(res.text(), res.suffix_array()));
+    assert!(is_suffix_array(res.text(), res.suffix_array()));
 }

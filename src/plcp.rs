@@ -1,10 +1,14 @@
-use super::IntoSaisResult;
-use crate::LibsaisError;
-use crate::ThreadCount;
-use crate::data_structures::{OwnedOrBorrowed, SuffixArrayWithPlcp};
+use std::marker::PhantomData;
+
 use crate::type_model::{
     BorrowedBuffer, BufferMode, InputElement, LcpFunctionsDispatch, LibsaisLcpFunctions,
     OutputElement, OwnedBuffer, Parallelism,
+};
+use crate::{
+    ThreadCount,
+    error::{IntoSaisResult, LibsaisError},
+    lcp::LcpConstruction,
+    owned_or_borrowed::OwnedOrBorrowed,
 };
 
 #[allow(unused)]
@@ -12,8 +16,6 @@ use crate::type_model::SingleThreaded;
 
 #[cfg(feature = "openmp")]
 use crate::type_model::MultiThreaded;
-
-use std::marker::PhantomData;
 
 pub struct PlcpConstruction<
     'p,
@@ -137,5 +139,62 @@ impl<
             )
         }
         .into_empty_sais_result()
+    }
+}
+
+#[derive(Debug)]
+pub struct SuffixArrayWithPlcp<'p, 's, O: OutputElement, PlcpB: BufferMode, SaB: BufferMode> {
+    pub(crate) plcp: OwnedOrBorrowed<'p, O, PlcpB>,
+    pub(crate) suffix_array: OwnedOrBorrowed<'s, O, SaB>,
+    pub(crate) is_generalized_suffix_array: bool,
+}
+
+impl<'p, 's, O: OutputElement, PlcpB: BufferMode, SaB: BufferMode>
+    SuffixArrayWithPlcp<'p, 's, O, PlcpB, SaB>
+{
+    pub fn plcp(&self) -> &[O] {
+        &self.plcp.buffer
+    }
+
+    pub fn suffix_array(&self) -> &[O] {
+        &self.suffix_array.buffer
+    }
+
+    pub fn is_generalized_suffix_array(&self) -> bool {
+        self.is_generalized_suffix_array
+    }
+
+    pub fn into_parts(self) -> (SaB::Buffer<'s, O>, PlcpB::Buffer<'p, O>, bool) {
+        (
+            self.suffix_array.into_inner(),
+            self.plcp.into_inner(),
+            self.is_generalized_suffix_array,
+        )
+    }
+
+    pub unsafe fn from_parts(
+        plcp: PlcpB::Buffer<'p, O>,
+        suffix_array: SaB::Buffer<'s, O>,
+        is_generalized_suffix_array: bool,
+    ) -> Self {
+        Self {
+            plcp: OwnedOrBorrowed::new(plcp),
+            suffix_array: OwnedOrBorrowed::new(suffix_array),
+            is_generalized_suffix_array,
+        }
+    }
+
+    pub fn lcp_construction(
+        self,
+    ) -> LcpConstruction<'static, 'p, 's, O, OwnedBuffer, PlcpB, SaB, SingleThreaded> {
+        LcpConstruction {
+            plcp_buffer: self.plcp,
+            suffix_array_buffer: self.suffix_array,
+            lcp_buffer: None,
+            thread_count: ThreadCount::fixed(1),
+            is_generalized_suffix_array: self.is_generalized_suffix_array,
+            _parallelism_marker: PhantomData,
+            _lcp_buffer_mode_marker: PhantomData,
+        }
     }
 }

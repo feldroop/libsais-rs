@@ -1,11 +1,11 @@
-use libsais::construction::AuxIndicesSamplingRate;
+use libsais::bwt::AuxIndicesSamplingRate;
+use libsais::bwt::Bwt;
 use libsais::context::UnBwtContext;
-use libsais::data_structures::Bwt;
-use libsais::helpers;
-use libsais::{BwtConstruction, ExtraSpace};
+use libsais::{BwtConstruction, suffix_array::ExtraSpace};
+
 mod common;
 
-use common::setup_basic_example;
+use common::*;
 
 #[test]
 fn empty_text_bwt_unbwt() {
@@ -18,7 +18,7 @@ fn empty_text_bwt_unbwt() {
 
     assert_eq!(0, bwt.primary_index());
 
-    assert!(helpers::is_libsais_bwt::<u8, i32>(&[], &[], bwt.bwt()));
+    assert!(is_libsais_bwt::<u8, i32>(&[], &[], bwt.bwt()));
 
     let text = bwt
         .unbwt()
