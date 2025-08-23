@@ -1,5 +1,5 @@
 use super::IntoSaisResult;
-use crate::SaisError;
+use crate::LibsaisError;
 use crate::data_structures::{OwnedOrBorrowed, SuffixArrayWithPlcp};
 #[cfg(feature = "openmp")]
 use crate::type_model::MultiThreaded;
@@ -80,7 +80,7 @@ impl<
     P: Parallelism,
 > PlcpConstruction<'p, 's, 't, I, O, PlcpB, SaB, P>
 {
-    pub fn run(mut self) -> Result<SuffixArrayWithPlcp<'p, 's, O, PlcpB, SaB>, SaisError> {
+    pub fn run(mut self) -> Result<SuffixArrayWithPlcp<'p, 's, O, PlcpB, SaB>, LibsaisError> {
         let mut plcp = OwnedOrBorrowed::take_buffer_or_allocate(self.plcp_buffer.take(), || {
             vec![O::ZERO; self.text.len()]
         });
@@ -93,7 +93,7 @@ impl<
             })
     }
 
-    fn construct_in_buffer(&mut self, plcp_buffer: &mut [O]) -> Result<(), SaisError> {
+    fn construct_in_buffer(&mut self, plcp_buffer: &mut [O]) -> Result<(), LibsaisError> {
         assert_eq!(self.text.len(), plcp_buffer.len());
         assert_eq!(self.text.len(), self.suffix_array_buffer.buffer.len());
 

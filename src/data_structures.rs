@@ -2,10 +2,12 @@ use either::Either;
 
 use crate::{
     ThreadCount,
-    construction::{AuxIndicesSamplingRate, lcp::LcpConstruction, plcp::PlcpConstruction},
+    construction::{
+        AuxIndicesSamplingRate, lcp::LcpConstruction, plcp::PlcpConstruction, unbwt::UnBwt,
+    },
     type_model::{
         BufferMode, InputElement, IsValidOutputFor, OutputElement, OwnedBuffer, SingleThreaded,
-        SmallAlphabet, SupportsPlcpOutputFor,
+        SmallAlphabet, SupportsPlcpOutputFor, Undecided,
     },
 };
 
@@ -107,7 +109,33 @@ impl<'b, I: SmallAlphabet, B: BufferMode> Bwt<'b, I, B> {
         (self.bwt.into_inner(), self.primary_index)
     }
 
-    // TODO from_parts, unbwt
+    pub unsafe fn from_parts(bwt: B::Buffer<'b, I>, primary_index: usize) -> Self {
+        Self {
+            bwt: OwnedOrBorrowed::new(bwt),
+            primary_index,
+        }
+    }
+
+    pub fn unbwt(self) -> UnBwt<'b, 'static, 'static, I, Undecided, B, OwnedBuffer, Undecided> {
+        UnBwt {
+            bwt: Some(self.bwt),
+            text: None,
+            temporary_array_buffer: None,
+            frequency_table: None,
+            thread_count: ThreadCount::fixed(1),
+            context: None,
+            primary_index: Some(self.primary_index),
+            aux_indices_sampling_rate: None,
+            aux_indices_buffer: None,
+            _text_buffer_mode_marker: PhantomData,
+        }
+    }
+}
+
+impl<I: SmallAlphabet> Bwt<'static, I, OwnedBuffer> {
+    pub fn into_vec(self) -> Vec<I> {
+        self.bwt.into_inner()
+    }
 }
 
 #[derive(Debug)]
@@ -153,7 +181,32 @@ impl<'a, 'b, I: SmallAlphabet, O: OutputElement, AuxB: BufferMode, BwtB: BufferM
         )
     }
 
-    // TODO from_parts, unbwt
+    pub unsafe fn from_parts(
+        bwt: BwtB::Buffer<'b, I>,
+        aux_indices: AuxB::Buffer<'a, O>,
+        aux_indices_sampling_rate: AuxIndicesSamplingRate,
+    ) -> Self {
+        Self {
+            bwt: OwnedOrBorrowed::new(bwt),
+            aux_indices: OwnedOrBorrowed::new(aux_indices),
+            aux_indices_sampling_rate,
+        }
+    }
+
+    pub fn unbwt(self) -> UnBwt<'b, 'a, 'static, I, O, BwtB, OwnedBuffer, Undecided> {
+        UnBwt {
+            bwt: Some(self.bwt),
+            text: None,
+            temporary_array_buffer: None,
+            frequency_table: None,
+            thread_count: ThreadCount::fixed(1),
+            context: None,
+            primary_index: None,
+            aux_indices_sampling_rate: Some(self.aux_indices_sampling_rate),
+            aux_indices_buffer: Some(self.aux_indices.buffer),
+            _text_buffer_mode_marker: PhantomData,
+        }
+    }
 }
 
 // -------------------- suffix array with plcp --------------------
@@ -282,6 +335,28 @@ impl<'l, 'p, O: OutputElement, LcpB: BufferMode, PlcpB: BufferMode>
 
     pub fn into_parts(self) -> (LcpB::Buffer<'l, O>, PlcpB::Buffer<'p, O>) {
         (self.lcp.into_inner(), self.plcp.into_inner())
+    }
+}
+
+// -------------------- util struct --------------------
+#[derive(Debug)]
+pub struct Text<'t, I: InputElement, B: BufferMode> {
+    pub(crate) text: OwnedOrBorrowed<'t, I, B>,
+}
+
+impl<'t, I: InputElement, B: BufferMode> Text<'t, I, B> {
+    pub fn as_slice(&self) -> &[I] {
+        &self.text.buffer
+    }
+
+    pub fn into_inner(self) -> B::Buffer<'t, I> {
+        self.text.into_inner()
+    }
+}
+
+impl<'t, I: InputElement> Text<'t, I, OwnedBuffer> {
+    pub fn into_vec(self) -> Vec<I> {
+        self.text.into_inner()
     }
 }
 

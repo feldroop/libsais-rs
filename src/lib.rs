@@ -15,7 +15,8 @@ pub const LIBSAIS_I64_OUTPUT_MAXIMUM_SIZE: usize = 9223372036854775807;
 
 #[doc(inline)]
 pub use construction::{
-    ExtraSpace, SaisError, ThreadCount, bwt::BwtConstruction, suffix_array::SuffixArrayConstruction,
+    ExtraSpace, LibsaisError, ThreadCount, bwt::BwtConstruction, lcp::LcpConstruction,
+    plcp::PlcpConstruction, suffix_array::SuffixArrayConstruction, unbwt::UnBwt,
 };
 
 // functionality differences:
@@ -32,18 +33,19 @@ pub use construction::{
 
 // TODOs:
 
-//      BWT: recover with all necessary changes
-//      UNBWT: implement Construction, unbwt temp array must be n+1
+//      refactor owned_or_borrowed to be (more) typesafe
+//      fix is libsais gsa for sentinel management
 
 //      wait for answers on ilya grebnov questions
 //      figure out whether to use ParallelismUndebiced or no Parallelism at all
 //      fix context drop/undecided issue in drop (also TODOs in safe comment)
 //      make context sound via forcing parallelism decision before supplying context (probably for all contructions)
+//      when context is there, could get rid of parallelism marker
+//      context in into other marker type
 
-//      more tests (e.g. (empty text, bwt and sa), untested combinations, all contexts + drop, bwt with temp sa buf)
-//      primary_index option? (what about empty text)
+//      more tests ((empty text, bwt and sa), untested combinations, bwt with temp sa buf)
+//      primary_index option? (depending on what happens with empty text)
 
-//      think about refactor: do safety checks as early as possible?
 //      put things in the right places (especially type_model) (with pub exports)
 //      derives of public types
 //      small benchmarks

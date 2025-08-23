@@ -98,19 +98,18 @@ fn aux_indices_safety_checks_and_cast_sampling_rate<O: OutputElement>(
 
 // -------------------- various small structs and traits --------------------
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SaisError {
-    InvalidConfig,
-    AlgorithmError,
+pub enum LibsaisError {
+    InvalidInput,
+    OutOfMemory,
     UnknownError,
 }
 
-impl SaisError {
+impl LibsaisError {
     fn from_return_code(return_code: i64) -> Self {
-        println!("RETURN CODE: {return_code}");
         match return_code {
             0 => panic!("Return code does not indicate an error"),
-            -1 => Self::InvalidConfig,
-            -2 => Self::AlgorithmError,
+            -1 => Self::InvalidInput,
+            -2 => Self::OutOfMemory,
             _ => Self::UnknownError,
         }
     }
@@ -177,27 +176,27 @@ enum AlphabetSize {
 }
 
 trait IntoSaisResult {
-    fn into_empty_sais_result(self) -> Result<(), SaisError>;
+    fn into_empty_sais_result(self) -> Result<(), LibsaisError>;
 
-    fn into_primary_index_sais_result(self) -> Result<usize, SaisError>;
+    fn into_primary_index_sais_result(self) -> Result<usize, LibsaisError>;
 }
 
 impl<O: OutputElement> IntoSaisResult for O {
-    fn into_empty_sais_result(self) -> Result<(), SaisError> {
+    fn into_empty_sais_result(self) -> Result<(), LibsaisError> {
         let return_code: i64 = self.into();
 
         if return_code != 0 {
-            Err(SaisError::from_return_code(return_code))
+            Err(LibsaisError::from_return_code(return_code))
         } else {
             Ok(())
         }
     }
 
-    fn into_primary_index_sais_result(self) -> Result<usize, SaisError> {
+    fn into_primary_index_sais_result(self) -> Result<usize, LibsaisError> {
         let return_code: i64 = self.into();
 
         if return_code < 0 {
-            Err(SaisError::from_return_code(return_code))
+            Err(LibsaisError::from_return_code(return_code))
         } else {
             Ok(return_code as usize)
         }

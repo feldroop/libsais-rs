@@ -13,7 +13,7 @@ fn libsais_bwt() {
 
     let mut construction = BwtConstruction::for_text(text)
         .in_owned_buffer()
-        .with_owned_temporary_suffix_array_buffer(ExtraSpace::Fixed { value: extra_space })
+        .with_owned_temporary_array_buffer(ExtraSpace::Fixed { value: extra_space })
         .single_threaded()
         .with_context(&mut ctx);
 
@@ -47,7 +47,7 @@ fn libsais_bwt_aux() {
 
     let mut construction = BwtConstruction::for_text(text)
         .in_owned_buffer()
-        .with_owned_temporary_suffix_array_buffer(ExtraSpace::Fixed { value: extra_space })
+        .with_owned_temporary_array_buffer(ExtraSpace::Fixed { value: extra_space })
         .single_threaded()
         .with_aux_indices(AuxIndicesSamplingRate::from(2))
         .with_context(&mut ctx);
@@ -86,7 +86,7 @@ fn libsais_bwt_in_text() {
     let mut text_and_later_bwt = text.to_owned();
 
     let mut construction = BwtConstruction::replace_text(&mut text_and_later_bwt)
-        .with_owned_temporary_suffix_array_buffer(ExtraSpace::Fixed { value: extra_space })
+        .with_owned_temporary_array_buffer(ExtraSpace::Fixed { value: extra_space })
         .single_threaded()
         .with_context(&mut ctx);
 
@@ -120,7 +120,7 @@ fn libsais_bwt_with_aux_in_text() {
     let mut text_and_later_bwt = text.to_owned();
 
     let mut construction = BwtConstruction::replace_text(&mut text_and_later_bwt)
-        .with_owned_temporary_suffix_array_buffer(ExtraSpace::Fixed { value: extra_space })
+        .with_owned_temporary_array_buffer(ExtraSpace::Fixed { value: extra_space })
         .single_threaded()
         .with_aux_indices(AuxIndicesSamplingRate::from(2))
         .with_context(&mut ctx);

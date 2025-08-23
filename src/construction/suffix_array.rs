@@ -1,6 +1,6 @@
 use either::Either;
 
-use super::{AlphabetSize, ExtraSpace, IntoSaisResult, SaisError, ThreadCount};
+use super::{AlphabetSize, ExtraSpace, IntoSaisResult, LibsaisError, ThreadCount};
 use crate::context::Context;
 use crate::data_structures::{OwnedOrBorrowed, SuffixArrayWithText};
 use crate::helpers;
@@ -233,7 +233,7 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelis
     SuffixArrayConstruction<'r, 's, 't, I, O, B, P>
 {
     /// Construct the suffix array for the given text.
-    pub fn run(mut self) -> Result<SuffixArrayWithText<'s, 't, I, O, B>, SaisError> {
+    pub fn run(mut self) -> Result<SuffixArrayWithText<'s, 't, I, O, B>, LibsaisError> {
         let text_len = self.text().len();
         let mut suffix_array =
             OwnedOrBorrowed::take_buffer_or_allocate(self.suffix_array_buffer.take(), || {

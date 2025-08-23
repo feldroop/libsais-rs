@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use super::IntoSaisResult;
 use crate::{
-    SaisError, ThreadCount,
+    LibsaisError, ThreadCount,
     data_structures::{LcpAndPlcp, OwnedOrBorrowed, SuffixArrayWithLcpAndPlcp},
     type_model::{
         BorrowedBuffer, BufferMode, BufferModeOrReplaceInput, LcpFunctionsDispatch,
@@ -86,6 +86,7 @@ impl<'p, 's, O: OutputElement, PlcpB: BufferMode, SaB: BufferMode, P: Parallelis
     }
 }
 
+#[cfg(feature = "openmp")]
 impl<
     'l,
     'p,
@@ -118,7 +119,7 @@ impl<
 {
     pub fn run(
         mut self,
-    ) -> Result<SuffixArrayWithLcpAndPlcp<'l, 'p, 's, O, LcpB, PlcpB, SaB>, SaisError> {
+    ) -> Result<SuffixArrayWithLcpAndPlcp<'l, 'p, 's, O, LcpB, PlcpB, SaB>, LibsaisError> {
         let mut lcp = OwnedOrBorrowed::take_buffer_or_allocate(self.lcp_buffer.take(), || {
             vec![O::ZERO; self.suffix_array_buffer.buffer.len()]
         });
@@ -136,7 +137,7 @@ impl<
 impl<'l, 'p, 's, O: OutputElement, PlcpB: BufferMode, SaB: BufferMode, P: Parallelism>
     LcpConstruction<'l, 'p, 's, O, ReplaceInput, PlcpB, SaB, P>
 {
-    pub fn run(mut self) -> Result<LcpAndPlcp<'s, 'p, O, SaB, PlcpB>, SaisError> {
+    pub fn run(mut self) -> Result<LcpAndPlcp<'s, 'p, O, SaB, PlcpB>, LibsaisError> {
         self.run_in_optional_borrowed_buffer(None)
             .map(|_| LcpAndPlcp {
                 lcp: self.suffix_array_buffer,
@@ -160,7 +161,7 @@ impl<
     fn run_in_optional_borrowed_buffer(
         &mut self,
         lcp_buffer_opt: Option<&mut [O]>,
-    ) -> Result<(), SaisError> {
+    ) -> Result<(), LibsaisError> {
         assert_eq!(
             self.suffix_array_buffer.buffer.len(),
             self.plcp_buffer.buffer.len()

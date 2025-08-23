@@ -1,6 +1,6 @@
 use either::Either;
 
-use super::{AuxIndicesSamplingRate, ExtraSpace, IntoSaisResult, SaisError, ThreadCount};
+use super::{AuxIndicesSamplingRate, ExtraSpace, IntoSaisResult, LibsaisError, ThreadCount};
 use crate::context::Context;
 use crate::data_structures::{Bwt, BwtWithAuxIndices, OwnedOrBorrowed};
 use crate::type_model::*;
@@ -11,7 +11,7 @@ pub struct BwtConstruction<
     'a,
     'b,
     'r,
-    I: InputElement,
+    I: SmallAlphabet,
     O: OutputElementOrUndecided,
     B: BufferModeOrUndecided,
     P: ParallelismOrUndecided,
@@ -19,9 +19,9 @@ pub struct BwtConstruction<
 > {
     text: Option<&'r [I]>,
     bwt_buffer: Option<&'b mut [I]>,
-    temporary_suffix_array_buffer: Option<&'r mut [O]>,
+    temporary_array_buffer: Option<&'r mut [O]>,
     frequency_table: Option<&'r mut [O]>,
-    extra_space_temporary_suffix_array_buffer: ExtraSpace,
+    extra_space_temporary_array_buffer: ExtraSpace,
     thread_count: ThreadCount,
     context: Option<&'r mut Context<I, O, P>>,
     aux_indices_sampling_rate: Option<AuxIndicesSamplingRate>,
@@ -35,7 +35,7 @@ impl<
     'a,
     'b,
     'r,
-    I: InputElement,
+    I: SmallAlphabet,
     O: OutputElementOrUndecided,
     B: BufferModeOrUndecided,
     P: ParallelismOrUndecided,
@@ -46,10 +46,10 @@ impl<
         Self {
             text: None,
             bwt_buffer: None,
-            temporary_suffix_array_buffer: None,
+            temporary_array_buffer: None,
             frequency_table: None,
             thread_count: ThreadCount::fixed(1),
-            extra_space_temporary_suffix_array_buffer: ExtraSpace::Recommended,
+            extra_space_temporary_array_buffer: ExtraSpace::Recommended,
             context: None,
             aux_indices_sampling_rate: None,
             aux_indices_buffer: None,
@@ -64,7 +64,7 @@ impl<
     'a,
     'b,
     'r,
-    I: InputElement,
+    I: SmallAlphabet,
     O: OutputElementOrUndecided,
     B1: BufferModeOrUndecided,
     P1: ParallelismOrUndecided,
@@ -81,11 +81,10 @@ impl<
         BwtConstruction {
             text: self.text,
             bwt_buffer: self.bwt_buffer,
-            temporary_suffix_array_buffer: self.temporary_suffix_array_buffer,
+            temporary_array_buffer: self.temporary_array_buffer,
             frequency_table: self.frequency_table,
             thread_count: self.thread_count,
-            extra_space_temporary_suffix_array_buffer: self
-                .extra_space_temporary_suffix_array_buffer,
+            extra_space_temporary_array_buffer: self.extra_space_temporary_array_buffer,
             context: None, // TODO
             aux_indices_sampling_rate: self.aux_indices_sampling_rate,
             aux_indices_buffer: self.aux_indices_buffer,
@@ -143,20 +142,20 @@ impl<'a, 'b, 'r, I: SmallAlphabet>
 impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode>
     BwtConstruction<'a, 'b, 'r, I, Undecided, B, Undecided, NoAuxIndices>
 {
-    pub fn with_borrowed_temporary_suffix_array_buffer<O: OutputElement>(
+    pub fn with_borrowed_temporary_array_buffer<O: OutputElement>(
         self,
-        temporary_suffix_array_buffer: &'r mut [O],
+        temporary_array_buffer: &'r mut [O],
     ) -> BwtConstruction<'a, 'b, 'r, I, O, B, Undecided, NoAuxIndices> {
         BwtConstruction {
             text: self.text,
             bwt_buffer: self.bwt_buffer,
-            temporary_suffix_array_buffer: Some(temporary_suffix_array_buffer),
+            temporary_array_buffer: Some(temporary_array_buffer),
             thread_count: self.thread_count,
             ..BwtConstruction::init()
         }
     }
 
-    pub fn with_owned_temporary_suffix_array_buffer<O: OutputElement>(
+    pub fn with_owned_temporary_array_buffer<O: OutputElement>(
         self,
         extra_space: ExtraSpace,
     ) -> BwtConstruction<'a, 'b, 'r, I, O, B, Undecided, NoAuxIndices> {
@@ -164,7 +163,33 @@ impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode>
             text: self.text,
             bwt_buffer: self.bwt_buffer,
             thread_count: self.thread_count,
-            extra_space_temporary_suffix_array_buffer: extra_space,
+            extra_space_temporary_array_buffer: extra_space,
+            ..BwtConstruction::init()
+        }
+    }
+
+    pub fn with_owned_temporary_array_buffer32(
+        self,
+        extra_space: ExtraSpace,
+    ) -> BwtConstruction<'a, 'b, 'r, I, i32, B, Undecided, NoAuxIndices> {
+        BwtConstruction {
+            text: self.text,
+            bwt_buffer: self.bwt_buffer,
+            thread_count: self.thread_count,
+            extra_space_temporary_array_buffer: extra_space,
+            ..BwtConstruction::init()
+        }
+    }
+
+    pub fn with_owned_temporary_array_buffer64(
+        self,
+        extra_space: ExtraSpace,
+    ) -> BwtConstruction<'a, 'b, 'r, I, i64, B, Undecided, NoAuxIndices> {
+        BwtConstruction {
+            text: self.text,
+            bwt_buffer: self.bwt_buffer,
+            thread_count: self.thread_count,
+            extra_space_temporary_array_buffer: extra_space,
             ..BwtConstruction::init()
         }
     }
@@ -253,7 +278,7 @@ impl<
 impl<'a, 'b, 'r, I: SmallAlphabet, O: OutputElement, B: BufferMode, P: Parallelism>
     BwtConstruction<'a, 'b, 'r, I, O, B, P, NoAuxIndices>
 {
-    pub fn run(mut self) -> Result<Bwt<'b, I, B>, SaisError> {
+    pub fn run(mut self) -> Result<Bwt<'b, I, B>, LibsaisError> {
         let text_len = self.text.as_ref().map_or_else(
             || self.bwt_buffer.as_ref().unwrap().len(),
             |text| text.len(),
@@ -263,19 +288,19 @@ impl<'a, 'b, 'r, I: SmallAlphabet, O: OutputElement, B: BufferMode, P: Paralleli
             vec![I::ZERO; text_len]
         });
 
-        let mut suffix_array_buffer =
-            if let Some(borrowed) = self.temporary_suffix_array_buffer.take() {
-                Either::Right(borrowed)
-            } else {
-                Either::Left(super::allocate_suffix_array_buffer::<I, O>(
-                    self.extra_space_temporary_suffix_array_buffer,
-                    text_len,
-                ))
-            };
+        let mut temporary_array_buffer = if let Some(borrowed) = self.temporary_array_buffer.take()
+        {
+            Either::Right(borrowed)
+        } else {
+            Either::Left(super::allocate_suffix_array_buffer::<I, O>(
+                self.extra_space_temporary_array_buffer,
+                text_len,
+            ))
+        };
         if let Some(text) = self.text {
             super::sais_safety_checks(
                 text,
-                &suffix_array_buffer,
+                &temporary_array_buffer,
                 &self.context,
                 self.thread_count,
                 false,
@@ -284,7 +309,7 @@ impl<'a, 'b, 'r, I: SmallAlphabet, O: OutputElement, B: BufferMode, P: Paralleli
         } else {
             super::sais_safety_checks(
                 &bwt.buffer,
-                &suffix_array_buffer,
+                &temporary_array_buffer,
                 &self.context,
                 self.thread_count,
                 false,
@@ -294,7 +319,7 @@ impl<'a, 'b, 'r, I: SmallAlphabet, O: OutputElement, B: BufferMode, P: Paralleli
         let (extra_space, text_len, num_threads, frequency_table_ptr) =
             super::cast_and_unpack_parameters(
                 text_len,
-                &suffix_array_buffer,
+                &temporary_array_buffer,
                 self.thread_count,
                 self.frequency_table.take(),
             );
@@ -315,7 +340,7 @@ impl<'a, 'b, 'r, I: SmallAlphabet, O: OutputElement, B: BufferMode, P: Paralleli
             SmallAlphabetFunctionsDispatch::<I, O, P>::libsais_bwt(
                 text_ptr,
                 bwt.buffer.as_mut_ptr(),
-                suffix_array_buffer.as_mut_ptr(),
+                temporary_array_buffer.as_mut_ptr(),
                 text_len,
                 extra_space,
                 frequency_table_ptr,
@@ -339,7 +364,7 @@ impl<
     AuxB: BufferMode,
 > BwtConstruction<'a, 'b, 'r, I, O, BwtB, P, AuxB>
 {
-    pub fn run(mut self) -> Result<BwtWithAuxIndices<'a, 'b, I, O, AuxB, BwtB>, SaisError> {
+    pub fn run(mut self) -> Result<BwtWithAuxIndices<'a, 'b, I, O, AuxB, BwtB>, LibsaisError> {
         let text_len = self.text.as_ref().map_or_else(
             || self.bwt_buffer.as_ref().unwrap().len(),
             |text| text.len(),
@@ -349,19 +374,20 @@ impl<
             vec![I::ZERO; text_len]
         });
 
-        let mut suffix_array_buffer =
-            if let Some(borrowed) = self.temporary_suffix_array_buffer.take() {
-                Either::Right(borrowed)
-            } else {
-                Either::Left(super::allocate_suffix_array_buffer::<I, O>(
-                    self.extra_space_temporary_suffix_array_buffer,
-                    text_len,
-                ))
-            };
+        let mut temporary_array_buffer = if let Some(borrowed) = self.temporary_array_buffer.take()
+        {
+            Either::Right(borrowed)
+        } else {
+            Either::Left(super::allocate_suffix_array_buffer::<I, O>(
+                self.extra_space_temporary_array_buffer,
+                text_len,
+            ))
+        };
+
         if let Some(text) = self.text {
             super::sais_safety_checks(
                 text,
-                &suffix_array_buffer,
+                &temporary_array_buffer,
                 &self.context,
                 self.thread_count,
                 false,
@@ -370,7 +396,7 @@ impl<
         } else {
             super::sais_safety_checks(
                 &bwt.buffer,
-                &suffix_array_buffer,
+                &temporary_array_buffer,
                 &self.context,
                 self.thread_count,
                 false,
@@ -392,7 +418,7 @@ impl<
         let (extra_space, text_len, num_threads, frequency_table_ptr) =
             super::cast_and_unpack_parameters(
                 text_len,
-                &suffix_array_buffer,
+                &temporary_array_buffer,
                 self.thread_count,
                 self.frequency_table.take(),
             );
@@ -413,7 +439,7 @@ impl<
             SmallAlphabetFunctionsDispatch::<I, O, P>::libsais_bwt_aux(
                 text_ptr,
                 bwt.buffer.as_mut_ptr(),
-                suffix_array_buffer.as_mut_ptr(),
+                temporary_array_buffer.as_mut_ptr(),
                 text_len,
                 extra_space,
                 frequency_table_ptr,

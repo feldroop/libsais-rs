@@ -85,7 +85,7 @@ impl<I: InputElement, O: OutputElementOrUndecided, P: ParallelismOrUndecided> Dr
     }
 }
 
-pub struct UnbwtContext<I: InputElement, O: OutputElementOrUndecided, P: ParallelismOrUndecided> {
+pub struct UnBwtContext<I: InputElement, O: OutputElementOrUndecided, P: ParallelismOrUndecided> {
     ptr: *mut c_void,
     num_threads: u16,
     _input_marker: PhantomData<I>,
@@ -93,7 +93,7 @@ pub struct UnbwtContext<I: InputElement, O: OutputElementOrUndecided, P: Paralle
     _parallelism_marker: PhantomData<P>,
 }
 
-impl<I: SmallAlphabet> UnbwtContext<I, i32, SingleThreaded> {
+impl<I: SmallAlphabet> UnBwtContext<I, i32, SingleThreaded> {
     pub fn new_single_threaded() -> Self {
         Self::new(ThreadCount::fixed(1))
     }
@@ -103,7 +103,7 @@ impl<I: SmallAlphabet> UnbwtContext<I, i32, SingleThreaded> {
     }
 }
 
-impl<I: SmallAlphabet> UnbwtContext<I, i32, MultiThreaded> {
+impl<I: SmallAlphabet> UnBwtContext<I, i32, MultiThreaded> {
     pub fn new_multi_threaded(thread_count: ThreadCount) -> Self {
         Self::new(thread_count)
     }
@@ -113,7 +113,7 @@ impl<I: SmallAlphabet> UnbwtContext<I, i32, MultiThreaded> {
     }
 }
 
-impl<I: SmallAlphabet, P: Parallelism> UnbwtContext<I, i32, P> {
+impl<I: SmallAlphabet, P: Parallelism> UnBwtContext<I, i32, P> {
     fn new(thread_count: ThreadCount) -> Self {
         Self::try_new(thread_count).expect("libsais create ctx should not return nullpointer")
     }
@@ -140,7 +140,7 @@ impl<I: SmallAlphabet, P: Parallelism> UnbwtContext<I, i32, P> {
     }
 }
 
-impl<I: InputElement, O: OutputElement, P: Parallelism> UnbwtContext<I, O, P> {
+impl<I: InputElement, O: OutputElement, P: Parallelism> UnBwtContext<I, O, P> {
     pub fn as_mut_ptr(&self) -> *mut c_void {
         self.ptr
     }
@@ -151,7 +151,7 @@ impl<I: InputElement, O: OutputElement, P: Parallelism> UnbwtContext<I, O, P> {
 }
 
 impl<I: InputElement, O: OutputElementOrUndecided, P: ParallelismOrUndecided> Drop
-    for UnbwtContext<I, O, P>
+    for UnBwtContext<I, O, P>
 {
     fn drop(&mut self) {
         // TODO
