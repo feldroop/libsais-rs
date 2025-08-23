@@ -21,7 +21,7 @@ openmp = ["libsais-sys/openmp"]
 
 [dependencies.libsais-sys]
 path = "libsais-sys"
-version = "0.1.0"
+version = "0.1.2"
 default-features = false
 
 [dependencies]

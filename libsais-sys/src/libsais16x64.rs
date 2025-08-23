@@ -2,8 +2,8 @@
 
 pub const LIBSAIS16X64_VERSION_MAJOR: u32 = 2;
 pub const LIBSAIS16X64_VERSION_MINOR: u32 = 10;
-pub const LIBSAIS16X64_VERSION_PATCH: u32 = 2;
-pub const LIBSAIS16X64_VERSION_STRING: &str = "2.10.2";
+pub const LIBSAIS16X64_VERSION_PATCH: u32 = 3;
+pub const LIBSAIS16X64_VERSION_STRING: &str = "2.10.3";
 
 unsafe extern "C" {
     /// Constructs the suffix array of a given 16-bit string.

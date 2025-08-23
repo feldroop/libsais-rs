@@ -2,8 +2,8 @@
 
 pub const LIBSAIS_VERSION_MAJOR: u32 = 2;
 pub const LIBSAIS_VERSION_MINOR: u32 = 10;
-pub const LIBSAIS_VERSION_PATCH: u32 = 2;
-pub const LIBSAIS_VERSION_STRING: &str = "2.10.2";
+pub const LIBSAIS_VERSION_PATCH: u32 = 3;
+pub const LIBSAIS_VERSION_STRING: &str = "2.10.3";
 
 unsafe extern "C" {
     /// Creates the libsais context that allows reusing allocated memory with each libsais operation.In multi-threaded environments, use one context per thread for parallel executions.
