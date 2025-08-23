@@ -50,6 +50,10 @@ pub fn is_suffix_array<I: InputElement, O: OutputElement>(
         return true;
     }
 
+    if text.len() != maybe_suffix_array.len() {
+        return false;
+    }
+
     for indices in maybe_suffix_array.windows(2) {
         let previous = indices[0].into() as usize;
         let current = indices[1].into() as usize;

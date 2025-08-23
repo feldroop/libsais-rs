@@ -21,7 +21,12 @@ pub use construction::{
 
 // TODOs:
 
-//      refactor owned_or_borrowed to be (more) typesafe
+//      put things in the right places (especially type_model) (with pub exports)
+//      derives of public types
+//      small benchmarks
+//      setup CI and such
+//      good docs and examples, README
+//      release-plz good release (also libsais-sys)
 
 //      wait for answers on ilya grebnov questions
 //      figure out whether to use ParallelismUndebiced or no Parallelism at all
@@ -29,13 +34,3 @@ pub use construction::{
 //      make context sound via forcing parallelism decision before supplying context (probably for all contructions)
 //      when context is there, could get rid of parallelism marker
 //      context in into other marker type
-
-//      more tests ((empty text, bwt and sa), untested combinations, bwt with temp sa buf)
-//      primary_index option? (depending on what happens with empty text)
-
-//      put things in the right places (especially type_model) (with pub exports)
-//      derives of public types
-//      small benchmarks
-//      setup CI and such
-//      good docs and examples, README
-//      release-plz good release (also libsais-sys)

@@ -150,15 +150,15 @@ impl<'b, 'r, 't, I: SmallAlphabet, BwtB: BufferMode, TextB: BufferMode>
         self.into_other_output_type_with_temporary_array_buffer(None)
     }
 
-    pub fn with_owned_temporary_array_buffer32<O: OutputElement>(
+    pub fn with_owned_temporary_array_buffer32(
         self,
-    ) -> UnBwt<'b, 'r, 't, I, O, BwtB, TextB, Undecided> {
+    ) -> UnBwt<'b, 'r, 't, I, i32, BwtB, TextB, Undecided> {
         self.into_other_output_type_with_temporary_array_buffer(None)
     }
 
-    pub fn with_owned_temporary_array_buffer64<O: OutputElement>(
+    pub fn with_owned_temporary_array_buffer64(
         self,
-    ) -> UnBwt<'b, 'r, 't, I, O, BwtB, TextB, Undecided> {
+    ) -> UnBwt<'b, 'r, 't, I, i64, BwtB, TextB, Undecided> {
         self.into_other_output_type_with_temporary_array_buffer(None)
     }
 }

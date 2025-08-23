@@ -1,9 +1,34 @@
 use libsais::construction::AuxIndicesSamplingRate;
 use libsais::context::UnBwtContext;
+use libsais::data_structures::Bwt;
+use libsais::helpers;
 use libsais::{BwtConstruction, ExtraSpace};
 mod common;
 
 use common::setup_basic_example;
+
+#[test]
+fn empty_text_bwt_unbwt() {
+    let bwt: Bwt<u8, _> = BwtConstruction::for_text(&[])
+        .in_owned_buffer()
+        .with_owned_temporary_array_buffer32(ExtraSpace::None)
+        .single_threaded()
+        .run()
+        .expect("libsais bwt should run without an error");
+
+    assert_eq!(0, bwt.primary_index());
+
+    assert!(helpers::is_libsais_bwt::<u8, i32>(&[], &[], bwt.bwt()));
+
+    let text = bwt
+        .unbwt()
+        .with_owned_temporary_array_buffer32()
+        .single_threaded()
+        .run()
+        .expect("libsais unbwt should run without an error");
+
+    assert!(text.as_slice().is_empty());
+}
 
 #[test]
 fn unbwt() {

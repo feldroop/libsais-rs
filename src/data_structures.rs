@@ -400,12 +400,3 @@ where
         Self::new(B::unwrap_or_allocate(opt, f))
     }
 }
-
-impl<'a, T, B1: BufferMode> OwnedOrBorrowed<'a, T, B1> {
-    pub(crate) fn into_other_marker_type<B2: BufferMode>(self) -> OwnedOrBorrowed<'a, T, B2> {
-        OwnedOrBorrowed {
-            buffer: self.buffer,
-            _marker: PhantomData,
-        }
-    }
-}

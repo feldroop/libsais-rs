@@ -41,22 +41,17 @@ impl<
     's,
     O: OutputElement,
     LcpB1: BufferModeOrReplaceInput,
-    PlcpB1: BufferMode,
-    SaB1: BufferMode,
+    PlcpB: BufferMode,
+    SaB: BufferMode,
     P1: Parallelism,
-> LcpConstruction<'l, 'p, 's, O, LcpB1, PlcpB1, SaB1, P1>
+> LcpConstruction<'l, 'p, 's, O, LcpB1, PlcpB, SaB, P1>
 {
-    fn into_other_marker_type<
-        LcpB2: BufferModeOrReplaceInput,
-        PlcpB2: BufferMode,
-        SaB2: BufferMode,
-        P2: Parallelism,
-    >(
+    fn into_other_marker_type<LcpB2: BufferModeOrReplaceInput, P2: Parallelism>(
         self,
-    ) -> LcpConstruction<'l, 'p, 's, O, LcpB2, PlcpB2, SaB2, P2> {
+    ) -> LcpConstruction<'l, 'p, 's, O, LcpB2, PlcpB, SaB, P2> {
         LcpConstruction {
-            plcp_buffer: self.plcp_buffer.into_other_marker_type(),
-            suffix_array_buffer: self.suffix_array_buffer.into_other_marker_type(),
+            plcp_buffer: self.plcp_buffer,
+            suffix_array_buffer: self.suffix_array_buffer,
             lcp_buffer: self.lcp_buffer,
             thread_count: self.thread_count,
             is_generalized_suffix_array: self.is_generalized_suffix_array,

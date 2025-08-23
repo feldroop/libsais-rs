@@ -1,9 +1,22 @@
+use libsais::data_structures::SuffixArrayWithText;
 #[allow(unused)]
 use libsais::{ExtraSpace, SuffixArrayConstruction, ThreadCount, helpers};
 
 mod common;
 
 use common::{setup_basic_example, setup_generalized_suffix_array_example};
+
+#[test]
+fn empty_text() {
+    let res: SuffixArrayWithText<u8, _, _> = SuffixArrayConstruction::for_text(&[])
+        .in_owned_buffer32()
+        .run()
+        .expect("libsais should run without an error");
+
+    assert!(res.suffix_array().is_empty());
+
+    assert!(helpers::is_suffix_array(res.text(), res.suffix_array()));
+}
 
 #[test]
 fn libsais_basic() {

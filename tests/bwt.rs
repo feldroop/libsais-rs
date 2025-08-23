@@ -8,12 +8,14 @@ mod common;
 use common::setup_basic_example;
 
 #[test]
-fn libsais_bwt() {
-    let (text, extra_space, mut frequency_table, mut ctx) = setup_basic_example();
+fn libsais_bwt_with_borrowed_temporary_array_buffer() {
+    let (text, _, mut frequency_table, mut ctx) = setup_basic_example();
+
+    let mut suffix_array_buffer = [0i32; 42];
 
     let mut construction = BwtConstruction::for_text(text)
         .in_owned_buffer()
-        .with_owned_temporary_array_buffer(ExtraSpace::Fixed { value: extra_space })
+        .with_borrowed_temporary_array_buffer(&mut suffix_array_buffer)
         .single_threaded()
         .with_context(&mut ctx);
 
