@@ -22,7 +22,6 @@ pub use construction::{
 // TODOs:
 
 //      refactor owned_or_borrowed to be (more) typesafe
-//      fix is libsais gsa for sentinel management
 
 //      wait for answers on ilya grebnov questions
 //      figure out whether to use ParallelismUndebiced or no Parallelism at all

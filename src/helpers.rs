@@ -70,21 +70,38 @@ pub fn is_generalized_suffix_array<I: InputElement, O: OutputElement>(
         return true;
     }
 
+    if concatenated_text.len() != maybe_suffix_array.len() {
+        return false;
+    }
+
+    let mut text_with_markers = Vec::new();
+
+    let mut sentinel_weight = -1;
+
+    for c in concatenated_text {
+        if *c == I::ZERO {
+            text_with_markers.push((*c, sentinel_weight));
+            sentinel_weight -= 1;
+        } else {
+            text_with_markers.push((*c, 0));
+        }
+    }
+
     for indices in maybe_suffix_array.windows(2) {
         let previous = indices[0].into() as usize;
         let current = indices[1].into() as usize;
 
-        let previous_full_suffix = &concatenated_text[previous..];
-        let current_full_suffix = &concatenated_text[current..];
+        let previous_full_suffix = &text_with_markers[previous..];
+        let current_full_suffix = &text_with_markers[current..];
 
         let end_previous = previous_full_suffix
             .iter()
-            .position(|&c| c == I::ZERO)
+            .position(|&(c, _)| c == I::ZERO)
             .unwrap();
 
         let end_current = current_full_suffix
             .iter()
-            .position(|&c| c == I::ZERO)
+            .position(|&(c, _)| c == I::ZERO)
             .unwrap();
 
         let previous_suffix = if end_previous == previous_full_suffix.len() {
@@ -189,39 +206,29 @@ pub fn is_libsais_lcp<I: InputElement, O: OutputElement>(
 
         let lcp_value = lcp[i + 1].into();
 
-        if is_generalized_suffix_array {
-            if longest_common_prefix_gsa(&text[first..], &text[second..]) != lcp_value as usize {
-                return false;
-            }
-        } else {
-            if longest_common_prefix(&text[first..], &text[second..]) != lcp_value as usize {
-                return false;
-            }
+        if longest_common_prefix(&text[first..], &text[second..], is_generalized_suffix_array)
+            != lcp_value as usize
+        {
+            return false;
         }
     }
 
     true
 }
 
-fn longest_common_prefix<I: InputElement>(t1: &[I], t2: &[I]) -> usize {
+fn longest_common_prefix<I: InputElement>(
+    t1: &[I],
+    t2: &[I],
+    is_generalized_suffix_array: bool,
+) -> usize {
     let mut lcp = 0;
 
     for (c1, c2) in std::iter::zip(t1, t2) {
-        if c1 != c2 {
+        if is_generalized_suffix_array && (*c1 == I::ZERO || *c2 == I::ZERO) {
             break;
         }
 
-        lcp += 1;
-    }
-
-    lcp
-}
-
-fn longest_common_prefix_gsa<I: InputElement>(t1: &[I], t2: &[I]) -> usize {
-    let mut lcp = 0;
-
-    for (c1, c2) in std::iter::zip(t1, t2) {
-        if c1 != c2 || *c1 == I::ZERO || *c2 == I::ZERO {
+        if c1 != c2 {
             break;
         }
 
