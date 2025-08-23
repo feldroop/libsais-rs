@@ -6,10 +6,15 @@ use crate::{
     data_structures::{LcpAndPlcp, OwnedOrBorrowed, SuffixArrayWithLcpAndPlcp},
     type_model::{
         BorrowedBuffer, BufferMode, BufferModeOrReplaceInput, LcpFunctionsDispatch,
-        LibsaisLcpFunctions, MultiThreaded, OutputElement, OwnedBuffer, Parallelism, ReplaceInput,
-        SingleThreaded,
+        LibsaisLcpFunctions, OutputElement, OwnedBuffer, Parallelism, ReplaceInput,
     },
 };
+
+#[allow(unused)]
+use crate::type_model::SingleThreaded;
+
+#[cfg(feature = "openmp")]
+use crate::type_model::MultiThreaded;
 
 pub struct LcpConstruction<
     'l,
@@ -146,7 +151,6 @@ impl<'l, 'p, 's, O: OutputElement, PlcpB: BufferMode, SaB: BufferMode, P: Parall
     }
 }
 
-// TODO implement
 impl<
     'l,
     'p,

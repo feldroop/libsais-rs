@@ -9,11 +9,14 @@ use crate::{
     context::UnBwtContext,
     data_structures::{OwnedOrBorrowed, Text},
     type_model::{
-        BorrowedBuffer, BufferMode, LibsaisFunctionsSmallAlphabet, MultiThreaded, OutputElement,
+        BorrowedBuffer, BufferMode, LibsaisFunctionsSmallAlphabet, OutputElement,
         OutputElementOrUndecided, OwnedBuffer, Parallelism, ParallelismOrUndecided, SingleThreaded,
         SmallAlphabet, SmallAlphabetFunctionsDispatch, Undecided,
     },
 };
+
+#[cfg(feature = "openmp")]
+use crate::type_model::MultiThreaded;
 
 pub struct UnBwt<
     'b,

@@ -3,11 +3,14 @@ use std::{ffi::c_void, marker::PhantomData};
 use crate::{
     ThreadCount,
     type_model::{
-        InputElement, LibsaisFunctionsSmallAlphabet, MultiThreaded, OutputElement,
-        OutputElementOrUndecided, Parallelism, ParallelismOrUndecided, SingleThreaded,
-        SmallAlphabet, SmallAlphabetFunctionsDispatch,
+        InputElement, LibsaisFunctionsSmallAlphabet, OutputElement, OutputElementOrUndecided,
+        Parallelism, ParallelismOrUndecided, SingleThreaded, SmallAlphabet,
+        SmallAlphabetFunctionsDispatch,
     },
 };
+
+#[cfg(feature = "openmp")]
+use crate::type_model::MultiThreaded;
 
 pub struct Context<I: InputElement, O: OutputElementOrUndecided, P: ParallelismOrUndecided> {
     ptr: *mut c_void,
@@ -103,6 +106,7 @@ impl<I: SmallAlphabet> UnBwtContext<I, i32, SingleThreaded> {
     }
 }
 
+#[cfg(feature = "openmp")]
 impl<I: SmallAlphabet> UnBwtContext<I, i32, MultiThreaded> {
     pub fn new_multi_threaded(thread_count: ThreadCount) -> Self {
         Self::new(thread_count)

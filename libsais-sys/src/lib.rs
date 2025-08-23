@@ -11,6 +11,7 @@ The OpenMP support is guarded by the `openmp` feature of this crate, which is en
 
 #![allow(non_camel_case_types)]
 
+#[cfg(feature = "openmp")]
 extern crate openmp_sys;
 
 /// Version of the library for 8-bit inputs smaller than 2GB (2147483648 bytes).

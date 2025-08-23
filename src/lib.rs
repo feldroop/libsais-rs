@@ -19,18 +19,6 @@ pub use construction::{
     plcp::PlcpConstruction, suffix_array::SuffixArrayConstruction, unbwt::UnBwt,
 };
 
-// functionality differences:
-// libsais: full
-// libsais16: (-2) no plcp_int_[omp] (int functions are repetitive anyway)
-// libsais64, 16x64: (-2) no plcp_long_[omp], (-12) no*_ctx functions
-
-// output structures: SA, SA+BWT, SA+BWT+AUX, GSA for multistring
-
-// required extra config: aux -> sampling rate, alhpabet size for int array, unbwt primary index
-// optional extra config: with context, unbwt context, omp, frequency table
-
-// other queries: lcp from plcp and sa, plcp from sa/gsa and text, unbwt
-
 // TODOs:
 
 //      refactor owned_or_borrowed to be (more) typesafe
@@ -51,5 +39,4 @@ pub use construction::{
 //      small benchmarks
 //      setup CI and such
 //      good docs and examples, README
-//      test without openmp
 //      release-plz good release (also libsais-sys)

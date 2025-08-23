@@ -1,13 +1,17 @@
 use super::IntoSaisResult;
 use crate::LibsaisError;
+use crate::ThreadCount;
 use crate::data_structures::{OwnedOrBorrowed, SuffixArrayWithPlcp};
-#[cfg(feature = "openmp")]
-use crate::type_model::MultiThreaded;
 use crate::type_model::{
     BorrowedBuffer, BufferMode, InputElement, LcpFunctionsDispatch, LibsaisLcpFunctions,
     OutputElement, OwnedBuffer, Parallelism,
 };
-use crate::{ThreadCount, type_model::SingleThreaded};
+
+#[allow(unused)]
+use crate::type_model::SingleThreaded;
+
+#[cfg(feature = "openmp")]
+use crate::type_model::MultiThreaded;
 
 use std::marker::PhantomData;
 

@@ -1,3 +1,4 @@
+#[allow(unused)]
 use libsais::{ExtraSpace, SuffixArrayConstruction, ThreadCount, helpers};
 
 mod common;
