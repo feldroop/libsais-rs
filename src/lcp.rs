@@ -17,6 +17,7 @@ use crate::type_state::SingleThreaded;
 #[cfg(feature = "openmp")]
 use crate::type_state::MultiThreaded;
 
+#[derive(Debug)]
 pub struct LcpConstruction<
     'l,
     'p,
@@ -206,6 +207,7 @@ impl<
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct SuffixArrayWithLcpAndPlcp<
     'l,
     'p,
@@ -257,6 +259,7 @@ impl<'l, 'p, 's, O: OutputElement, LcpB: BufferMode, PlcpB: BufferMode, SaB: Buf
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct LcpAndPlcp<'l, 'p, O: OutputElement, LcpB: BufferMode, PlcpB: BufferMode> {
     pub(crate) lcp: OwnedOrBorrowed<'l, O, LcpB>,
     pub(crate) plcp: OwnedOrBorrowed<'p, O, PlcpB>,

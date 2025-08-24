@@ -20,6 +20,7 @@ use crate::{
 #[cfg(feature = "openmp")]
 use crate::type_state::MultiThreaded;
 
+#[derive(Debug)]
 pub struct BwtConstruction<
     'a,
     'b,
@@ -504,7 +505,7 @@ impl<
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Bwt<'b, I: SmallAlphabet, B: BufferMode> {
     pub(crate) bwt: OwnedOrBorrowed<'b, I, B>,
     pub(crate) primary_index: usize,
@@ -552,7 +553,7 @@ impl<I: SmallAlphabet> Bwt<'static, I, OwnedBuffer> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct BwtWithAuxIndices<
     'a,
     'b,
@@ -623,7 +624,7 @@ impl<'a, 'b, I: SmallAlphabet, O: OutputElement, AuxB: BufferMode, BwtB: BufferM
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AuxIndicesSamplingRate<O: OutputElementOrUndecided> {
     pub(crate) value: O,
     pub(crate) value_usize: usize,

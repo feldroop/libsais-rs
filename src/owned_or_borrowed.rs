@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use crate::type_state::BufferMode;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct OwnedOrBorrowed<'a, T, B> {
     pub(crate) buffer: Either<Vec<T>, &'a mut [T]>,
     pub(crate) _marker: PhantomData<B>,

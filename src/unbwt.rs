@@ -19,6 +19,7 @@ use crate::{
 #[cfg(feature = "openmp")]
 use crate::type_state::MultiThreaded;
 
+#[derive(Debug)]
 pub struct UnBwt<
     'b,
     'r,
@@ -338,7 +339,7 @@ impl<
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Text<'t, I: InputElement, B: BufferMode> {
     pub(crate) text: OwnedOrBorrowed<'t, I, B>,
 }

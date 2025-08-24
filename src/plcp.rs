@@ -15,6 +15,7 @@ use crate::type_state::SingleThreaded;
 #[cfg(feature = "openmp")]
 use crate::type_state::MultiThreaded;
 
+#[derive(Debug)]
 pub struct PlcpConstruction<
     'p,
     's,
@@ -140,7 +141,7 @@ impl<
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct SuffixArrayWithPlcp<'p, 's, O: OutputElement, PlcpB: BufferMode, SaB: BufferMode> {
     pub(crate) plcp: OwnedOrBorrowed<'p, O, PlcpB>,
     pub(crate) suffix_array: OwnedOrBorrowed<'s, O, SaB>,

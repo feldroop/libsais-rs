@@ -1,3 +1,5 @@
+use std::fmt::{Debug, Display};
+
 use crate::OutputElement;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -17,6 +19,14 @@ impl LibsaisError {
         }
     }
 }
+
+impl Display for LibsaisError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        <LibsaisError as std::fmt::Debug>::fmt(&self, f)
+    }
+}
+
+impl std::error::Error for LibsaisError {}
 
 pub(crate) trait IntoSaisResult {
     fn into_empty_sais_result(self) -> Result<(), LibsaisError>;

@@ -22,6 +22,7 @@ use crate::type_state::MultiThreaded;
 
 use std::marker::PhantomData;
 
+#[derive(Debug)]
 pub struct SuffixArrayConstruction<
     'r,
     's,
@@ -337,7 +338,7 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelis
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct SuffixArrayWithText<'s, 't, I: InputElement, O: OutputElement, B: BufferMode> {
     pub(crate) suffix_array: OwnedOrBorrowed<'s, O, B>,
     pub(crate) text: &'t [I],
@@ -445,6 +446,7 @@ impl ExtraSpace {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AlphabetSize<O: OutputElement>(AlphabetSizeInner<O>);
 
 impl<O: OutputElement> AlphabetSize<O> {
@@ -453,7 +455,7 @@ impl<O: OutputElement> AlphabetSize<O> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 enum AlphabetSizeInner<O: OutputElementOrUndecided> {
     ComputeFromMaxOfText,
     Fixed { value: O },

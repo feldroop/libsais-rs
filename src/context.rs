@@ -9,6 +9,7 @@ use crate::{
 #[cfg(feature = "openmp")]
 use crate::type_state::MultiThreaded;
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct Context<I: InputElement, O: OutputElementOrUndecided, P: ParallelismOrUndecided> {
     ptr: *mut c_void,
     num_threads: u16,
@@ -85,6 +86,7 @@ impl<I: InputElement, O: OutputElementOrUndecided, P: ParallelismOrUndecided> Dr
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct UnBwtContext<I: InputElement, O: OutputElementOrUndecided, P: ParallelismOrUndecided> {
     ptr: *mut c_void,
     num_threads: u16,

@@ -40,7 +40,7 @@ pub use {
 //      good docs and examples, README (figure out good pub exports)
 //      release-plz good release (also libsais-sys update)
 
-//      wait for answers on ilya grebnov questions
+//      wait for answer on ilya grebnov context question
 //      figure out whether to use ParallelismUndebiced or no Parallelism at all
 //      fix context drop/undecided issue in drop (also TODOs in safe comment)
 //      make context sound via forcing parallelism decision before supplying context (probably for all contructions)
@@ -99,7 +99,7 @@ pub trait SmallAlphabet: InputElement {
 
 pub trait LargeAlphabet: InputElement + OutputElement {}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ThreadCount {
     pub(crate) value: u16,
 }
