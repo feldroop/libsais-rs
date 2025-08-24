@@ -35,9 +35,6 @@ pub use {
 
 //      derives of public types
 
-//      AuxIndicesSamplingRate, bwt owned_buffer no extra space, alphabet_size
-//      probably change sampling rate to be generic again
-
 //      small benchmarks
 //      setup CI and such
 //      good docs and examples, README (figure out good pub exports)

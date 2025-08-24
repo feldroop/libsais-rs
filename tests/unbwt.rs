@@ -1,5 +1,4 @@
-use libsais::bwt::AuxIndicesSamplingRate;
-use libsais::bwt::Bwt;
+use libsais::bwt::{AuxIndicesSamplingRate, Bwt};
 use libsais::context::UnBwtContext;
 use libsais::{BwtConstruction, suffix_array::ExtraSpace};
 
@@ -11,7 +10,7 @@ use common::*;
 fn empty_text_bwt_unbwt() {
     let bwt: Bwt<u8, _> = BwtConstruction::for_text(&[])
         .in_owned_buffer()
-        .with_owned_temporary_array_buffer32(ExtraSpace::None)
+        .with_owned_temporary_array_buffer32()
         .single_threaded()
         .run()
         .expect("libsais bwt should run without an error");
@@ -36,7 +35,7 @@ fn unbwt() {
 
     let mut construction = BwtConstruction::for_text(text)
         .in_owned_buffer()
-        .with_owned_temporary_array_buffer32(ExtraSpace::Recommended)
+        .with_owned_temporary_array_buffer_and_extra_space32(ExtraSpace::None)
         .single_threaded()
         .with_context(&mut ctx);
 
@@ -75,7 +74,7 @@ fn unbwt_in_place_with_aux() {
     let mut text_then_bwt_then_text = text.to_vec();
 
     let mut construction = BwtConstruction::replace_text(&mut text_then_bwt_then_text)
-        .with_owned_temporary_array_buffer32(ExtraSpace::Recommended)
+        .with_owned_temporary_array_buffer32()
         .single_threaded()
         .with_context(&mut ctx)
         .with_aux_indices(AuxIndicesSamplingRate::from(2));

@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use crate::{
     InputElement, OutputElement, SmallAlphabet, ThreadCount,
-    bwt::AuxIndicesSamplingRate,
+    bwt::{AuxIndicesSamplingRate, IntoOtherInner},
     context::UnBwtContext,
     error::{IntoSaisResult, LibsaisError},
     generics_dispatch::{LibsaisFunctionsSmallAlphabet, SmallAlphabetFunctionsDispatch},
@@ -36,7 +36,7 @@ pub struct UnBwt<
     pub(crate) thread_count: ThreadCount,
     pub(crate) context: Option<&'r mut UnBwtContext<I, O, P>>,
     pub(crate) primary_index: Option<usize>,
-    pub(crate) aux_indices_sampling_rate: Option<AuxIndicesSamplingRate>,
+    pub(crate) aux_indices_sampling_rate: Option<AuxIndicesSamplingRate<O>>,
     pub(crate) aux_indices_buffer: Option<Either<Vec<O>, &'r mut [O]>>,
     pub(crate) _text_buffer_mode_marker: PhantomData<TextB>,
 }
@@ -110,7 +110,7 @@ impl<
             thread_count: self.thread_count,
             context: None,
             primary_index: self.primary_index,
-            aux_indices_sampling_rate: self.aux_indices_sampling_rate,
+            aux_indices_sampling_rate: self.aux_indices_sampling_rate.map(|r| r.into_other_inner()),
             aux_indices_buffer: None,
             _text_buffer_mode_marker: PhantomData,
         }
@@ -313,12 +313,11 @@ impl<
             let aux_indices_buffer = self.aux_indices_buffer.unwrap();
             let aux_indices_sampling_rate = self.aux_indices_sampling_rate.unwrap();
 
-            let aux_indices_sampling_rate_output_type =
-                crate::bwt::aux_indices_safety_checks_and_cast_sampling_rate(
-                    bwt_len,
-                    &aux_indices_buffer,
-                    aux_indices_sampling_rate,
-                );
+            crate::bwt::aux_indices_safety_checks_and_cast_sampling_rate(
+                bwt_len,
+                &aux_indices_buffer,
+                aux_indices_sampling_rate,
+            );
 
             unsafe {
                 SmallAlphabetFunctionsDispatch::<I, O, P>::libsais_unbwt_aux(
@@ -327,7 +326,7 @@ impl<
                     temporary_array_buffer.as_mut_ptr(),
                     bwt_len_output_type,
                     frequency_table_ptr,
-                    aux_indices_sampling_rate_output_type,
+                    aux_indices_sampling_rate.value,
                     aux_indices_buffer.as_ptr(),
                     num_threads,
                     self.context.map(|ctx| ctx.as_mut_ptr()),

@@ -37,7 +37,7 @@ pub struct BwtConstruction<
     extra_space_temporary_array_buffer: ExtraSpace,
     thread_count: ThreadCount,
     context: Option<&'r mut Context<I, O, P>>,
-    aux_indices_sampling_rate: Option<AuxIndicesSamplingRate>,
+    aux_indices_sampling_rate: Option<AuxIndicesSamplingRate<O>>,
     aux_indices_buffer: Option<&'a mut [O]>,
     _parallelism_marker: PhantomData<P>,
     _buffer_mode_marker: PhantomData<B>,
@@ -170,6 +170,39 @@ impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode>
 
     pub fn with_owned_temporary_array_buffer<O: OutputElement>(
         self,
+    ) -> BwtConstruction<'a, 'b, 'r, I, O, B, Undecided, NoAuxIndices> {
+        BwtConstruction {
+            text: self.text,
+            bwt_buffer: self.bwt_buffer,
+            thread_count: self.thread_count,
+            ..BwtConstruction::init()
+        }
+    }
+
+    pub fn with_owned_temporary_array_buffer32(
+        self,
+    ) -> BwtConstruction<'a, 'b, 'r, I, i32, B, Undecided, NoAuxIndices> {
+        BwtConstruction {
+            text: self.text,
+            bwt_buffer: self.bwt_buffer,
+            thread_count: self.thread_count,
+            ..BwtConstruction::init()
+        }
+    }
+
+    pub fn with_owned_temporary_array_buffer64(
+        self,
+    ) -> BwtConstruction<'a, 'b, 'r, I, i64, B, Undecided, NoAuxIndices> {
+        BwtConstruction {
+            text: self.text,
+            bwt_buffer: self.bwt_buffer,
+            thread_count: self.thread_count,
+            ..BwtConstruction::init()
+        }
+    }
+
+    pub fn with_owned_temporary_array_buffer_and_extra_space<O: OutputElement>(
+        self,
         extra_space: ExtraSpace,
     ) -> BwtConstruction<'a, 'b, 'r, I, O, B, Undecided, NoAuxIndices> {
         BwtConstruction {
@@ -181,7 +214,7 @@ impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode>
         }
     }
 
-    pub fn with_owned_temporary_array_buffer32(
+    pub fn with_owned_temporary_array_buffer_and_extra_space32(
         self,
         extra_space: ExtraSpace,
     ) -> BwtConstruction<'a, 'b, 'r, I, i32, B, Undecided, NoAuxIndices> {
@@ -194,7 +227,7 @@ impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode>
         }
     }
 
-    pub fn with_owned_temporary_array_buffer64(
+    pub fn with_owned_temporary_array_buffer_and_extra_space64(
         self,
         extra_space: ExtraSpace,
     ) -> BwtConstruction<'a, 'b, 'r, I, i64, B, Undecided, NoAuxIndices> {
@@ -234,7 +267,7 @@ impl<'a, 'b, 'r, I: SmallAlphabet, O: OutputElement, B: BufferMode, P: Paralleli
 {
     pub fn with_aux_indices(
         mut self,
-        aux_indices_sampling_rate: AuxIndicesSamplingRate,
+        aux_indices_sampling_rate: AuxIndicesSamplingRate<O>,
     ) -> BwtConstruction<'a, 'b, 'r, I, O, B, P, OwnedBuffer> {
         self.aux_indices_sampling_rate = Some(aux_indices_sampling_rate);
         self.into_other_marker_type()
@@ -242,7 +275,7 @@ impl<'a, 'b, 'r, I: SmallAlphabet, O: OutputElement, B: BufferMode, P: Paralleli
 
     pub fn with_aux_indices_in_buffer(
         mut self,
-        aux_indices_sampling_rate: AuxIndicesSamplingRate,
+        aux_indices_sampling_rate: AuxIndicesSamplingRate<O>,
         aux_indices_buffer: &'a mut [O],
     ) -> BwtConstruction<'a, 'b, 'r, I, O, B, P, BorrowedBuffer> {
         self.aux_indices_sampling_rate = Some(aux_indices_sampling_rate);
@@ -421,12 +454,12 @@ impl<
             OwnedOrBorrowed::take_buffer_or_allocate(self.aux_indices_buffer.take(), || {
                 vec![O::ZERO; aux_indices_sampling_rate.aux_indices_buffer_size(text_len)]
             });
-        let aux_indices_sampling_rate_output_type =
-            aux_indices_safety_checks_and_cast_sampling_rate(
-                text_len,
-                &aux_indices.buffer,
-                aux_indices_sampling_rate,
-            );
+
+        aux_indices_safety_checks_and_cast_sampling_rate(
+            text_len,
+            &aux_indices.buffer,
+            aux_indices_sampling_rate,
+        );
 
         let (extra_space, text_len, num_threads, frequency_table_ptr) =
             suffix_array::cast_and_unpack_parameters(
@@ -456,7 +489,7 @@ impl<
                 text_len,
                 extra_space,
                 frequency_table_ptr,
-                aux_indices_sampling_rate_output_type,
+                aux_indices_sampling_rate.value,
                 aux_indices.buffer.as_mut_ptr(),
                 num_threads,
                 self.context.map(|ctx| ctx.as_mut_ptr()),
@@ -530,7 +563,7 @@ pub struct BwtWithAuxIndices<
 > {
     pub(crate) bwt: OwnedOrBorrowed<'b, I, BwtB>,
     pub(crate) aux_indices: OwnedOrBorrowed<'a, O, AuxB>,
-    pub(crate) aux_indices_sampling_rate: AuxIndicesSamplingRate,
+    pub(crate) aux_indices_sampling_rate: AuxIndicesSamplingRate<O>,
 }
 
 impl<'a, 'b, I: SmallAlphabet, O: OutputElement, AuxB: BufferMode, BwtB: BufferMode>
@@ -544,7 +577,7 @@ impl<'a, 'b, I: SmallAlphabet, O: OutputElement, AuxB: BufferMode, BwtB: BufferM
         &self.aux_indices.buffer
     }
 
-    pub fn aux_indices_sampling_rate(&self) -> AuxIndicesSamplingRate {
+    pub fn aux_indices_sampling_rate(&self) -> AuxIndicesSamplingRate<O> {
         self.aux_indices_sampling_rate
     }
 
@@ -553,7 +586,7 @@ impl<'a, 'b, I: SmallAlphabet, O: OutputElement, AuxB: BufferMode, BwtB: BufferM
     ) -> (
         BwtB::Buffer<'b, I>,
         AuxB::Buffer<'a, O>,
-        AuxIndicesSamplingRate,
+        AuxIndicesSamplingRate<O>,
     ) {
         (
             self.bwt.into_inner(),
@@ -565,7 +598,7 @@ impl<'a, 'b, I: SmallAlphabet, O: OutputElement, AuxB: BufferMode, BwtB: BufferM
     pub unsafe fn from_parts(
         bwt: BwtB::Buffer<'b, I>,
         aux_indices: AuxB::Buffer<'a, O>,
-        aux_indices_sampling_rate: AuxIndicesSamplingRate,
+        aux_indices_sampling_rate: AuxIndicesSamplingRate<O>,
     ) -> Self {
         Self {
             bwt: OwnedOrBorrowed::new(bwt),
@@ -591,32 +624,55 @@ impl<'a, 'b, I: SmallAlphabet, O: OutputElement, AuxB: BufferMode, BwtB: BufferM
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct AuxIndicesSamplingRate {
-    value: usize,
+pub struct AuxIndicesSamplingRate<O: OutputElementOrUndecided> {
+    pub(crate) value: O,
+    pub(crate) value_usize: usize,
 }
 
-impl AuxIndicesSamplingRate {
+impl<O: OutputElement> AuxIndicesSamplingRate<O> {
     pub fn value(&self) -> usize {
-        self.value
+        self.value_usize
     }
 
     fn aux_indices_buffer_size(self, text_len: usize) -> usize {
         if text_len == 0 {
             0
         } else {
-            (text_len - 1) / self.value + 1
+            (text_len - 1) / self.value_usize + 1
         }
     }
 }
 
-impl From<usize> for AuxIndicesSamplingRate {
-    fn from(value: usize) -> Self {
-        if value < 2 {
-            panic!("Aux sampling rate must be greater than 1");
-        } else if value.count_ones() != 1 {
-            panic!("Aux sampling rate must be a power of two");
+impl<O: OutputElement> From<O> for AuxIndicesSamplingRate<O> {
+    fn from(value: O) -> Self {
+        if value.into() < O::ZERO.into() {
+            panic!("Aux indices sampling rate cannot be negative");
+        }
+
+        let value_usize = value.into() as usize;
+
+        if value_usize < 2 {
+            panic!("Aux indices sampling rate must be greater than 1");
+        } else if value_usize.count_ones() != 1 {
+            panic!("Aux indices sampling rate must be a power of two");
         } else {
-            Self { value }
+            Self { value, value_usize }
+        }
+    }
+}
+
+pub(crate) trait IntoOtherInner<O2: OutputElement> {
+    fn into_other_inner(self) -> AuxIndicesSamplingRate<O2>;
+}
+
+impl<O1: OutputElementOrUndecided, O2: OutputElement> IntoOtherInner<O2>
+    for AuxIndicesSamplingRate<O1>
+{
+    fn into_other_inner(self) -> AuxIndicesSamplingRate<O2> {
+        AuxIndicesSamplingRate {
+            value: O2::try_from(self.value_usize)
+                .expect("Auxiliary indices sampling rate needs to fit into output type"),
+            value_usize: self.value_usize,
         }
     }
 }
@@ -624,13 +680,10 @@ impl From<usize> for AuxIndicesSamplingRate {
 pub(crate) fn aux_indices_safety_checks_and_cast_sampling_rate<O: OutputElement>(
     text_len: usize,
     aux_indices_buffer: &[O],
-    aux_indices_sampling_rate: AuxIndicesSamplingRate,
-) -> O {
+    aux_indices_sampling_rate: AuxIndicesSamplingRate<O>,
+) {
     assert_eq!(
         aux_indices_buffer.len(),
         aux_indices_sampling_rate.aux_indices_buffer_size(text_len)
     );
-
-    O::try_from(aux_indices_sampling_rate.value)
-        .expect("Auxiliary indices sampling rate needs to fit into output element type")
 }

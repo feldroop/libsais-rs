@@ -36,7 +36,7 @@ pub struct SuffixArrayConstruction<
     frequency_table: Option<&'r mut [O]>,
     thread_count: ThreadCount,
     generalized_suffix_array: bool,
-    alphabet_size: AlphabetSize,
+    alphabet_size: AlphabetSizeInner<O>,
     extra_space: ExtraSpace,
     context: Option<&'r mut Context<I, O, P>>,
     _parallelism_marker: PhantomData<P>,
@@ -60,7 +60,7 @@ impl<
             frequency_table: None,
             thread_count: ThreadCount::fixed(1),
             generalized_suffix_array: false,
-            alphabet_size: AlphabetSize::ComputeFromMaxOfText,
+            alphabet_size: AlphabetSizeInner::ComputeFromMaxOfText,
             extra_space: ExtraSpace::Recommended,
             context: None,
             _parallelism_marker: PhantomData,
@@ -221,11 +221,9 @@ impl<'r, 's, 't, I: LargeAlphabet, O: OutputElement, B: BufferMode, P: Paralleli
 {
     /// By calling this function you are asserting that all values of the text
     /// you'll use for this configuration are in the range [0, alphabet_size)
-    pub unsafe fn with_alphabet_size(self, alphabet_size: usize) -> Self {
+    pub unsafe fn with_alphabet_size(self, alphabet_size: AlphabetSize<O>) -> Self {
         Self {
-            alphabet_size: AlphabetSize::Fixed {
-                value: alphabet_size,
-            },
+            alphabet_size: alphabet_size.0,
             ..self
         }
     }
@@ -296,10 +294,10 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelis
             }
             Some(Either::Right(text)) => {
                 let alphabet_size: O = match self.alphabet_size {
-                    AlphabetSize::ComputeFromMaxOfText => {
+                    AlphabetSizeInner::ComputeFromMaxOfText => {
                         compute_and_validate_alphabet_size(text).unwrap_or_else(|e| panic!("{e}"))
                     }
-                    AlphabetSize::Fixed { value } => value
+                    AlphabetSizeInner::Fixed { value } => value
                         .try_into()
                         .expect("The alphabet size needs to fit into the output type."),
                 };
@@ -447,10 +445,18 @@ impl ExtraSpace {
     }
 }
 
+pub struct AlphabetSize<O: OutputElement>(AlphabetSizeInner<O>);
+
+impl<O: OutputElement> AlphabetSize<O> {
+    pub fn new(value: O) -> Self {
+        Self(AlphabetSizeInner::Fixed { value })
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum AlphabetSize {
+enum AlphabetSizeInner<O: OutputElementOrUndecided> {
     ComputeFromMaxOfText,
-    Fixed { value: usize },
+    Fixed { value: O },
 }
 
 pub(crate) fn allocate_suffix_array_buffer<I: InputElement, O: OutputElement>(

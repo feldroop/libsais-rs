@@ -1,4 +1,4 @@
-use libsais::suffix_array::SuffixArrayWithText;
+use libsais::suffix_array::{AlphabetSize, SuffixArrayWithText};
 #[allow(unused)]
 use libsais::{SuffixArrayConstruction, ThreadCount, suffix_array::ExtraSpace};
 
@@ -140,7 +140,7 @@ fn libsais_64input_alphabet_size() {
 
     // SAFETY: the alphabet size is correct and there are no negative values in the example
     unsafe {
-        construction = construction.with_alphabet_size(66);
+        construction = construction.with_alphabet_size(AlphabetSize::new(66));
     }
 
     let res = construction
