@@ -2,7 +2,7 @@ use either::Either;
 
 use std::marker::PhantomData;
 
-use crate::type_model::BufferMode;
+use crate::type_state::BufferMode;
 
 #[derive(Debug)]
 pub(crate) struct OwnedOrBorrowed<'a, T, B> {

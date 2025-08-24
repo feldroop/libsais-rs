@@ -1,20 +1,21 @@
 use std::marker::PhantomData;
 
 use crate::{
-    ThreadCount,
+    OutputElement, ThreadCount,
     error::{IntoSaisResult, LibsaisError},
+    generics_dispatch::{LcpFunctionsDispatch, LibsaisLcpFunctions},
     owned_or_borrowed::OwnedOrBorrowed,
-    type_model::{
-        BorrowedBuffer, BufferMode, BufferModeOrReplaceInput, LcpFunctionsDispatch,
-        LibsaisLcpFunctions, OutputElement, OwnedBuffer, Parallelism, ReplaceInput,
+    type_state::{
+        BorrowedBuffer, BufferMode, BufferModeOrReplaceInput, OwnedBuffer, Parallelism,
+        ReplaceInput,
     },
 };
 
 #[allow(unused)]
-use crate::type_model::SingleThreaded;
+use crate::type_state::SingleThreaded;
 
 #[cfg(feature = "openmp")]
-use crate::type_model::MultiThreaded;
+use crate::type_state::MultiThreaded;
 
 pub struct LcpConstruction<
     'l,

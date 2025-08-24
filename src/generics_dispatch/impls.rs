@@ -1,120 +1,20 @@
-use std::{ffi::c_void, marker::PhantomData};
-
-use either::Either;
 use libsais_sys::{libsais, libsais16, libsais16x64, libsais64};
 
-pub type SmallAlphabetFunctionsDispatch<I, O, P> =
-    <<<P as Parallelism>::WithInput<I, O> as InputDispatch<I, O>>::WithOutput as OutputDispatch<
-        I,
-        O,
-    >>::SmallAlphabetFunctions;
+use std::ffi::c_void;
 
-pub type LargeAlphabetFunctionsDispatch<I, O, P> =
-    <<<P as Parallelism>::WithInput<I, O> as InputDispatch<I, O>>::WithOutput as OutputDispatch<
-        I,
-        O,
-    >>::LargeAlphabetFunctions;
+use super::{
+    FunctionsUnimplemented, LibsaisFunctionsLargeAlphabet, LibsaisFunctionsSmallAlphabet,
+    LibsaisLcpFunctions, SingleThreaded8InputOutputDispatcher,
+    SingleThreaded16InputOutputDispatcher, SingleThreaded32InputOutputDispatcher,
+    SingleThreaded64InputOutputDispatcher,
+};
+use crate::{InputElement, LargeAlphabet, OutputElement, SmallAlphabet, sealed::Sealed};
 
-pub type LcpFunctionsDispatch<I, O, P> = <<<P as Parallelism>::WithInput<I, O> as InputDispatch<
-    I,
-    O,
->>::WithOutput as OutputDispatch<I, O>>::LcpFunctions;
-
-pub trait LibsaisFunctionsSmallAlphabet<I: InputElement, O: OutputElement>: sealed::Sealed {
-    unsafe fn libsais(
-        text_ptr: *const I,
-        suffix_array_buffer_ptr: *mut O,
-        text_len: O,
-        extra_space: O,
-        frequency_table_ptr: *mut O,
-        num_threads: O,
-        generalized_suffix_array: bool,
-        context: Option<*mut c_void>,
-    ) -> O;
-
-    unsafe fn libsais_bwt(
-        text_ptr: *const I,
-        bwt_buffer_ptr: *mut I,
-        suffix_array_buffer_ptr: *mut O,
-        text_len: O,
-        extra_space: O,
-        frequency_table_ptr: *mut O,
-        num_threads: O,
-        context: Option<*mut c_void>,
-    ) -> O;
-
-    unsafe fn libsais_bwt_aux(
-        text_ptr: *const I,
-        bwt_buffer_ptr: *mut I,
-        suffix_array_buffer_ptr: *mut O,
-        text_len: O,
-        extra_space: O,
-        frequency_table_ptr: *mut O,
-        aux_indices_sampling_rate: O,
-        aux_indices_buffer_ptr: *mut O,
-        num_threads: O,
-        context: Option<*mut c_void>,
-    ) -> O;
-
-    unsafe fn libsais_create_ctx(num_threads: O) -> *mut c_void;
-    unsafe fn libsais_free_ctx(ctx: *mut c_void);
-
-    unsafe fn libsais_unbwt(
-        bwt_ptr: *const I,
-        text_buffer_ptr: *mut I,
-        suffix_array_buffer_ptr: *mut O,
-        bwt_len: O,
-        frequency_table_ptr: *const O,
-        primary_index: O,
-        num_threads: O,
-        context: Option<*mut c_void>,
-    ) -> O;
-
-    unsafe fn libsais_unbwt_aux(
-        bwt_ptr: *const I,
-        text_buffer_ptr: *mut I,
-        suffix_array_buffer_ptr: *mut O,
-        bwt_len: O,
-        frequency_table_ptr: *const O,
-        aux_indices_sampling_rate: O,
-        aux_indices_buffer_ptr: *const O,
-        num_threads: O,
-        context: Option<*mut c_void>,
-    ) -> O;
-
-    unsafe fn libsais_unbwt_create_ctx(num_threads: O) -> *mut c_void;
-    unsafe fn libsais_unbwt_free_ctx(ctx: *mut c_void);
-}
-
-pub trait LibsaisFunctionsLargeAlphabet<I: InputElement, O: OutputElement>: sealed::Sealed {
-    unsafe fn libsais_large_alphabet(
-        text_ptr: *mut I,
-        suffix_array_buffer_ptr: *mut O,
-        text_len: O,
-        alphabet_size: O,
-        extra_space: O,
-        num_threads: O,
-    ) -> O;
-}
-
-pub trait LibsaisLcpFunctions<I: InputElement, O: OutputElement>: sealed::Sealed {
-    unsafe fn libsais_plcp(
-        text_ptr: *const I,
-        suffix_array_ptr: *const O,
-        plcp_ptr: *mut O,
-        text_len: O,
-        num_threads: O,
-        generalized_suffix_array: bool,
-    ) -> O;
-
-    unsafe fn libsais_lcp(
-        plcp_ptr: *const O,
-        suffix_array_ptr: *const O,
-        lcp_ptr: *mut O,
-        suffix_array_len: O,
-        num_threads: O,
-    ) -> O;
-}
+#[cfg(feature = "openmp")]
+use super::{
+    MultiThreaded8InputOutputDispatcher, MultiThreaded16InputOutputDispatcher,
+    MultiThreaded32InputOutputDispatcher, MultiThreaded64InputOutputDispatcher,
+};
 
 macro_rules! fn_or_unimplemented {
     ($mod_name:ident, unimplemented, $($parameter:ident),*) => {
@@ -259,7 +159,7 @@ macro_rules! libsais_functions_small_alphabet_impl {
         pub struct $struct_name {}
 
         #[cfg($($parallelism_tail)+)]
-        impl sealed::Sealed for $struct_name {}
+        impl Sealed for $struct_name {}
 
         #[cfg($($parallelism_tail)+)]
         impl LibsaisFunctionsSmallAlphabet<$input_type, $output_type> for $struct_name {
@@ -571,7 +471,7 @@ macro_rules! libsais_functions_large_alphabet_impl {
         pub struct $struct_name {}
 
         #[cfg($($parallelism_tail)+)]
-        impl sealed::Sealed for $struct_name {}
+        impl Sealed for $struct_name {}
 
         #[cfg($($parallelism_tail)+)]
         impl LibsaisFunctionsLargeAlphabet<$input_type, $output_type> for $struct_name {
@@ -876,353 +776,9 @@ libsais_functions_large_alphabet_impl!(
     feature = "openmp"
 );
 
-// -------------------- placeholder type for output dispatch --------------------
-pub struct FunctionsUnimplemented {}
+impl Sealed for u8 {}
 
-impl sealed::Sealed for FunctionsUnimplemented {}
-
-impl<I: InputElement, O: OutputElement> LibsaisFunctionsSmallAlphabet<I, O>
-    for FunctionsUnimplemented
-{
-    unsafe fn libsais(
-        _text_ptr: *const I,
-        _suffix_array_buffer_ptr: *mut O,
-        _text_len: O,
-        _extra_space: O,
-        _frequency_table_ptr: *mut O,
-        _num_threads: O,
-        _generalized_suffix_array: bool,
-        _context: Option<*mut c_void>,
-    ) -> O {
-        unimplemented!(
-            "There is no libsais implementation for this combination of input and output types.",
-        );
-    }
-
-    unsafe fn libsais_bwt(
-        _text_ptr: *const I,
-        _bwt_buffer_ptr: *mut I,
-        _suffix_array_buffer_ptr: *mut O,
-        _text_len: O,
-        _extra_space: O,
-        _frequency_table_ptr: *mut O,
-        _num_threads: O,
-        _context: Option<*mut c_void>,
-    ) -> O {
-        unimplemented!(
-            "There is no libsais bwt implementation for this combination of input and output types.",
-        );
-    }
-
-    unsafe fn libsais_bwt_aux(
-        _text_ptr: *const I,
-        _bwt_buffer_ptr: *mut I,
-        _suffix_array_buffer_ptr: *mut O,
-        _text_len: O,
-        _extra_space: O,
-        _frequency_table_ptr: *mut O,
-        _aux_indices_sampling_rate: O,
-        _aux_indices_buffer_ptr: *mut O,
-        _num_threads: O,
-        _context: Option<*mut c_void>,
-    ) -> O {
-        unimplemented!(
-            "There is no libsais bwt aux implementation for this combination of input and output types.",
-        );
-    }
-
-    unsafe fn libsais_create_ctx(_num_threads: O) -> *mut c_void {
-        unimplemented!(
-            "There is no libsais create ctx implementation for this combination of input and output types.",
-        );
-    }
-
-    unsafe fn libsais_free_ctx(_ctx: *mut c_void) {
-        unimplemented!(
-            "There is no libsais free ctx implementation for this combination of input and output types.",
-        );
-    }
-
-    unsafe fn libsais_unbwt(
-        _bwt_ptr: *const I,
-        _text_ptr: *mut I,
-        _suffix_array_buffer_ptr: *mut O,
-        _bwt_len: O,
-        _frequency_table_ptr: *const O,
-        _primary_index: O,
-        _num_threads: O,
-        _context: Option<*mut c_void>,
-    ) -> O {
-        unimplemented!(
-            "There is no libsais unbwt implementation for this combination of input and output types.",
-        );
-    }
-
-    unsafe fn libsais_unbwt_aux(
-        _bwt_ptr: *const I,
-        _text_ptr: *mut I,
-        _suffix_array_buffer_ptr: *mut O,
-        _bwt_len: O,
-        _frequency_table_ptr: *const O,
-        _aux_indices_sampling_rate: O,
-        _aux_indices_buffer_ptr: *const O,
-        _num_threads: O,
-        _context: Option<*mut c_void>,
-    ) -> O {
-        unimplemented!(
-            "There is no libsais unbwt aux implementation for this combination of input and output types.",
-        );
-    }
-
-    unsafe fn libsais_unbwt_create_ctx(_num_threads: O) -> *mut c_void {
-        unimplemented!(
-            "There is no libsais unbwt create ctx implementation for this combination of input and output types.",
-        );
-    }
-
-    unsafe fn libsais_unbwt_free_ctx(_ctx: *mut c_void) {
-        unimplemented!(
-            "There is no libsais unbwt free ctx implementation for this combination of input and output types.",
-        );
-    }
-}
-
-impl<I: InputElement, O: OutputElement> LibsaisFunctionsLargeAlphabet<I, O>
-    for FunctionsUnimplemented
-{
-    unsafe fn libsais_large_alphabet(
-        _text_ptr: *mut I,
-        _suffix_array_buffer_ptr: *mut O,
-        _text_len: O,
-        _alphabet_size: O,
-        _extra_space: O,
-        _num_threads: O,
-    ) -> O {
-        unimplemented!(
-            "There is no libsais implementation for this combination of input and output types.",
-        );
-    }
-}
-
-impl<I: InputElement, O: OutputElement> LibsaisLcpFunctions<I, O> for FunctionsUnimplemented {
-    unsafe fn libsais_plcp(
-        _text_ptr: *const I,
-        _suffix_array_ptr: *const O,
-        _plcp_ptr: *mut O,
-        _text_len: O,
-        _num_threads: O,
-        _generalized_suffix_array: bool,
-    ) -> O {
-        unimplemented!(
-            "There is no libsais lcp implementation for this combination of input and output types."
-        )
-    }
-
-    unsafe fn libsais_lcp(
-        _plcp_ptr: *const O,
-        _suffix_array_ptr: *const O,
-        _lcp_ptr: *mut O,
-        _text_len: O,
-        _num_threads: O,
-    ) -> O {
-        unimplemented!(
-            "There is no libsais lcp implementation for this combination of input and output types."
-        )
-    }
-}
-
-// -------------------- Typestate traits for Builder API --------------------
-pub enum Undecided {}
-
-impl sealed::Sealed for Undecided {}
-
-pub trait ParallelismOrUndecided: sealed::Sealed {
-    // TODO fn free_ctx<I,O>
-}
-
-impl ParallelismOrUndecided for Undecided {}
-
-impl<P: Parallelism> ParallelismOrUndecided for P {}
-
-pub trait Parallelism: sealed::Sealed {
-    type WithInput<I: InputElement, O: OutputElement>: InputDispatch<I, O>;
-}
-
-pub enum SingleThreaded {}
-
-impl sealed::Sealed for SingleThreaded {}
-
-impl Parallelism for SingleThreaded {
-    type WithInput<I: InputElement, O: OutputElement> = SingleThreadedInputDispatcher<I, O>;
-}
-
-#[cfg(feature = "openmp")]
-pub enum MultiThreaded {}
-
-#[cfg(feature = "openmp")]
-impl sealed::Sealed for MultiThreaded {}
-
-#[cfg(feature = "openmp")]
-impl Parallelism for MultiThreaded {
-    type WithInput<I: InputElement, O: OutputElement> = MultiThreadedInputDispatcher<I, O>;
-}
-
-pub trait OutputElementOrUndecided: sealed::Sealed {}
-
-impl OutputElementOrUndecided for Undecided {}
-
-pub trait BufferModeOrUndecided: sealed::Sealed {}
-
-impl BufferModeOrUndecided for Undecided {}
-
-pub trait BufferMode: sealed::Sealed {
-    type Buffer<'a, T: 'a>;
-
-    fn buffer_to_either<'a, T>(buffer: Self::Buffer<'a, T>) -> Either<Vec<T>, &'a mut [T]>;
-
-    fn either_to_buffer<'a, T: std::fmt::Debug>(
-        either_: Either<Vec<T>, &'a mut [T]>,
-    ) -> Self::Buffer<'a, T>;
-
-    fn unwrap_or_allocate<'a, T, F>(opt: Option<&'a mut [T]>, f: F) -> Self::Buffer<'a, T>
-    where
-        T: TryFrom<usize, Error: std::fmt::Debug> + Clone,
-        F: FnOnce() -> Vec<T>;
-}
-
-impl<B: BufferMode> BufferModeOrUndecided for B {}
-
-pub struct BorrowedBuffer {}
-
-impl sealed::Sealed for BorrowedBuffer {}
-
-impl BufferMode for BorrowedBuffer {
-    type Buffer<'a, T: 'a> = &'a mut [T];
-
-    fn buffer_to_either<'a, T>(buffer: Self::Buffer<'a, T>) -> Either<Vec<T>, &'a mut [T]> {
-        Either::Right(buffer)
-    }
-
-    fn either_to_buffer<'a, T: std::fmt::Debug>(
-        either_: Either<Vec<T>, &'a mut [T]>,
-    ) -> Self::Buffer<'a, T> {
-        either_.unwrap_right()
-    }
-
-    fn unwrap_or_allocate<'a, T, F>(opt: Option<&'a mut [T]>, _f: F) -> Self::Buffer<'a, T>
-    where
-        T: TryFrom<usize, Error: std::fmt::Debug> + Clone,
-        F: FnOnce() -> Vec<T>,
-    {
-        opt.unwrap()
-    }
-}
-
-pub struct OwnedBuffer {}
-
-impl sealed::Sealed for OwnedBuffer {}
-
-impl BufferMode for OwnedBuffer {
-    type Buffer<'a, T: 'a> = Vec<T>;
-
-    fn buffer_to_either<'a, T>(buffer: Self::Buffer<'a, T>) -> Either<Vec<T>, &'a mut [T]> {
-        Either::Left(buffer)
-    }
-
-    fn either_to_buffer<'a, T: std::fmt::Debug>(
-        either_: Either<Vec<T>, &'a mut [T]>,
-    ) -> Self::Buffer<'a, T> {
-        either_.unwrap_left()
-    }
-
-    fn unwrap_or_allocate<'a, T, F>(_opt: Option<&'a mut [T]>, f: F) -> Self::Buffer<'a, T>
-    where
-        T: TryFrom<usize, Error: std::fmt::Debug> + Clone,
-        F: FnOnce() -> Vec<T>,
-    {
-        f()
-    }
-}
-
-pub trait BufferModeOrReplaceInput: sealed::Sealed {}
-
-impl<B: BufferMode> BufferModeOrReplaceInput for B {}
-
-pub struct ReplaceInput {}
-
-impl sealed::Sealed for ReplaceInput {}
-
-impl BufferModeOrReplaceInput for ReplaceInput {}
-
-pub trait AuxIndicesMode: sealed::Sealed {}
-
-pub struct NoAuxIndices {}
-
-impl sealed::Sealed for NoAuxIndices {}
-
-impl AuxIndicesMode for NoAuxIndices {}
-
-impl<B: BufferMode> AuxIndicesMode for B {}
-
-// -------------------- InputElement and OutputElement with implementations for u8, u16, i32, i64 --------------------
-// Unsafe trait because the context type has to be correct for this input type
-pub unsafe trait InputElement:
-    sealed::Sealed
-    + std::fmt::Debug
-    + Copy
-    + TryFrom<usize, Error: std::fmt::Debug>
-    + Into<i64>
-    + Clone
-    + Ord
-{
-    const RECOMMENDED_EXTRA_SPACE: usize;
-    const ZERO: Self;
-
-    type SingleThreadedOutputDispatcher<O: OutputElement>: OutputDispatch<Self, O>;
-    #[cfg(feature = "openmp")]
-    type MultiThreadedOutputDispatcher<O: OutputElement>: OutputDispatch<Self, O>;
-}
-
-pub trait OutputElement:
-    sealed::Sealed
-    + std::fmt::Debug
-    + Copy
-    + TryFrom<usize, Error: std::fmt::Debug>
-    + Into<i64>
-    + Clone
-    + std::fmt::Display
-{
-    const MAX: Self;
-    const ZERO: Self;
-
-    type SingleThreaded8InputFunctions: LibsaisFunctionsSmallAlphabet<u8, Self>
-        + LibsaisLcpFunctions<u8, Self>;
-    type SingleThreaded16InputFunctions: LibsaisFunctionsSmallAlphabet<u16, Self>
-        + LibsaisLcpFunctions<u16, Self>;
-    type SingleThreaded32InputFunctions: LibsaisFunctionsLargeAlphabet<i32, Self>
-        + LibsaisLcpFunctions<i32, Self>;
-    type SingleThreaded64InputFunctions: LibsaisFunctionsLargeAlphabet<i64, Self>
-        + LibsaisLcpFunctions<i64, Self>;
-
-    #[cfg(feature = "openmp")]
-    type MultiThreaded8InputFunctions: LibsaisFunctionsSmallAlphabet<u8, Self>
-        + LibsaisLcpFunctions<u8, Self>;
-    #[cfg(feature = "openmp")]
-    type MultiThreaded16InputFunctions: LibsaisFunctionsSmallAlphabet<u16, Self>
-        + LibsaisLcpFunctions<u16, Self>;
-    #[cfg(feature = "openmp")]
-    type MultiThreaded32InputFunctions: LibsaisFunctionsLargeAlphabet<i32, Self>
-        + LibsaisLcpFunctions<i32, Self>;
-    #[cfg(feature = "openmp")]
-    type MultiThreaded64InputFunctions: LibsaisFunctionsLargeAlphabet<i64, Self>
-        + LibsaisLcpFunctions<i64, Self>;
-}
-
-impl<B: OutputElement> OutputElementOrUndecided for B {}
-
-impl sealed::Sealed for u8 {}
-
-unsafe impl InputElement for u8 {
+impl InputElement for u8 {
     const RECOMMENDED_EXTRA_SPACE: usize = 0;
     const ZERO: Self = 0;
 
@@ -1231,9 +787,9 @@ unsafe impl InputElement for u8 {
     type MultiThreadedOutputDispatcher<O: OutputElement> = MultiThreaded8InputOutputDispatcher<O>;
 }
 
-impl sealed::Sealed for u16 {}
+impl Sealed for u16 {}
 
-unsafe impl InputElement for u16 {
+impl InputElement for u16 {
     const RECOMMENDED_EXTRA_SPACE: usize = 0;
     const ZERO: Self = 0;
 
@@ -1243,9 +799,9 @@ unsafe impl InputElement for u16 {
     type MultiThreadedOutputDispatcher<O: OutputElement> = MultiThreaded16InputOutputDispatcher<O>;
 }
 
-impl sealed::Sealed for i32 {}
+impl Sealed for i32 {}
 
-unsafe impl InputElement for i32 {
+impl InputElement for i32 {
     const RECOMMENDED_EXTRA_SPACE: usize = 6_000;
     const ZERO: Self = 0;
 
@@ -1274,9 +830,9 @@ impl OutputElement for i32 {
     type MultiThreaded64InputFunctions = FunctionsUnimplemented;
 }
 
-impl sealed::Sealed for i64 {}
+impl Sealed for i64 {}
 
-unsafe impl InputElement for i64 {
+impl InputElement for i64 {
     const RECOMMENDED_EXTRA_SPACE: usize = 6_000;
     const ZERO: Self = 0;
 
@@ -1305,30 +861,6 @@ impl OutputElement for i64 {
     type MultiThreaded64InputFunctions = MultiThreaded64Input64Output;
 }
 
-pub trait IsValidOutputFor<I: InputElement>: sealed::Sealed + OutputElement {}
-
-impl IsValidOutputFor<u8> for i32 {}
-impl IsValidOutputFor<u16> for i32 {}
-impl IsValidOutputFor<i32> for i32 {}
-
-impl IsValidOutputFor<u8> for i64 {}
-impl IsValidOutputFor<u16> for i64 {}
-impl IsValidOutputFor<i64> for i64 {}
-
-pub trait SupportsPlcpOutputFor<I: InputElement>: sealed::Sealed + OutputElement {}
-
-impl SupportsPlcpOutputFor<u8> for i32 {}
-impl SupportsPlcpOutputFor<u16> for i32 {}
-impl SupportsPlcpOutputFor<i32> for i32 {}
-
-impl SupportsPlcpOutputFor<u8> for i64 {}
-impl SupportsPlcpOutputFor<u16> for i64 {}
-
-// -------------------- InputElementDecided refinement traits and implementations --------------------
-pub trait SmallAlphabet: InputElement {
-    const FREQUENCY_TABLE_SIZE: usize;
-}
-
 impl SmallAlphabet for u8 {
     const FREQUENCY_TABLE_SIZE: usize = 256;
 }
@@ -1337,158 +869,5 @@ impl SmallAlphabet for u16 {
     const FREQUENCY_TABLE_SIZE: usize = 65536;
 }
 
-pub trait LargeAlphabet: InputElement + OutputElement {}
-
 impl LargeAlphabet for i32 {}
 impl LargeAlphabet for i64 {}
-
-// -------------------- InputDispatch and implementations --------------------
-pub trait InputDispatch<I: InputElement, O: OutputElement>: sealed::Sealed {
-    type WithOutput: OutputDispatch<I, O>;
-}
-
-pub struct SingleThreadedInputDispatcher<I, O> {
-    _input_marker: PhantomData<I>,
-    _output_marker: PhantomData<O>,
-}
-
-impl<I, O> sealed::Sealed for SingleThreadedInputDispatcher<I, O> {}
-
-impl<I: InputElement, O: OutputElement> InputDispatch<I, O>
-    for SingleThreadedInputDispatcher<I, O>
-{
-    type WithOutput = I::SingleThreadedOutputDispatcher<O>;
-}
-
-#[cfg(feature = "openmp")]
-pub struct MultiThreadedInputDispatcher<I, O> {
-    _input_marker: PhantomData<I>,
-    _output_marker: PhantomData<O>,
-}
-
-#[cfg(feature = "openmp")]
-impl<I, O> sealed::Sealed for MultiThreadedInputDispatcher<I, O> {}
-
-#[cfg(feature = "openmp")]
-impl<I: InputElement, O: OutputElement> InputDispatch<I, O> for MultiThreadedInputDispatcher<I, O> {
-    type WithOutput = I::MultiThreadedOutputDispatcher<O>;
-}
-
-// -------------------- OutputDispatch and implementations --------------------
-pub trait OutputDispatch<I: InputElement, O: OutputElement>: sealed::Sealed {
-    type SmallAlphabetFunctions: LibsaisFunctionsSmallAlphabet<I, O>;
-    type LargeAlphabetFunctions: LibsaisFunctionsLargeAlphabet<I, O>;
-    type LcpFunctions: LibsaisLcpFunctions<I, O>;
-}
-
-pub struct SingleThreaded8InputOutputDispatcher<O> {
-    _output_marker: PhantomData<O>,
-}
-
-impl<O> sealed::Sealed for SingleThreaded8InputOutputDispatcher<O> {}
-
-impl<O: OutputElement> OutputDispatch<u8, O> for SingleThreaded8InputOutputDispatcher<O> {
-    type SmallAlphabetFunctions = O::SingleThreaded8InputFunctions;
-    type LargeAlphabetFunctions = FunctionsUnimplemented;
-    type LcpFunctions = O::SingleThreaded8InputFunctions;
-}
-
-pub struct SingleThreaded16InputOutputDispatcher<O> {
-    _output_marker: PhantomData<O>,
-}
-
-impl<O> sealed::Sealed for SingleThreaded16InputOutputDispatcher<O> {}
-
-impl<O: OutputElement> OutputDispatch<u16, O> for SingleThreaded16InputOutputDispatcher<O> {
-    type SmallAlphabetFunctions = O::SingleThreaded16InputFunctions;
-    type LargeAlphabetFunctions = FunctionsUnimplemented;
-    type LcpFunctions = O::SingleThreaded16InputFunctions;
-}
-
-pub struct SingleThreaded32InputOutputDispatcher<O> {
-    _output_marker: PhantomData<O>,
-}
-
-impl<O> sealed::Sealed for SingleThreaded32InputOutputDispatcher<O> {}
-
-impl<O: OutputElement> OutputDispatch<i32, O> for SingleThreaded32InputOutputDispatcher<O> {
-    type SmallAlphabetFunctions = FunctionsUnimplemented;
-    type LargeAlphabetFunctions = O::SingleThreaded32InputFunctions;
-    type LcpFunctions = O::SingleThreaded32InputFunctions;
-}
-
-pub struct SingleThreaded64InputOutputDispatcher<O> {
-    _output_marker: PhantomData<O>,
-}
-
-impl<O> sealed::Sealed for SingleThreaded64InputOutputDispatcher<O> {}
-
-impl<O: OutputElement> OutputDispatch<i64, O> for SingleThreaded64InputOutputDispatcher<O> {
-    type SmallAlphabetFunctions = FunctionsUnimplemented;
-    type LargeAlphabetFunctions = O::SingleThreaded64InputFunctions;
-    type LcpFunctions = O::SingleThreaded64InputFunctions;
-}
-
-#[cfg(feature = "openmp")]
-pub struct MultiThreaded8InputOutputDispatcher<O> {
-    _output_marker: PhantomData<O>,
-}
-
-#[cfg(feature = "openmp")]
-impl<O> sealed::Sealed for MultiThreaded8InputOutputDispatcher<O> {}
-
-#[cfg(feature = "openmp")]
-impl<O: OutputElement> OutputDispatch<u8, O> for MultiThreaded8InputOutputDispatcher<O> {
-    type SmallAlphabetFunctions = O::MultiThreaded8InputFunctions;
-    type LargeAlphabetFunctions = FunctionsUnimplemented;
-    type LcpFunctions = O::MultiThreaded8InputFunctions;
-}
-
-#[cfg(feature = "openmp")]
-pub struct MultiThreaded16InputOutputDispatcher<O> {
-    _output_marker: PhantomData<O>,
-}
-
-#[cfg(feature = "openmp")]
-impl<O> sealed::Sealed for MultiThreaded16InputOutputDispatcher<O> {}
-
-#[cfg(feature = "openmp")]
-impl<O: OutputElement> OutputDispatch<u16, O> for MultiThreaded16InputOutputDispatcher<O> {
-    type SmallAlphabetFunctions = O::MultiThreaded16InputFunctions;
-    type LargeAlphabetFunctions = FunctionsUnimplemented;
-    type LcpFunctions = O::MultiThreaded16InputFunctions;
-}
-
-#[cfg(feature = "openmp")]
-pub struct MultiThreaded32InputOutputDispatcher<O> {
-    _output_marker: PhantomData<O>,
-}
-
-#[cfg(feature = "openmp")]
-impl<O> sealed::Sealed for MultiThreaded32InputOutputDispatcher<O> {}
-
-#[cfg(feature = "openmp")]
-impl<O: OutputElement> OutputDispatch<i32, O> for MultiThreaded32InputOutputDispatcher<O> {
-    type SmallAlphabetFunctions = FunctionsUnimplemented;
-    type LargeAlphabetFunctions = O::MultiThreaded32InputFunctions;
-    type LcpFunctions = O::MultiThreaded32InputFunctions;
-}
-
-#[cfg(feature = "openmp")]
-pub struct MultiThreaded64InputOutputDispatcher<O> {
-    _output_marker: PhantomData<O>,
-}
-
-#[cfg(feature = "openmp")]
-impl<O> sealed::Sealed for MultiThreaded64InputOutputDispatcher<O> {}
-
-#[cfg(feature = "openmp")]
-impl<O: OutputElement> OutputDispatch<i64, O> for MultiThreaded64InputOutputDispatcher<O> {
-    type SmallAlphabetFunctions = FunctionsUnimplemented;
-    type LargeAlphabetFunctions = O::MultiThreaded64InputFunctions;
-    type LcpFunctions = O::MultiThreaded64InputFunctions;
-}
-
-mod sealed {
-    pub trait Sealed {}
-}

@@ -1,4 +1,4 @@
-use crate::type_model::OutputElement;
+use crate::OutputElement;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LibsaisError {

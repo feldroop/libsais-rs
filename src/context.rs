@@ -1,16 +1,13 @@
 use std::{ffi::c_void, marker::PhantomData};
 
 use crate::{
-    ThreadCount,
-    type_model::{
-        InputElement, LibsaisFunctionsSmallAlphabet, OutputElement, OutputElementOrUndecided,
-        Parallelism, ParallelismOrUndecided, SingleThreaded, SmallAlphabet,
-        SmallAlphabetFunctionsDispatch,
-    },
+    InputElement, OutputElement, SmallAlphabet, ThreadCount,
+    generics_dispatch::{LibsaisFunctionsSmallAlphabet, SmallAlphabetFunctionsDispatch},
+    type_state::{OutputElementOrUndecided, Parallelism, ParallelismOrUndecided, SingleThreaded},
 };
 
 #[cfg(feature = "openmp")]
-use crate::type_model::MultiThreaded;
+use crate::type_state::MultiThreaded;
 
 pub struct Context<I: InputElement, O: OutputElementOrUndecided, P: ParallelismOrUndecided> {
     ptr: *mut c_void,

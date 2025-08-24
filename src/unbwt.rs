@@ -3,21 +3,21 @@ use either::Either;
 use std::marker::PhantomData;
 
 use crate::{
-    ThreadCount,
+    InputElement, OutputElement, SmallAlphabet, ThreadCount,
     bwt::AuxIndicesSamplingRate,
     context::UnBwtContext,
     error::{IntoSaisResult, LibsaisError},
+    generics_dispatch::{LibsaisFunctionsSmallAlphabet, SmallAlphabetFunctionsDispatch},
     owned_or_borrowed::OwnedOrBorrowed,
     suffix_array,
-    type_model::{
-        BorrowedBuffer, BufferMode, InputElement, LibsaisFunctionsSmallAlphabet, OutputElement,
-        OutputElementOrUndecided, OwnedBuffer, Parallelism, ParallelismOrUndecided, SingleThreaded,
-        SmallAlphabet, SmallAlphabetFunctionsDispatch, Undecided,
+    type_state::{
+        BorrowedBuffer, BufferMode, OutputElementOrUndecided, OwnedBuffer, Parallelism,
+        ParallelismOrUndecided, SingleThreaded, Undecided,
     },
 };
 
 #[cfg(feature = "openmp")]
-use crate::type_model::MultiThreaded;
+use crate::type_state::MultiThreaded;
 
 pub struct UnBwt<
     'b,

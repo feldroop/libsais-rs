@@ -1,13 +1,24 @@
 use either::Either;
 
 use crate::{
-    ThreadCount,
+    InputElement, LargeAlphabet, OutputElement, SmallAlphabet, ThreadCount,
     context::Context,
     error::{IntoSaisResult, LibsaisError},
+    generics_dispatch::{
+        LargeAlphabetFunctionsDispatch, LibsaisFunctionsLargeAlphabet,
+        LibsaisFunctionsSmallAlphabet, SmallAlphabetFunctionsDispatch,
+    },
     owned_or_borrowed::OwnedOrBorrowed,
     plcp::PlcpConstruction,
-    type_model::*,
+    type_state::{
+        BorrowedBuffer, BufferMode, BufferModeOrUndecided, IsValidOutputFor,
+        OutputElementOrUndecided, OwnedBuffer, Parallelism, ParallelismOrUndecided, SingleThreaded,
+        SupportsPlcpOutputFor, Undecided,
+    },
 };
+
+#[cfg(feature = "openmp")]
+use crate::type_state::MultiThreaded;
 
 use std::marker::PhantomData;
 
