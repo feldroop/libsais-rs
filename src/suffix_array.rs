@@ -298,9 +298,7 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelis
                     AlphabetSizeInner::ComputeFromMaxOfText => {
                         compute_and_validate_alphabet_size(text).unwrap_or_else(|e| panic!("{e}"))
                     }
-                    AlphabetSizeInner::Fixed { value } => value
-                        .try_into()
-                        .expect("The alphabet size needs to fit into the output type."),
+                    AlphabetSizeInner::Fixed { value } => value,
                 };
 
                 unsafe {
@@ -508,7 +506,7 @@ pub(crate) fn sais_safety_checks<I: InputElement, O: OutputElement, P: Paralleli
 
     if generalized_suffix_array && let Some(c) = text.last() {
         assert!(
-            c.clone().into() == 0i64,
+            (*c).into() == 0i64,
             "For the generalized suffix array, the last character of the text needs to be 0 (not ASCII '0')"
         );
     }

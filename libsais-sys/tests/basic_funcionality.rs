@@ -9,7 +9,7 @@ fn is_suffix_array(text: &[u8], maybe_suffix_array: &[i32]) -> bool {
         let previous = indices[0] as usize;
         let current = indices[1] as usize;
 
-        if &text[previous..] > &text[current..] {
+        if text[previous..] > text[current..] {
             return false;
         }
     }

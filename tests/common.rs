@@ -60,7 +60,7 @@ pub fn is_suffix_array<I: InputElement, O: OutputElement>(
         let previous = indices[0].into() as usize;
         let current = indices[1].into() as usize;
 
-        if &text[previous..] > &text[current..] {
+        if text[previous..] > text[current..] {
             return false;
         }
     }

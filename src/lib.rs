@@ -33,11 +33,11 @@ pub use {
 
 // TODOs:
 
-//      derives of public types
+//      Bare versions of bundlers
 
 //      small benchmarks
 //      setup CI and such
-//      good docs and examples, README (figure out good pub exports)
+//      good docs and examples, README
 //      release-plz good release (also libsais-sys update)
 
 //      wait for answer on ilya grebnov context question

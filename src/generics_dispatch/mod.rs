@@ -21,6 +21,7 @@ pub type LcpFunctionsDispatch<I, O, P> = <<<P as Parallelism>::WithInput<I, O> a
     O,
 >>::WithOutput as OutputDispatch<I, O>>::LcpFunctions;
 
+#[allow(clippy::too_many_arguments)]
 pub trait LibsaisFunctionsSmallAlphabet<I: InputElement, O: OutputElement>: Sealed {
     unsafe fn libsais(
         text_ptr: *const I,

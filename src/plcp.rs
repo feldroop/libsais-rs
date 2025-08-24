@@ -115,7 +115,7 @@ impl<
             && let Some(c) = self.text.last()
         {
             assert!(
-                c.clone().into() == 0i64,
+                (*c).into() == 0i64,
                 "For the generalized suffix array, the last character of the text needs to be 0 (not ASCII '0')"
             );
         }

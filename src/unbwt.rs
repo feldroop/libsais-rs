@@ -208,7 +208,6 @@ impl<'b, 'r, 't, I: SmallAlphabet, BwtB: BufferMode, TextB: BufferMode>
 }
 
 impl<
-    'a,
     'b,
     'r,
     't,
@@ -233,7 +232,6 @@ impl<
 }
 
 impl<
-    'a,
     'b,
     'r,
     't,

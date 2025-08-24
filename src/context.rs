@@ -23,7 +23,7 @@ impl<I: SmallAlphabet> Context<I, i32, SingleThreaded> {
         Self::new(ThreadCount::fixed(1))
     }
 
-    pub fn try_new_single_threaded() -> Result<Self, ()> {
+    pub fn try_new_single_threaded() -> Option<Self> {
         Self::try_new(ThreadCount::fixed(1))
     }
 }
@@ -34,7 +34,7 @@ impl<I: SmallAlphabet> Context<I, i32, MultiThreaded> {
         Self::new(thread_count)
     }
 
-    pub fn try_new_multi_threaded(thread_count: ThreadCount) -> Result<Self, ()> {
+    pub fn try_new_multi_threaded(thread_count: ThreadCount) -> Option<Self> {
         Self::try_new(thread_count)
     }
 }
@@ -44,7 +44,7 @@ impl<I: SmallAlphabet, P: Parallelism> Context<I, i32, P> {
         Self::try_new(thread_count).expect("libsais create ctx should not return nullpointer")
     }
 
-    fn try_new(thread_count: ThreadCount) -> Result<Self, ()> {
+    fn try_new(thread_count: ThreadCount) -> Option<Self> {
         // SAFETY: constructing the context is not not unsafe
         let ptr = unsafe {
             SmallAlphabetFunctionsDispatch::<I, i32, P>::libsais_create_ctx(
@@ -53,9 +53,9 @@ impl<I: SmallAlphabet, P: Parallelism> Context<I, i32, P> {
         };
 
         if ptr.is_null() {
-            Err(())
+            None
         } else {
-            Ok(Self {
+            Some(Self {
                 ptr,
                 num_threads: thread_count.value,
                 _input_marker: PhantomData,
@@ -100,7 +100,7 @@ impl<I: SmallAlphabet> UnBwtContext<I, i32, SingleThreaded> {
         Self::new(ThreadCount::fixed(1))
     }
 
-    pub fn try_new_single_threaded() -> Result<Self, ()> {
+    pub fn try_new_single_threaded() -> Option<Self> {
         Self::try_new(ThreadCount::fixed(1))
     }
 }
@@ -111,7 +111,7 @@ impl<I: SmallAlphabet> UnBwtContext<I, i32, MultiThreaded> {
         Self::new(thread_count)
     }
 
-    pub fn try_new_multi_threaded(thread_count: ThreadCount) -> Result<Self, ()> {
+    pub fn try_new_multi_threaded(thread_count: ThreadCount) -> Option<Self> {
         Self::try_new(thread_count)
     }
 }
@@ -121,7 +121,7 @@ impl<I: SmallAlphabet, P: Parallelism> UnBwtContext<I, i32, P> {
         Self::try_new(thread_count).expect("libsais create ctx should not return nullpointer")
     }
 
-    fn try_new(thread_count: ThreadCount) -> Result<Self, ()> {
+    fn try_new(thread_count: ThreadCount) -> Option<Self> {
         // SAFETY: constructing the context is not not unsafe
         let ptr = unsafe {
             SmallAlphabetFunctionsDispatch::<I, i32, P>::libsais_unbwt_create_ctx(
@@ -130,9 +130,9 @@ impl<I: SmallAlphabet, P: Parallelism> UnBwtContext<I, i32, P> {
         };
 
         if ptr.is_null() {
-            Err(())
+            None
         } else {
-            Ok(Self {
+            Some(Self {
                 ptr,
                 num_threads: thread_count.value,
                 _input_marker: PhantomData,

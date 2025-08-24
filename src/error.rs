@@ -22,7 +22,7 @@ impl LibsaisError {
 
 impl Display for LibsaisError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        <LibsaisError as std::fmt::Debug>::fmt(&self, f)
+        <LibsaisError as std::fmt::Debug>::fmt(self, f)
     }
 }
 
