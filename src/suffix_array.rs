@@ -40,7 +40,6 @@ pub struct SuffixArrayConstruction<
     alphabet_size: AlphabetSizeInner<O>,
     extra_space: ExtraSpace,
     context: Option<&'r mut Context<I, O, P>>,
-    _parallelism_marker: PhantomData<P>,
     _buffer_mode_marker: PhantomData<B>,
 }
 
@@ -51,7 +50,7 @@ impl<
     I: InputElement,
     O: OutputElementOrUndecided,
     B: BufferModeOrUndecided,
-    P: Parallelism,
+    P: ParallelismOrUndecided,
 > SuffixArrayConstruction<'r, 's, 't, I, O, B, P>
 {
     fn init() -> Self {
@@ -64,7 +63,6 @@ impl<
             alphabet_size: AlphabetSizeInner::ComputeFromMaxOfText,
             extra_space: ExtraSpace::Recommended,
             context: None,
-            _parallelism_marker: PhantomData,
             _buffer_mode_marker: PhantomData,
         }
     }
@@ -72,7 +70,7 @@ impl<
 
 // entry point to builder for small alphabets
 impl<'t, I: SmallAlphabet>
-    SuffixArrayConstruction<'static, 'static, 't, I, Undecided, Undecided, SingleThreaded>
+    SuffixArrayConstruction<'static, 'static, 't, I, Undecided, Undecided, Undecided>
 {
     pub fn for_text(text: &'t [I]) -> Self {
         Self {
@@ -84,7 +82,7 @@ impl<'t, I: SmallAlphabet>
 
 // entry point to builder for large alphabets
 impl<'t, I: LargeAlphabet>
-    SuffixArrayConstruction<'static, 'static, 't, I, Undecided, Undecided, SingleThreaded>
+    SuffixArrayConstruction<'static, 'static, 't, I, Undecided, Undecided, Undecided>
 {
     pub fn for_text_mut(text: &'t mut [I]) -> Self {
         Self {
@@ -96,68 +94,72 @@ impl<'t, I: LargeAlphabet>
 
 // second choice: output type and buffer mode
 impl<'t, I: InputElement>
-    SuffixArrayConstruction<'static, 'static, 't, I, Undecided, Undecided, SingleThreaded>
+    SuffixArrayConstruction<'static, 'static, 't, I, Undecided, Undecided, Undecided>
 {
     pub fn in_borrowed_buffer<'s, O>(
         self,
         suffix_array_buffer: &'s mut [O],
-    ) -> SuffixArrayConstruction<'static, 's, 't, I, O, BorrowedBuffer, SingleThreaded>
+    ) -> SuffixArrayConstruction<'static, 's, 't, I, O, BorrowedBuffer, Undecided>
     where
         O: IsValidOutputFor<I>,
     {
         SuffixArrayConstruction {
             suffix_array_buffer: Some(suffix_array_buffer),
             text: self.text,
-            thread_count: self.thread_count,
             ..SuffixArrayConstruction::init()
         }
     }
 
     pub fn in_owned_buffer<O>(
         self,
-    ) -> SuffixArrayConstruction<'static, 'static, 't, I, O, OwnedBuffer, SingleThreaded>
+    ) -> SuffixArrayConstruction<'static, 'static, 't, I, O, OwnedBuffer, Undecided>
     where
         O: IsValidOutputFor<I>,
     {
         SuffixArrayConstruction {
             text: self.text,
-            thread_count: self.thread_count,
             ..SuffixArrayConstruction::init()
         }
     }
 
     pub fn in_owned_buffer32(
         self,
-    ) -> SuffixArrayConstruction<'static, 'static, 't, I, i32, OwnedBuffer, SingleThreaded>
+    ) -> SuffixArrayConstruction<'static, 'static, 't, I, i32, OwnedBuffer, Undecided>
     where
         i32: IsValidOutputFor<I>,
     {
         SuffixArrayConstruction {
             text: self.text,
-            thread_count: self.thread_count,
             ..SuffixArrayConstruction::init()
         }
     }
 
     pub fn in_owned_buffer64(
         self,
-    ) -> SuffixArrayConstruction<'static, 'static, 't, I, i64, OwnedBuffer, SingleThreaded>
+    ) -> SuffixArrayConstruction<'static, 'static, 't, I, i64, OwnedBuffer, Undecided>
     where
         i64: IsValidOutputFor<I>,
     {
         SuffixArrayConstruction {
             text: self.text,
-            thread_count: self.thread_count,
             ..SuffixArrayConstruction::init()
         }
     }
 }
 
-// optional choice at any time: threading
-#[cfg(feature = "openmp")]
+// third choice: threading
 impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode>
-    SuffixArrayConstruction<'r, 's, 't, I, O, B, SingleThreaded>
+    SuffixArrayConstruction<'r, 's, 't, I, O, B, Undecided>
 {
+    pub fn single_threaded(self) -> SuffixArrayConstruction<'r, 's, 't, I, O, B, SingleThreaded> {
+        SuffixArrayConstruction {
+            text: self.text,
+            suffix_array_buffer: self.suffix_array_buffer,
+            ..SuffixArrayConstruction::init()
+        }
+    }
+
+    #[cfg(feature = "openmp")]
     pub fn multi_threaded(
         self,
         thread_count: ThreadCount,
@@ -165,24 +167,18 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode>
         SuffixArrayConstruction {
             text: self.text,
             suffix_array_buffer: self.suffix_array_buffer,
-            frequency_table: self.frequency_table,
             thread_count,
-            generalized_suffix_array: self.generalized_suffix_array,
-            alphabet_size: self.alphabet_size,
-            extra_space: self.extra_space,
-            context: None, // self.context, TODO
-            _parallelism_marker: PhantomData,
-            _buffer_mode_marker: PhantomData,
+            ..SuffixArrayConstruction::init()
         }
     }
 }
 
-impl<'r, 's, 't, I: SmallAlphabet, B: BufferMode>
-    SuffixArrayConstruction<'r, 's, 't, I, i32, B, SingleThreaded>
+impl<'r, 's, 't, I: SmallAlphabet, B: BufferMode, P: Parallelism>
+    SuffixArrayConstruction<'r, 's, 't, I, i32, B, P>
 {
     /// Uses a context object that allows reusing memory across runs of the algorithm.
     /// Currently, this is only available for the single threaded 32-bit output version.
-    pub fn with_context(self, context: &'r mut Context<I, i32, SingleThreaded>) -> Self {
+    pub fn with_context(self, context: &'r mut Context<I, i32, P>) -> Self {
         Self {
             context: Some(context),
             ..self
@@ -275,7 +271,8 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelis
         // and the frequency table was asserted to be the correct size (only small alphabets).
         // alphabet size was either set as the max of the text + 1 or claimed to be
         // correct in an unsafe function (only large alphabets).
-        // TODO context
+        // context must be of the correct type, because the API is typesafe and the parallelism decision was
+        // forced to happen before the context was supplied.
         let res = match self.text.as_mut() {
             None => unreachable!("There always needs to be a text provided for this object."),
             Some(Either::Left(text)) => {
@@ -398,7 +395,7 @@ impl<'s, 't, I: InputElement, O: SupportsPlcpOutputFor<I>, SaB: BufferMode>
 {
     pub fn plcp_construction(
         self,
-    ) -> PlcpConstruction<'static, 's, 't, I, O, OwnedBuffer, SaB, SingleThreaded> {
+    ) -> PlcpConstruction<'static, 's, 't, I, O, OwnedBuffer, SaB, Undecided> {
         PlcpConstruction {
             text: self.text,
             suffix_array_buffer: self.suffix_array,

@@ -15,6 +15,7 @@ use generics_dispatch::{
     OutputDispatch,
 };
 use sealed::Sealed;
+use type_state::OutputElementOrUndecided;
 
 /// The version of the C library libsais wrapped by this crate
 pub use libsais_sys::libsais::LIBSAIS_VERSION_STRING;
@@ -33,19 +34,16 @@ pub use {
 
 // TODOs:
 
-//      Bare versions of bundlers
+//      some comments in code
+//      good docs functions
 
-//      small benchmarks
-//      setup CI and such
-//      good docs and examples, README
+//      good docs module and crate level
+//      examples
+//      README
+
+//      setup CI and such, also without default features, clippy, etc.
 //      release-plz good release (also libsais-sys update)
-
-//      wait for answer on ilya grebnov context question
-//      figure out whether to use ParallelismUndebiced or no Parallelism at all
-//      fix context drop/undecided issue in drop (also TODOs in safe comment)
-//      make context sound via forcing parallelism decision before supplying context (probably for all contructions)
-//      when context is there, could get rid of parallelism marker
-//      context in into other marker type
+//      update benchmark code
 
 pub trait InputElement:
     Sealed + std::fmt::Debug + Copy + TryFrom<usize, Error: std::fmt::Debug> + Into<i64> + Clone + Ord
@@ -53,9 +51,9 @@ pub trait InputElement:
     const RECOMMENDED_EXTRA_SPACE: usize;
     const ZERO: Self;
 
-    type SingleThreadedOutputDispatcher<O: OutputElement>: OutputDispatch<Self, O>;
+    type SingleThreadedOutputDispatcher<O: OutputElementOrUndecided>: OutputDispatch<Self, O>;
     #[cfg(feature = "openmp")]
-    type MultiThreadedOutputDispatcher<O: OutputElement>: OutputDispatch<Self, O>;
+    type MultiThreadedOutputDispatcher<O: OutputElementOrUndecided>: OutputDispatch<Self, O>;
 }
 
 pub trait OutputElement:

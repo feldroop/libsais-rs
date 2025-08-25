@@ -29,6 +29,7 @@ fn libsais_bwt_with_borrowed_temporary_array_buffer() {
 
     let suffix_array: Vec<i32> = SuffixArrayConstruction::for_text(text)
         .in_owned_buffer()
+        .single_threaded()
         .run()
         .expect("libsais should run without an error")
         .into_vec();
@@ -60,6 +61,7 @@ fn libsais_bwt_aux() {
 
     let suffix_array: Vec<i32> = SuffixArrayConstruction::for_text(text)
         .in_owned_buffer()
+        .single_threaded()
         .run()
         .expect("libsais should run without an error")
         .into_vec();
@@ -90,6 +92,7 @@ fn libsais_bwt_in_text() {
 
     let suffix_array: Vec<i32> = SuffixArrayConstruction::for_text(text)
         .in_owned_buffer()
+        .single_threaded()
         .run()
         .expect("libsais should run without an error")
         .into_vec();
@@ -125,6 +128,7 @@ fn libsais_bwt_with_aux_in_text() {
 
     let suffix_array: Vec<i32> = SuffixArrayConstruction::for_text(text)
         .in_owned_buffer()
+        .single_threaded()
         .run()
         .expect("libsais should run without an error")
         .into_vec();

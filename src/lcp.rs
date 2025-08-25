@@ -7,7 +7,7 @@ use crate::{
     owned_or_borrowed::OwnedOrBorrowed,
     type_state::{
         BorrowedBuffer, BufferMode, BufferModeOrReplaceInput, OwnedBuffer, Parallelism,
-        ReplaceInput,
+        ParallelismOrUndecided, ReplaceInput,
     },
 };
 
@@ -15,7 +15,7 @@ use crate::{
 use crate::type_state::SingleThreaded;
 
 #[cfg(feature = "openmp")]
-use crate::type_state::MultiThreaded;
+use crate::type_state::{MultiThreaded, Undecided};
 
 #[derive(Debug)]
 pub struct LcpConstruction<
@@ -26,7 +26,7 @@ pub struct LcpConstruction<
     LcpB: BufferModeOrReplaceInput,
     PlcpB: BufferMode,
     SaB: BufferMode,
-    P: Parallelism,
+    P: ParallelismOrUndecided,
 > {
     pub(crate) plcp_buffer: OwnedOrBorrowed<'p, O, PlcpB>,
     pub(crate) suffix_array_buffer: OwnedOrBorrowed<'s, O, SaB>,
@@ -45,10 +45,10 @@ impl<
     LcpB1: BufferModeOrReplaceInput,
     PlcpB: BufferMode,
     SaB: BufferMode,
-    P1: Parallelism,
+    P1: ParallelismOrUndecided,
 > LcpConstruction<'l, 'p, 's, O, LcpB1, PlcpB, SaB, P1>
 {
-    fn into_other_marker_type<LcpB2: BufferModeOrReplaceInput, P2: Parallelism>(
+    fn into_other_marker_type<LcpB2: BufferModeOrReplaceInput, P2: ParallelismOrUndecided>(
         self,
     ) -> LcpConstruction<'l, 'p, 's, O, LcpB2, PlcpB, SaB, P2> {
         LcpConstruction {
@@ -63,7 +63,7 @@ impl<
     }
 }
 
-impl<'p, 's, O: OutputElement, PlcpB: BufferMode, SaB: BufferMode, P: Parallelism>
+impl<'p, 's, O: OutputElement, PlcpB: BufferMode, SaB: BufferMode, P: ParallelismOrUndecided>
     LcpConstruction<'static, 'p, 's, O, OwnedBuffer, PlcpB, SaB, P>
 {
     pub fn in_borrowed_buffer<'l>(
@@ -88,7 +88,6 @@ impl<'p, 's, O: OutputElement, PlcpB: BufferMode, SaB: BufferMode, P: Parallelis
     }
 }
 
-#[cfg(feature = "openmp")]
 impl<
     'l,
     'p,
@@ -97,9 +96,16 @@ impl<
     LcpB: BufferModeOrReplaceInput,
     PlcpB: BufferMode,
     SaB: BufferMode,
-> LcpConstruction<'l, 'p, 's, O, LcpB, PlcpB, SaB, SingleThreaded>
+> LcpConstruction<'l, 'p, 's, O, LcpB, PlcpB, SaB, Undecided>
 {
-    pub fn multi_theaded(
+    pub fn single_threaded(
+        self,
+    ) -> LcpConstruction<'l, 'p, 's, O, LcpB, PlcpB, SaB, SingleThreaded> {
+        self.into_other_marker_type()
+    }
+
+    #[cfg(feature = "openmp")]
+    pub fn multi_threaded(
         mut self,
         thread_count: ThreadCount,
     ) -> LcpConstruction<'l, 'p, 's, O, LcpB, PlcpB, SaB, MultiThreaded> {
@@ -242,6 +248,7 @@ impl<'l, 'p, 's, O: OutputElement, LcpB: BufferMode, PlcpB: BufferMode, SaB: Buf
         self.is_generalized_suffix_array
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn into_parts(
         self,
     ) -> (

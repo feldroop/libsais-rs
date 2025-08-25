@@ -2,7 +2,10 @@ use std::{ffi::c_void, marker::PhantomData};
 
 use crate::{
     InputElement, OutputElement, SmallAlphabet, ThreadCount,
-    generics_dispatch::{LibsaisFunctionsSmallAlphabet, SmallAlphabetFunctionsDispatch},
+    generics_dispatch::{
+        LibsaisFunctionsSmallAlphabet, SmallAlphabetFunctionsDispatch,
+        SmallAlphabetFunctionsDispatchOrUnimplemented,
+    },
     type_state::{OutputElementOrUndecided, Parallelism, ParallelismOrUndecided, SingleThreaded},
 };
 
@@ -80,9 +83,10 @@ impl<I: InputElement, O: OutputElementOrUndecided, P: ParallelismOrUndecided> Dr
     for Context<I, O, P>
 {
     fn drop(&mut self) {
-        // TODO
         // SAFETY: this pointer was acquired by calling one of the corresponding create_ctx functions
-        //unsafe { SmallAlphabetFunctionsDispatch::<I, O, P>::libsais_free_ctx(self.ptr) }
+        unsafe {
+            SmallAlphabetFunctionsDispatchOrUnimplemented::<I, O, P>::libsais_free_ctx(self.ptr)
+        }
     }
 }
 
@@ -157,8 +161,11 @@ impl<I: InputElement, O: OutputElementOrUndecided, P: ParallelismOrUndecided> Dr
     for UnBwtContext<I, O, P>
 {
     fn drop(&mut self) {
-        // TODO
         // SAFETY: this pointer was acquired by calling one of the corresponding unbwt_create_ctx functions
-        // unsafe { SmallAlphabetFunctionsDispatch::<P, I, O>::libsais_unbwt_free_ctx(self.ptr) }
+        unsafe {
+            SmallAlphabetFunctionsDispatchOrUnimplemented::<I, O, P>::libsais_unbwt_free_ctx(
+                self.ptr,
+            )
+        }
     }
 }

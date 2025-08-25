@@ -8,7 +8,10 @@ use super::{
     SingleThreaded16InputOutputDispatcher, SingleThreaded32InputOutputDispatcher,
     SingleThreaded64InputOutputDispatcher,
 };
-use crate::{InputElement, LargeAlphabet, OutputElement, SmallAlphabet, sealed::Sealed};
+use crate::{
+    InputElement, LargeAlphabet, OutputElement, SmallAlphabet, sealed::Sealed,
+    type_state::OutputElementOrUndecided,
+};
 
 #[cfg(feature = "openmp")]
 use super::{
@@ -629,19 +632,19 @@ libsais_functions_small_alphabet_impl!(
     libsais_gsa_omp,
     libsais_bwt_omp,
     libsais_bwt_aux_omp,
-    unimplemented,
-    unimplemented,
-    unimplemented,
-    unimplemented,
+    libsais_ctx,
+    libsais_gsa_ctx,
+    libsais_bwt_ctx,
+    libsais_bwt_aux_ctx,
     libsais_plcp_omp,
     libsais_plcp_gsa_omp,
     libsais_lcp_omp,
     libsais_create_ctx_omp,
     libsais_free_ctx,
     libsais_unbwt_omp,
-    unimplemented,
+    libsais_unbwt_ctx,
     libsais_unbwt_aux_omp,
-    unimplemented,
+    libsais_unbwt_aux_ctx,
     libsais_unbwt_create_ctx_omp,
     libsais_unbwt_free_ctx,
     feature = "openmp"
@@ -683,19 +686,19 @@ libsais_functions_small_alphabet_impl!(
     libsais16_gsa_omp,
     libsais16_bwt_omp,
     libsais16_bwt_aux_omp,
-    unimplemented,
-    unimplemented,
-    unimplemented,
-    unimplemented,
+    libsais16_ctx,
+    libsais16_gsa_ctx,
+    libsais16_bwt_ctx,
+    libsais16_bwt_aux_ctx,
     libsais16_plcp_omp,
     libsais16_plcp_gsa_omp,
     libsais16_lcp_omp,
     libsais16_create_ctx_omp,
     libsais16_free_ctx,
     libsais16_unbwt_omp,
-    unimplemented,
+    libsais16_unbwt_ctx,
     libsais16_unbwt_aux_omp,
-    unimplemented,
+    libsais16_unbwt_aux_ctx,
     libsais16_unbwt_create_ctx_omp,
     libsais16_unbwt_free_ctx,
     feature = "openmp"
@@ -782,9 +785,11 @@ impl InputElement for u8 {
     const RECOMMENDED_EXTRA_SPACE: usize = 0;
     const ZERO: Self = 0;
 
-    type SingleThreadedOutputDispatcher<O: OutputElement> = SingleThreaded8InputOutputDispatcher<O>;
+    type SingleThreadedOutputDispatcher<O: OutputElementOrUndecided> =
+        SingleThreaded8InputOutputDispatcher<O>;
     #[cfg(feature = "openmp")]
-    type MultiThreadedOutputDispatcher<O: OutputElement> = MultiThreaded8InputOutputDispatcher<O>;
+    type MultiThreadedOutputDispatcher<O: OutputElementOrUndecided> =
+        MultiThreaded8InputOutputDispatcher<O>;
 }
 
 impl Sealed for u16 {}
@@ -793,10 +798,11 @@ impl InputElement for u16 {
     const RECOMMENDED_EXTRA_SPACE: usize = 0;
     const ZERO: Self = 0;
 
-    type SingleThreadedOutputDispatcher<O: OutputElement> =
+    type SingleThreadedOutputDispatcher<O: OutputElementOrUndecided> =
         SingleThreaded16InputOutputDispatcher<O>;
     #[cfg(feature = "openmp")]
-    type MultiThreadedOutputDispatcher<O: OutputElement> = MultiThreaded16InputOutputDispatcher<O>;
+    type MultiThreadedOutputDispatcher<O: OutputElementOrUndecided> =
+        MultiThreaded16InputOutputDispatcher<O>;
 }
 
 impl Sealed for i32 {}
@@ -805,10 +811,11 @@ impl InputElement for i32 {
     const RECOMMENDED_EXTRA_SPACE: usize = 6_000;
     const ZERO: Self = 0;
 
-    type SingleThreadedOutputDispatcher<O: OutputElement> =
+    type SingleThreadedOutputDispatcher<O: OutputElementOrUndecided> =
         SingleThreaded32InputOutputDispatcher<O>;
     #[cfg(feature = "openmp")]
-    type MultiThreadedOutputDispatcher<O: OutputElement> = MultiThreaded32InputOutputDispatcher<O>;
+    type MultiThreadedOutputDispatcher<O: OutputElementOrUndecided> =
+        MultiThreaded32InputOutputDispatcher<O>;
 }
 
 impl OutputElement for i32 {
@@ -836,10 +843,11 @@ impl InputElement for i64 {
     const RECOMMENDED_EXTRA_SPACE: usize = 6_000;
     const ZERO: Self = 0;
 
-    type SingleThreadedOutputDispatcher<O: OutputElement> =
+    type SingleThreadedOutputDispatcher<O: OutputElementOrUndecided> =
         SingleThreaded64InputOutputDispatcher<O>;
     #[cfg(feature = "openmp")]
-    type MultiThreadedOutputDispatcher<O: OutputElement> = MultiThreaded64InputOutputDispatcher<O>;
+    type MultiThreadedOutputDispatcher<O: OutputElementOrUndecided> =
+        MultiThreaded64InputOutputDispatcher<O>;
 }
 
 impl OutputElement for i64 {

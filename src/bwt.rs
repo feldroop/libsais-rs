@@ -40,7 +40,6 @@ pub struct BwtConstruction<
     context: Option<&'r mut Context<I, O, P>>,
     aux_indices_sampling_rate: Option<AuxIndicesSamplingRate<O>>,
     aux_indices_buffer: Option<&'a mut [O]>,
-    _parallelism_marker: PhantomData<P>,
     _buffer_mode_marker: PhantomData<B>,
     _aux_indices_mode_marker: PhantomData<A>,
 }
@@ -67,7 +66,6 @@ impl<
             context: None,
             aux_indices_sampling_rate: None,
             aux_indices_buffer: None,
-            _parallelism_marker: PhantomData,
             _buffer_mode_marker: PhantomData,
             _aux_indices_mode_marker: PhantomData,
         }
@@ -81,17 +79,13 @@ impl<
     I: SmallAlphabet,
     O: OutputElementOrUndecided,
     B1: BufferModeOrUndecided,
-    P1: ParallelismOrUndecided,
+    P: ParallelismOrUndecided,
     A1: AuxIndicesMode,
-> BwtConstruction<'a, 'b, 'r, I, O, B1, P1, A1>
+> BwtConstruction<'a, 'b, 'r, I, O, B1, P, A1>
 {
-    fn into_other_marker_type<
-        B2: BufferModeOrUndecided,
-        P2: ParallelismOrUndecided,
-        A2: AuxIndicesMode,
-    >(
+    fn into_other_marker_type<B2: BufferModeOrUndecided, A2: AuxIndicesMode>(
         self,
-    ) -> BwtConstruction<'a, 'b, 'r, I, O, B2, P2, A2> {
+    ) -> BwtConstruction<'a, 'b, 'r, I, O, B2, P, A2> {
         BwtConstruction {
             text: self.text,
             bwt_buffer: self.bwt_buffer,
@@ -99,10 +93,9 @@ impl<
             frequency_table: self.frequency_table,
             thread_count: self.thread_count,
             extra_space_temporary_array_buffer: self.extra_space_temporary_array_buffer,
-            context: None, // TODO
+            context: self.context,
             aux_indices_sampling_rate: self.aux_indices_sampling_rate,
             aux_indices_buffer: self.aux_indices_buffer,
-            _parallelism_marker: PhantomData,
             _buffer_mode_marker: PhantomData,
             _aux_indices_mode_marker: PhantomData,
         }
@@ -136,7 +129,6 @@ impl<'a, 'b, 'r, I: SmallAlphabet>
         BwtConstruction {
             text: self.text,
             bwt_buffer: Some(bwt_buffer),
-            thread_count: self.thread_count,
             ..BwtConstruction::init()
         }
     }
@@ -146,7 +138,6 @@ impl<'a, 'b, 'r, I: SmallAlphabet>
     ) -> BwtConstruction<'a, 'b, 'r, I, Undecided, OwnedBuffer, Undecided, NoAuxIndices> {
         BwtConstruction {
             text: self.text,
-            thread_count: self.thread_count,
             ..BwtConstruction::init()
         }
     }
@@ -164,7 +155,6 @@ impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode>
             text: self.text,
             bwt_buffer: self.bwt_buffer,
             temporary_array_buffer: Some(temporary_array_buffer),
-            thread_count: self.thread_count,
             ..BwtConstruction::init()
         }
     }
@@ -175,7 +165,6 @@ impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode>
         BwtConstruction {
             text: self.text,
             bwt_buffer: self.bwt_buffer,
-            thread_count: self.thread_count,
             ..BwtConstruction::init()
         }
     }
@@ -186,7 +175,6 @@ impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode>
         BwtConstruction {
             text: self.text,
             bwt_buffer: self.bwt_buffer,
-            thread_count: self.thread_count,
             ..BwtConstruction::init()
         }
     }
@@ -197,7 +185,6 @@ impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode>
         BwtConstruction {
             text: self.text,
             bwt_buffer: self.bwt_buffer,
-            thread_count: self.thread_count,
             ..BwtConstruction::init()
         }
     }
@@ -209,7 +196,6 @@ impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode>
         BwtConstruction {
             text: self.text,
             bwt_buffer: self.bwt_buffer,
-            thread_count: self.thread_count,
             extra_space_temporary_array_buffer: extra_space,
             ..BwtConstruction::init()
         }
@@ -222,7 +208,6 @@ impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode>
         BwtConstruction {
             text: self.text,
             bwt_buffer: self.bwt_buffer,
-            thread_count: self.thread_count,
             extra_space_temporary_array_buffer: extra_space,
             ..BwtConstruction::init()
         }
@@ -235,7 +220,6 @@ impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode>
         BwtConstruction {
             text: self.text,
             bwt_buffer: self.bwt_buffer,
-            thread_count: self.thread_count,
             extra_space_temporary_array_buffer: extra_space,
             ..BwtConstruction::init()
         }
@@ -249,16 +233,28 @@ impl<'a, 'b, 'r, I: SmallAlphabet, O: OutputElement, B: BufferMode>
     pub fn single_threaded(
         self,
     ) -> BwtConstruction<'a, 'b, 'r, I, O, B, SingleThreaded, NoAuxIndices> {
-        self.into_other_marker_type()
+        BwtConstruction {
+            text: self.text,
+            bwt_buffer: self.bwt_buffer,
+            temporary_array_buffer: self.temporary_array_buffer,
+            extra_space_temporary_array_buffer: self.extra_space_temporary_array_buffer,
+            ..BwtConstruction::init()
+        }
     }
 
     #[cfg(feature = "openmp")]
     pub fn multi_threaded(
-        mut self,
+        self,
         thread_count: ThreadCount,
     ) -> BwtConstruction<'a, 'b, 'r, I, O, B, MultiThreaded, NoAuxIndices> {
-        self.thread_count = thread_count;
-        self.into_other_marker_type()
+        BwtConstruction {
+            text: self.text,
+            bwt_buffer: self.bwt_buffer,
+            temporary_array_buffer: self.temporary_array_buffer,
+            extra_space_temporary_array_buffer: self.extra_space_temporary_array_buffer,
+            thread_count,
+            ..BwtConstruction::init()
+        }
     }
 }
 
@@ -285,12 +281,12 @@ impl<'a, 'b, 'r, I: SmallAlphabet, O: OutputElement, B: BufferMode, P: Paralleli
     }
 }
 
-impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode, A: AuxIndicesMode>
-    BwtConstruction<'a, 'b, 'r, I, i32, B, SingleThreaded, A>
+impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode, P: Parallelism, A: AuxIndicesMode>
+    BwtConstruction<'a, 'b, 'r, I, i32, B, P, A>
 {
     /// Uses a context object that allows reusing memory across runs of the algorithm.
     /// Currently, this is only available for the single threaded 32-bit output version.
-    pub fn with_context(self, context: &'r mut Context<I, i32, SingleThreaded>) -> Self {
+    pub fn with_context(self, context: &'r mut Context<I, i32, P>) -> Self {
         Self {
             context: Some(context),
             ..self
@@ -382,7 +378,8 @@ impl<'a, 'b, 'r, I: SmallAlphabet, O: OutputElement, B: BufferMode, P: Paralleli
         // suffix array buffer is at least as large as text, asserted in safety checks.
         // the library user claimed earlier that the frequency table is correct by calling an unsafe function
         // and the frequency table was asserted to be the correct size.
-        // TODO context
+        // context must be of the correct type, because the API is typesafe and the parallelism decision was
+        // forced to happen before the context was supplied.
         unsafe {
             SmallAlphabetFunctionsDispatch::<I, O, P>::libsais_bwt(
                 text_ptr,

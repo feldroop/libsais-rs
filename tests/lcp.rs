@@ -10,12 +10,15 @@ fn empty_text_plcp_lcp() {
 
     let res = SuffixArrayConstruction::for_text(&text)
         .in_owned_buffer32()
+        .single_threaded()
         .run()
         .expect("libsais should run without an error")
         .plcp_construction()
+        .single_threaded()
         .run()
         .expect("libsais plcp should run without an error")
         .lcp_construction()
+        .single_threaded()
         .run()
         .expect("libsais lcp should run without an error");
 
@@ -35,6 +38,7 @@ fn plcp_lcp_in_buffers() {
 
     let mut construction = SuffixArrayConstruction::for_text(text)
         .in_borrowed_buffer(&mut suffix_array_buffer)
+        .single_threaded()
         .with_context(&mut ctx);
 
     unsafe {
@@ -46,10 +50,12 @@ fn plcp_lcp_in_buffers() {
         .expect("libsais should run without an error")
         .plcp_construction()
         .in_borrowed_buffer(&mut plcp_buffer)
+        .single_threaded()
         .run()
         .expect("libsais plcp should run without an error")
         .lcp_construction()
         .in_borrowed_buffer(&mut lcp_buffer)
+        .single_threaded()
         .run()
         .expect("libsais lcp should run without an error");
 
@@ -63,6 +69,7 @@ fn plcp_lcp_gsa() {
 
     let mut construction = SuffixArrayConstruction::for_text(&text)
         .in_owned_buffer()
+        .single_threaded()
         .with_context(&mut ctx)
         .generalized_suffix_array()
         .with_extra_space_in_buffer(ExtraSpace::Fixed { value: extra_space });
@@ -75,9 +82,11 @@ fn plcp_lcp_gsa() {
         .run()
         .expect("libsais should run without an error")
         .plcp_construction()
+        .single_threaded()
         .run()
         .expect("libsais plcp should run without an error")
         .lcp_construction()
+        .single_threaded()
         .run()
         .expect("libsais lcp should run without an error");
 

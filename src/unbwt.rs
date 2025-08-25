@@ -177,10 +177,12 @@ impl<'b, 'r, 't, I: SmallAlphabet, O: OutputElement, BwtB: BufferMode, TextB: Bu
     }
 }
 
+// third choice: threading
 impl<'b, 'r, 't, I: SmallAlphabet, O: OutputElement, BwtB: BufferMode, TextB: BufferMode>
     UnBwt<'b, 'r, 't, I, O, BwtB, TextB, Undecided>
 {
     pub fn single_threaded(self) -> UnBwt<'b, 'r, 't, I, O, BwtB, TextB, SingleThreaded> {
+        // this is okay, because no context could have been supplied so far
         self.into_other_marker_type_without_context()
     }
 
@@ -190,16 +192,17 @@ impl<'b, 'r, 't, I: SmallAlphabet, O: OutputElement, BwtB: BufferMode, TextB: Bu
         thread_count: ThreadCount,
     ) -> UnBwt<'b, 'r, 't, I, O, BwtB, TextB, MultiThreaded> {
         self.thread_count = thread_count;
+        // this is okay, because no context could have been supplied so far
         self.into_other_marker_type_without_context()
     }
 }
 
-impl<'b, 'r, 't, I: SmallAlphabet, BwtB: BufferMode, TextB: BufferMode>
-    UnBwt<'b, 'r, 't, I, i32, BwtB, TextB, SingleThreaded>
+impl<'b, 'r, 't, I: SmallAlphabet, BwtB: BufferMode, TextB: BufferMode, P: Parallelism>
+    UnBwt<'b, 'r, 't, I, i32, BwtB, TextB, P>
 {
     /// Uses a context object that allows reusing memory across runs of the algorithm.
     /// Currently, this is only available for the single threaded 32-bit output version.
-    pub fn with_context(self, context: &'r mut UnBwtContext<I, i32, SingleThreaded>) -> Self {
+    pub fn with_context(self, context: &'r mut UnBwtContext<I, i32, P>) -> Self {
         Self {
             context: Some(context),
             ..self
@@ -293,7 +296,8 @@ impl<
         // and the frequency table was asserted to be the correct size.
         // primary index/aux indices must be correct, because they were attained either from a BwtConstruction
         // or claimed to be correct in an unsafe function.
-        // TODO context
+        // context must be of the correct type, because the API is typesafe and the parallelism decision was
+        // forced to happen before the context was supplied.
         if let Some(primary_index) = self.primary_index.take() {
             unsafe {
                 SmallAlphabetFunctionsDispatch::<I, O, P>::libsais_unbwt(

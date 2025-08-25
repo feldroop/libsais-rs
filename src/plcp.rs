@@ -6,14 +6,14 @@ use crate::{
     generics_dispatch::{LcpFunctionsDispatch, LibsaisLcpFunctions},
     lcp::LcpConstruction,
     owned_or_borrowed::OwnedOrBorrowed,
-    type_state::{BorrowedBuffer, BufferMode, OwnedBuffer, Parallelism},
+    type_state::{BorrowedBuffer, BufferMode, OwnedBuffer, Parallelism, ParallelismOrUndecided},
 };
 
 #[allow(unused)]
 use crate::type_state::SingleThreaded;
 
 #[cfg(feature = "openmp")]
-use crate::type_state::MultiThreaded;
+use crate::type_state::{MultiThreaded, Undecided};
 
 #[derive(Debug)]
 pub struct PlcpConstruction<
@@ -24,7 +24,7 @@ pub struct PlcpConstruction<
     O: OutputElement,
     PlcpB: BufferMode,
     SaB: BufferMode,
-    P: Parallelism,
+    P: ParallelismOrUndecided,
 > {
     pub(crate) text: &'t [I],
     pub(crate) suffix_array_buffer: OwnedOrBorrowed<'s, O, SaB>,
@@ -35,11 +35,23 @@ pub struct PlcpConstruction<
     pub(crate) _plcp_buffer_mode_marker: PhantomData<PlcpB>,
 }
 
-#[cfg(feature = "openmp")]
 impl<'p, 's, 't, I: InputElement, O: OutputElement, PlcpB: BufferMode, SaB: BufferMode>
-    PlcpConstruction<'p, 's, 't, I, O, PlcpB, SaB, SingleThreaded>
+    PlcpConstruction<'p, 's, 't, I, O, PlcpB, SaB, Undecided>
 {
-    pub fn multithreaded(
+    pub fn single_threaded(self) -> PlcpConstruction<'p, 's, 't, I, O, PlcpB, SaB, SingleThreaded> {
+        PlcpConstruction {
+            text: self.text,
+            suffix_array_buffer: self.suffix_array_buffer,
+            generalized_suffix_array: self.generalized_suffix_array,
+            plcp_buffer: self.plcp_buffer,
+            thread_count: ThreadCount::fixed(1),
+            _parallelism_marker: PhantomData,
+            _plcp_buffer_mode_marker: PhantomData,
+        }
+    }
+
+    #[cfg(feature = "openmp")]
+    pub fn multi_threaded(
         self,
         thread_count: ThreadCount,
     ) -> PlcpConstruction<'p, 's, 't, I, O, PlcpB, SaB, MultiThreaded> {
@@ -55,7 +67,7 @@ impl<'p, 's, 't, I: InputElement, O: OutputElement, PlcpB: BufferMode, SaB: Buff
     }
 }
 
-impl<'s, 't, I: InputElement, O: OutputElement, SaB: BufferMode, P: Parallelism>
+impl<'s, 't, I: InputElement, O: OutputElement, SaB: BufferMode, P: ParallelismOrUndecided>
     PlcpConstruction<'static, 's, 't, I, O, OwnedBuffer, SaB, P>
 {
     pub fn in_borrowed_buffer<'p>(
@@ -185,7 +197,7 @@ impl<'p, 's, O: OutputElement, PlcpB: BufferMode, SaB: BufferMode>
 
     pub fn lcp_construction(
         self,
-    ) -> LcpConstruction<'static, 'p, 's, O, OwnedBuffer, PlcpB, SaB, SingleThreaded> {
+    ) -> LcpConstruction<'static, 'p, 's, O, OwnedBuffer, PlcpB, SaB, Undecided> {
         LcpConstruction {
             plcp_buffer: self.plcp,
             suffix_array_buffer: self.suffix_array,
