@@ -34,12 +34,13 @@ pub use {
 
 // TODOs:
 
+//      sort buffermode typestate according to importance always
+
 //      some comments in code
 //      good docs functions
 
 //      good docs module and crate level
 //      examples
-//      README
 
 //      setup CI and such, also without default features, clippy, etc.
 //      release-plz good release (also libsais-sys update)

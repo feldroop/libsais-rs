@@ -395,7 +395,7 @@ impl<'s, 't, I: InputElement, O: SupportsPlcpOutputFor<I>, SaB: BufferMode>
 {
     pub fn plcp_construction(
         self,
-    ) -> PlcpConstruction<'static, 's, 't, I, O, OwnedBuffer, SaB, Undecided> {
+    ) -> PlcpConstruction<'static, 's, 't, I, O, SaB, OwnedBuffer, Undecided> {
         PlcpConstruction {
             text: self.text,
             suffix_array_buffer: self.suffix_array,

@@ -22,8 +22,8 @@ pub struct PlcpConstruction<
     't,
     I: InputElement,
     O: OutputElement,
-    PlcpB: BufferMode,
     SaB: BufferMode,
+    PlcpB: BufferMode,
     P: ParallelismOrUndecided,
 > {
     pub(crate) text: &'t [I],
@@ -35,10 +35,10 @@ pub struct PlcpConstruction<
     pub(crate) _plcp_buffer_mode_marker: PhantomData<PlcpB>,
 }
 
-impl<'p, 's, 't, I: InputElement, O: OutputElement, PlcpB: BufferMode, SaB: BufferMode>
-    PlcpConstruction<'p, 's, 't, I, O, PlcpB, SaB, Undecided>
+impl<'p, 's, 't, I: InputElement, O: OutputElement, SaB: BufferMode, PlcpB: BufferMode>
+    PlcpConstruction<'p, 's, 't, I, O, SaB, PlcpB, Undecided>
 {
-    pub fn single_threaded(self) -> PlcpConstruction<'p, 's, 't, I, O, PlcpB, SaB, SingleThreaded> {
+    pub fn single_threaded(self) -> PlcpConstruction<'p, 's, 't, I, O, SaB, PlcpB, SingleThreaded> {
         PlcpConstruction {
             text: self.text,
             suffix_array_buffer: self.suffix_array_buffer,
@@ -54,7 +54,7 @@ impl<'p, 's, 't, I: InputElement, O: OutputElement, PlcpB: BufferMode, SaB: Buff
     pub fn multi_threaded(
         self,
         thread_count: ThreadCount,
-    ) -> PlcpConstruction<'p, 's, 't, I, O, PlcpB, SaB, MultiThreaded> {
+    ) -> PlcpConstruction<'p, 's, 't, I, O, SaB, PlcpB, MultiThreaded> {
         PlcpConstruction {
             text: self.text,
             suffix_array_buffer: self.suffix_array_buffer,
@@ -68,12 +68,12 @@ impl<'p, 's, 't, I: InputElement, O: OutputElement, PlcpB: BufferMode, SaB: Buff
 }
 
 impl<'s, 't, I: InputElement, O: OutputElement, SaB: BufferMode, P: ParallelismOrUndecided>
-    PlcpConstruction<'static, 's, 't, I, O, OwnedBuffer, SaB, P>
+    PlcpConstruction<'static, 's, 't, I, O, SaB, OwnedBuffer, P>
 {
     pub fn in_borrowed_buffer<'p>(
         self,
         plcp_buffer: &'p mut [O],
-    ) -> PlcpConstruction<'p, 's, 't, I, O, BorrowedBuffer, SaB, P> {
+    ) -> PlcpConstruction<'p, 's, 't, I, O, SaB, BorrowedBuffer, P> {
         PlcpConstruction {
             text: self.text,
             suffix_array_buffer: self.suffix_array_buffer,
@@ -92,12 +92,12 @@ impl<
     't,
     I: InputElement,
     O: OutputElement,
-    PlcpB: BufferMode,
     SaB: BufferMode,
+    PlcpB: BufferMode,
     P: Parallelism,
-> PlcpConstruction<'p, 's, 't, I, O, PlcpB, SaB, P>
+> PlcpConstruction<'p, 's, 't, I, O, SaB, PlcpB, P>
 {
-    pub fn run(mut self) -> Result<SuffixArrayWithPlcp<'p, 's, O, PlcpB, SaB>, LibsaisError> {
+    pub fn run(mut self) -> Result<SuffixArrayWithPlcp<'p, 's, O, SaB, PlcpB>, LibsaisError> {
         let mut plcp = OwnedOrBorrowed::take_buffer_or_allocate(self.plcp_buffer.take(), || {
             vec![O::ZERO; self.text.len()]
         });
@@ -154,21 +154,21 @@ impl<
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub struct SuffixArrayWithPlcp<'p, 's, O: OutputElement, PlcpB: BufferMode, SaB: BufferMode> {
-    pub(crate) plcp: OwnedOrBorrowed<'p, O, PlcpB>,
+pub struct SuffixArrayWithPlcp<'p, 's, O: OutputElement, SaB: BufferMode, PlcpB: BufferMode> {
     pub(crate) suffix_array: OwnedOrBorrowed<'s, O, SaB>,
+    pub(crate) plcp: OwnedOrBorrowed<'p, O, PlcpB>,
     pub(crate) is_generalized_suffix_array: bool,
 }
 
-impl<'p, 's, O: OutputElement, PlcpB: BufferMode, SaB: BufferMode>
-    SuffixArrayWithPlcp<'p, 's, O, PlcpB, SaB>
+impl<'p, 's, O: OutputElement, SaB: BufferMode, PlcpB: BufferMode>
+    SuffixArrayWithPlcp<'p, 's, O, SaB, PlcpB>
 {
-    pub fn plcp(&self) -> &[O] {
-        &self.plcp.buffer
-    }
-
     pub fn suffix_array(&self) -> &[O] {
         &self.suffix_array.buffer
+    }
+
+    pub fn plcp(&self) -> &[O] {
+        &self.plcp.buffer
     }
 
     pub fn is_generalized_suffix_array(&self) -> bool {
@@ -197,7 +197,7 @@ impl<'p, 's, O: OutputElement, PlcpB: BufferMode, SaB: BufferMode>
 
     pub fn lcp_construction(
         self,
-    ) -> LcpConstruction<'static, 'p, 's, O, OwnedBuffer, PlcpB, SaB, Undecided> {
+    ) -> LcpConstruction<'static, 'p, 's, O, SaB, OwnedBuffer, PlcpB, Undecided> {
         LcpConstruction {
             plcp_buffer: self.plcp,
             suffix_array_buffer: self.suffix_array,

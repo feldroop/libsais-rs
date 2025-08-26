@@ -408,7 +408,7 @@ impl<
     AuxB: BufferMode,
 > BwtConstruction<'a, 'b, 'r, I, O, BwtB, P, AuxB>
 {
-    pub fn run(mut self) -> Result<BwtWithAuxIndices<'a, 'b, I, O, AuxB, BwtB>, LibsaisError> {
+    pub fn run(mut self) -> Result<BwtWithAuxIndices<'a, 'b, I, O, BwtB, AuxB>, LibsaisError> {
         let text_len = self.text.as_ref().map_or_else(
             || self.bwt_buffer.as_ref().unwrap().len(),
             |text| text.len(),
@@ -556,16 +556,16 @@ pub struct BwtWithAuxIndices<
     'b,
     I: SmallAlphabet,
     O: OutputElement,
-    AuxB: BufferMode,
     BwtB: BufferMode,
+    AuxB: BufferMode,
 > {
     pub(crate) bwt: OwnedOrBorrowed<'b, I, BwtB>,
     pub(crate) aux_indices: OwnedOrBorrowed<'a, O, AuxB>,
     pub(crate) aux_indices_sampling_rate: AuxIndicesSamplingRate<O>,
 }
 
-impl<'a, 'b, I: SmallAlphabet, O: OutputElement, AuxB: BufferMode, BwtB: BufferMode>
-    BwtWithAuxIndices<'a, 'b, I, O, AuxB, BwtB>
+impl<'a, 'b, I: SmallAlphabet, O: OutputElement, BwtB: BufferMode, AuxB: BufferMode>
+    BwtWithAuxIndices<'a, 'b, I, O, BwtB, AuxB>
 {
     pub fn bwt(&self) -> &[I] {
         &self.bwt.buffer
