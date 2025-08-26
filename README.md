@@ -38,6 +38,6 @@ This library only adds a few safety checks, which should not impact performance 
 
 Below are the results of a small benchmark of suffix array construction algorithms available on [crates.io](https://crates.io). The input was the human genome, truncated to 2 GB. Details about this benchmark can be found [here](https://github.com/feldroop/benchmark_crates_io_sacas).
 
-The excellent performance of `libsais` is one of the main reason why this API wrapper crate was created.
+The excellent performance of `libsais` is one of the main reasons why this API wrapper crate was created.
 
 <img src="https://raw.githubusercontent.com/feldroop/benchmark_crates_io_sacas/refs/heads/master/plot/plot.svg" />
