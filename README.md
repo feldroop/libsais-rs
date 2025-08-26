@@ -2,7 +2,7 @@
 
 An idiomatic and mostly safe API wrapper for the awesome and _very_ fast library [`libsais`](https://github.com/IlyaGrebnov/libsais) by Ilya Grebnov.
 
-⚠️ **Warning:** this crate is not yet battle-tested, there might be bugs. The API is still subject to small changes. Any kind of feedback and suggestions via the issue tracker are highly approved!⚠️ 
+⚠️ **Warning:** this crate is not yet battle-tested, there might be bugs. The API is still subject to small changes. Any kind of feedback and suggestions via the issue tracker is highly appreciated!⚠️ 
 
 ## Features
 
