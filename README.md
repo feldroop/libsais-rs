@@ -2,7 +2,7 @@
 
 An idiomatic and mostly safe API wrapper for the awesome and _very_ fast library [`libsais`](https://github.com/IlyaGrebnov/libsais) by Ilya Grebnov.
 
-⚠️ **Warning:** this crate is not yet battle-tested, there might be bugs. The API is still subject to small changes. ⚠️ 
+⚠️ **Warning:** this crate is not yet battle-tested, there might be bugs. The API is still subject to small changes. Any kind of feedback and suggestions via the issue tracker are highly approved!⚠️ 
 
 ## Features
 
@@ -37,5 +37,7 @@ let suffix_array: Vec<i32> = SuffixArrayConstruction::for_text(text)
 This library only adds a few safety checks, which should not impact performance in a relevant way. A notable exception is the suffix array construction for `i32` and `i64` inputs. Please consult the [documentation](https://docs.rs/libsais/latest/libsais/) for details.
 
 Below are the results of a small benchmark of suffix array construction algorithms available on [crates.io](https://crates.io). The input was the human genome, truncated to 2 GB. Details about this benchmark can be found [here](https://github.com/feldroop/benchmark_crates_io_sacas).
+
+The excellent performance of `libsais` is one of the main reason why this API wrapper crate was created.
 
 <img src="https://raw.githubusercontent.com/feldroop/benchmark_crates_io_sacas/refs/heads/master/plot/plot.svg" />
