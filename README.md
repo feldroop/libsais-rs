@@ -11,12 +11,12 @@ This crate exposes the whole functionality of `libsais`. It might be useful to a
 - Suffix array construction for `u8`/`u16`/`i32`/`i64` texts and `i32`/`i64` output arrays
 - Generalized suffix arrays
 - Longest common prefix arrays and permuted longest common prefix arrays
-- Burrows-Wheeler transform and reversal
-- Optional multithreading support
+- Burrows-Wheeler-Transform and reversal
+- Optional multithreading support via the `openmp` feature (enabled by default)
 
 ## Usage
 
-This crate provies generic builder-like APIs for all of the features listed above. The following is a simple example of how to use this library to construct a suffix array in parallel:
+This crate provides generic builder-like APIs for all of the features listed above. The following is a simple example of how to use this library to construct a suffix array in parallel:
 
 ```rust
 use libsais::{SuffixArrayConstruction, ThreadCount};
