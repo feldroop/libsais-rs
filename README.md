@@ -21,7 +21,7 @@ This crate provies generic builder-like APIs for all of the features listed abov
 ```rust
 use libsais::{SuffixArrayConstruction, ThreadCount};
 
-let text = b"barnabasbrabblesaboutbananas";
+let text = b"barnabasbabblesaboutbananas";
 let suffix_array: Vec<i32> = SuffixArrayConstruction::for_text(text)
     .in_owned_buffer()
     .multi_threaded(ThreadCount::openmp_default())
