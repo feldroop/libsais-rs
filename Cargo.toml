@@ -26,3 +26,6 @@ default-features = false
 
 [dependencies]
 either = "1.15.0"
+
+[dev-dependencies]
+rand = "0.9"
