@@ -30,7 +30,7 @@ let suffix_array: Vec<i32> = SuffixArrayConstruction::for_text(text)
     .into_vec();
 ```
 
-Please consult the [documentation](https://docs.rs/libsais/latest/libsais/) or [examples](./examples) for more details about how to use this library.
+Please consult the [documentation](https://docs.rs/libsais/latest/libsais/) and the [examples](./examples) for more details on how to use this library.
 
 ## Performance and benchmarks
 
