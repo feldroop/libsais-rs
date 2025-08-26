@@ -14,8 +14,6 @@ This crate exposes the whole functionality of `libsais`. It might be useful to a
 - Burrows-Wheeler transform and reversal
 - Optional multithreading support
 
-Please consult the [documentation](https://docs.rs/libsais/latest/libsais/) or [examples](./examples) for more details about how to use this library.
-
 ## Usage
 
 This crate provies generic builder-like APIs for all of the features listed above. The following is a simple example of how to use this library to construct a suffix array in parallel:
@@ -31,6 +29,8 @@ let suffix_array: Vec<i32> = SuffixArrayConstruction::for_text(text)
     .expect("The example in the README should really work")
     .into_vec();
 ```
+
+Please consult the [documentation](https://docs.rs/libsais/latest/libsais/) or [examples](./examples) for more details about how to use this library.
 
 ## Performance and benchmarks
 
