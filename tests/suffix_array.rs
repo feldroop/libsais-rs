@@ -223,3 +223,16 @@ fn create_and_drop_all_contexts() {
     std::mem::drop(uc3);
     std::mem::drop(uc4);
 }
+
+#[test]
+fn readme() {
+    let text = b"barnabasbrabblesaboutbananas";
+    let suffix_array: Vec<i32> = SuffixArrayConstruction::for_text(text)
+        .in_owned_buffer()
+        .multi_threaded(ThreadCount::openmp_default())
+        .run()
+        .expect("The example in the README should really work")
+        .into_vec();
+
+    assert!(is_suffix_array(text, &suffix_array));
+}
