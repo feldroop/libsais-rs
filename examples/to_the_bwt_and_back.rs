@@ -1,7 +1,7 @@
 use libsais::{
     BwtConstruction,
     bwt::{AuxIndicesSamplingRate, BwtWithAuxIndices},
-    type_state::{BorrowedBuffer, OwnedBuffer},
+    typestate::{BorrowedBuffer, OwnedBuffer},
 };
 
 fn main() {

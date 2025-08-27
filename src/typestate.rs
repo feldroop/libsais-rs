@@ -35,8 +35,8 @@ impl<P: Parallelism> ParallelismOrUndecided for P {
         P::WithInput<I, O>;
 }
 
-/// Decision about whether the OpenMP based functions of `libsais` will be used. [MultiThreaded] is
-/// only available when the crate feate `openmp` is activated.
+/// Decision about whether the OpenMP based functions of `libsais` will be used. [`MultiThreaded`] is
+/// only available when the crate feature `openmp` is activated.
 pub trait Parallelism: Sealed {
     type WithInput<I: InputElement, O: OutputElementOrUndecided>: InputDispatch<I, O>;
 }
@@ -124,7 +124,7 @@ pub trait BufferModeOrUndecided: Sealed {}
 
 impl BufferModeOrUndecided for Undecided {}
 
-/// Decision about whether an owned [Vec]-based buffer or a user-provided slice-based buffer is used.
+/// Decision about whether an owned [`Vec`]-based buffer or a user-provided slice-based buffer is used.
 pub trait BufferMode: Sealed {
     type Buffer<'a, T: 'a>;
 
@@ -206,7 +206,7 @@ impl Sealed for ReplaceInput {}
 impl BufferModeOrReplaceInput for ReplaceInput {}
 
 /// Decision about whether auxiliary indices are additionally returned during BWT construction. See
-/// [bwt](super::bwt) for details.
+/// [`bwt`](super::bwt) for details.
 pub trait AuxIndicesMode: Sealed {}
 
 pub struct NoAuxIndices {}

@@ -10,7 +10,7 @@ use super::{
 };
 use crate::{
     InputElement, LargeAlphabet, OutputElement, SmallAlphabet, sealed::Sealed,
-    type_state::OutputElementOrUndecided,
+    typestate::OutputElementOrUndecided,
 };
 
 #[cfg(feature = "openmp")]

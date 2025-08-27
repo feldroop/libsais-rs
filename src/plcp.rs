@@ -9,14 +9,14 @@ use crate::{
     generics_dispatch::{LcpFunctionsDispatch, LibsaisLcpFunctions},
     lcp::LcpConstruction,
     owned_or_borrowed::OwnedOrBorrowed,
-    type_state::{BorrowedBuffer, BufferMode, OwnedBuffer, Parallelism, ParallelismOrUndecided},
+    typestate::{BorrowedBuffer, BufferMode, OwnedBuffer, Parallelism, ParallelismOrUndecided},
 };
 
 #[allow(unused)]
-use crate::type_state::SingleThreaded;
+use crate::typestate::SingleThreaded;
 
 #[cfg(feature = "openmp")]
-use crate::type_state::{MultiThreaded, Undecided};
+use crate::typestate::{MultiThreaded, Undecided};
 
 #[derive(Debug)]
 pub struct PlcpConstruction<

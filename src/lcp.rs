@@ -8,17 +8,17 @@ use crate::{
     IntoSaisResult, LibsaisError, OutputElement, ThreadCount,
     generics_dispatch::{LcpFunctionsDispatch, LibsaisLcpFunctions},
     owned_or_borrowed::OwnedOrBorrowed,
-    type_state::{
+    typestate::{
         BorrowedBuffer, BufferMode, BufferModeOrReplaceInput, OwnedBuffer, Parallelism,
         ParallelismOrUndecided, ReplaceInput,
     },
 };
 
 #[allow(unused)]
-use crate::type_state::SingleThreaded;
+use crate::typestate::SingleThreaded;
 
 #[cfg(feature = "openmp")]
-use crate::type_state::{MultiThreaded, Undecided};
+use crate::typestate::{MultiThreaded, Undecided};
 
 #[derive(Debug)]
 pub struct LcpConstruction<

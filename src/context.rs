@@ -16,13 +16,13 @@ use crate::{
         LibsaisFunctionsSmallAlphabet, SmallAlphabetFunctionsDispatch,
         SmallAlphabetFunctionsDispatchOrUnimplemented,
     },
-    type_state::{OutputElementOrUndecided, Parallelism, ParallelismOrUndecided, SingleThreaded},
+    typestate::{OutputElementOrUndecided, Parallelism, ParallelismOrUndecided, SingleThreaded},
 };
 
 #[cfg(feature = "openmp")]
-use crate::type_state::MultiThreaded;
+use crate::typestate::MultiThreaded;
 
-/// A context for use in suffix array and BWT construction. Refer to [context](self) for details.
+/// A context for use in suffix array and BWT construction. Refer to [`context`](self) for details.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Context<I: InputElement, O: OutputElementOrUndecided, P: ParallelismOrUndecided> {
     ptr: *mut c_void,
@@ -74,7 +74,7 @@ impl<I: SmallAlphabet> Context<I, i32, MultiThreaded> {
     /// * `thread_count` - The number of threads to use. This MUST be the same value as is used in
     ///   the configuration of the algorithms in the builder API. Otherwise the builder will panic.
     ///
-    /// Returns [None] if `libsais` returns the nullpointer.
+    /// Returns [`None`] if `libsais` returns the nullpointer.
     /// Could be due to out-of-memory issues. Is unlikely to happen.
     pub fn try_new_multi_threaded(thread_count: ThreadCount) -> Option<Self> {
         Self::try_new(thread_count)
@@ -152,7 +152,7 @@ impl<I: SmallAlphabet> UnBwtContext<I, i32, SingleThreaded> {
 
     /// Create a context for use in single threaded operations.
     ///
-    /// Returns [None] if `libsais` returns the nullpointer.
+    /// Returns [`None`] if `libsais` returns the nullpointer.
     /// Could be due to out-of-memory issues. Is unlikely to happen.
     pub fn try_new_single_threaded() -> Option<Self> {
         Self::try_new(ThreadCount::fixed(1))
@@ -182,7 +182,7 @@ impl<I: SmallAlphabet> UnBwtContext<I, i32, MultiThreaded> {
     /// * `thread_count` - The number of threads to use. This MUST be the same value as is used in
     ///   the configuration of the algorithms in the builder API. Otherwise the builder will panic.
     ///
-    /// Returns [None] if `libsais` returns the nullpointer.
+    /// Returns [`None`] if `libsais` returns the nullpointer.
     /// Could be due to out-of-memory issues. Is unlikely to happen.
     pub fn try_new_multi_threaded(thread_count: ThreadCount) -> Option<Self> {
         Self::try_new(thread_count)

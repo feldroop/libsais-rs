@@ -5,7 +5,7 @@ use std::{ffi::c_void, marker::PhantomData};
 use crate::{
     InputElement,
     sealed::Sealed,
-    type_state::{OutputElementOrUndecided, Parallelism, ParallelismOrUndecided},
+    typestate::{OutputElementOrUndecided, Parallelism, ParallelismOrUndecided},
 };
 
 // These types are the key gadgets that allow the transition from the generic interface of this wrapper

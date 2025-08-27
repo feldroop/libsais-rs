@@ -1,5 +1,5 @@
 /*!
- * Construct Burrows-Wheeler-Transforms (BWTs) for texts using [BwtConstruction].
+ * Construct Burrows-Wheeler-Transforms (BWTs) for texts using [`BwtConstruction`].
  *
  * # Test
  */
@@ -14,7 +14,7 @@ use crate::{
     generics_dispatch::{LibsaisFunctionsSmallAlphabet, SmallAlphabetFunctionsDispatch},
     owned_or_borrowed::OwnedOrBorrowed,
     suffix_array::{self, ExtraSpace},
-    type_state::{
+    typestate::{
         AuxIndicesMode, BorrowedBuffer, BufferMode, BufferModeOrUndecided, NoAuxIndices,
         OutputElementOrUndecided, OwnedBuffer, Parallelism, ParallelismOrUndecided, SingleThreaded,
         Undecided,
@@ -23,7 +23,7 @@ use crate::{
 };
 
 #[cfg(feature = "openmp")]
-use crate::type_state::MultiThreaded;
+use crate::typestate::MultiThreaded;
 
 #[derive(Debug)]
 pub struct BwtConstruction<

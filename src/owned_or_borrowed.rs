@@ -2,7 +2,7 @@ use either::Either;
 
 use std::marker::PhantomData;
 
-use crate::type_state::BufferMode;
+use crate::typestate::BufferMode;
 
 // For internal use in this library. This struct is used to be agnostic over the usage of an owned buffer
 // or a borrowed slice. When a Vec is used, `B` should always be OwnedBuffer and when a slice is used,

@@ -13,14 +13,14 @@ use crate::{
     generics_dispatch::{LibsaisFunctionsSmallAlphabet, SmallAlphabetFunctionsDispatch},
     owned_or_borrowed::OwnedOrBorrowed,
     suffix_array,
-    type_state::{
+    typestate::{
         BorrowedBuffer, BufferMode, OutputElementOrUndecided, OwnedBuffer, Parallelism,
         ParallelismOrUndecided, SingleThreaded, Undecided,
     },
 };
 
 #[cfg(feature = "openmp")]
-use crate::type_state::MultiThreaded;
+use crate::typestate::MultiThreaded;
 
 #[derive(Debug)]
 pub struct UnBwt<

@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use libsais::{InputElement, OutputElement, context::Context, type_state::SingleThreaded};
+use libsais::{InputElement, OutputElement, context::Context, typestate::SingleThreaded};
 
 pub fn setup_basic_example() -> (
     &'static [u8; 11],

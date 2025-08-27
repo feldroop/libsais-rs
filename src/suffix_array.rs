@@ -1,5 +1,102 @@
 /*!
- * Construct (generalized) suffix array (GSA) for a text using [SuffixArrayConstruction].
+ * Construct the (generalized) [suffix array] (GSA) for a text using [`SuffixArrayConstruction`].
+ *
+ * `libsais` implements suffix array construction based on the [Suffix Array Induced Sort] (SAIS) algorithm.
+ * It is a linear-time algorithm and only needs the suffix array itself as memory in most cases.
+ *
+ * The entry point to the API is the [`SuffixArrayConstruction`] builder-like struct. It is always required to
+ * pass the input text, register the output element and make a decision about parallelisation. Further configuration
+ * options include supplying an output buffer, [context], metadata about the input text, and instructing the library
+ * to pass additional memory to the algorithm.
+ *
+ * The following is a fully-configured example of the suffix array construction for `u8`/`u16`-based alphabets:
+ * ```
+ * use libsais::{context::Context, SuffixArrayConstruction};
+ *
+ * let mut context = Context::new_single_threaded();
+ *
+ * let text = b"aaaaaaaaaa".as_slice();
+ * let mut frequency_table = [0; 256];
+ * frequency_table[b'a' as usize] = 10;
+ *
+ * // additional space in the buffer is automatically passed to the algorithm
+ * let mut my_suffix_array_buffer = vec![0;15];
+ *
+ * let mut construction = SuffixArrayConstruction::for_text(&text)
+ *     .in_borrowed_buffer(&mut my_suffix_array_buffer)
+ *     .single_threaded()
+ *     // .with_extra_space_in_buffer(ExtraSpace::Fixed { value: 5 }) <-- only for owned buffers
+ *     .with_context(&mut context);
+ *
+ * // SAFETY: the frequency table for the example is correct
+ * unsafe {
+ *     construction = construction.with_frequency_table(&mut frequency_table);
+ * }
+ *
+ * // after this, the suffix array will be stored in the beginning of my_suffix_array_buffer
+ * let res = construction.run().unwrap();
+ * println!("{:?}", res.suffix_array());
+ * ```
+ *
+ * # Sentinel Convention and Suffix Array Length
+ *
+ * In the literature and in some applications, the input texts to suffix array construction algorithms are
+ * assumed to be terminated by a unique, lexicographically smallest character It is usually denoted by $ and
+ * implemented by the zero byte.
+ *
+ * `libsais` does not have this requirement, but sorts suffixes as if such a
+ * character were present at the end of the text. Therefore, the resulting suffix array has the same
+ * length as the text. When using a borrowed output buffer, it has to at least as long as the text.
+ *
+ * # Return Type and PLCP
+ *
+ * The read-only return type of [`SuffixArrayConstruction::run`], bundles the suffix array
+ * and a reference to the input text. It is generic over whether an owned or borrowed suffix array buffer is used.
+ * The object can be destructured into parts or used to safely compute a permuted longest common prefix (PLCP) array.
+ *
+ * An example of using the return type to obtain a PLCP and then an LCP array can be found
+ * [here](https://github.com/feldroop/libsais-rs/blob/master/examples/the_lcp_ladder.rs).
+ *
+ * # Large Alphabets
+ *
+ * For `i32`/`i64`-based texts, a mutable reference to the input text is required. If the algorithm executes without
+ * errors, the text will be returned to its initial state. Negative values in the input text are NOT allowed.
+ *
+ * Additionally, it is strongly recommended to pass an alphabet size using
+ * [`SuffixArrayConstruction::with_alphabet_size`], because the memory usage of the algorithm is linear
+ * in the alphabet size. Otherwise, the library will inject a linear scan of the
+ * text to determine a suitable alphabet size and guarantee that no negative values exist.
+ *
+ * The largest value in the text plus one is a lower bound for the alphabet size. It is therefore very wasteful
+ * to use this algorithm on a text with a large maximum value when many values smaller than the maximum are
+ * not represented in the text. In such a scenario, mapping the text into the range [0, k) is a good option,
+ * where k is the number of distinct values in the text.
+ *
+ * An example of using large alphabets with further explanations can be found
+ * [here](https://github.com/feldroop/libsais-rs/blob/master/examples/large_alphabet_suffix_array.rs).
+ *
+ * # Generalized Suffix Array
+ *
+ * The generalized suffix array is a suffix array for a set of texts `{t1, t2, ..., tn}`. The set of all
+ * suffixes of all texts is sorted to obtain this data structure. In theory, the array then contains tuples of
+ * indices of the suffix and of the text the suffix belongs to.
+ *
+ * The generalized suffix array can be simulated in practice by concatenating the text using unique separators
+ * and then constructing a normal suffix array for the concatenated text. The concatenation work like this:
+ * `t = t1 $1 t2 $2 ... tn $n`, with `$1 < $2 < ... < $n`. `libsais` allows implementing this behavior by using the
+ * zero byte (not ASCII '0') for every separator, like so: `t0 = t1 0 t2 0 ... tn 0`. In this API wrapper, simply
+ * use the [`SuffixArrayConstruction::generalized_suffix_array`] function.
+ *
+ * It would be possible to construct a normal suffix array of `t0` without this flag and obtain
+ * an suffix array very similar to the generalized suffix array. However, the tie-breaking behavior
+ * between equivalent suffixes of different texts would be unpredicatble in this case.
+ *
+ * An example of creating a generalized suffix array of multiple texts can be found
+ * [here](https://github.com/feldroop/libsais-rs/blob/master/examples/fully_configured_generalized_suffix_array.rs).
+ *
+ * [suffix array]: https://en.wikipedia.org/wiki/Suffix_array
+ * [Suffix Array Induced Sort]: https://www.doi.org/10.1109/TC.2010.188
+ * [context]: super::context
  */
 
 use either::Either;
@@ -14,18 +111,20 @@ use crate::{
     },
     owned_or_borrowed::OwnedOrBorrowed,
     plcp::PlcpConstruction,
-    type_state::{
+    typestate::{
         BorrowedBuffer, BufferMode, BufferModeOrUndecided, OutputElementOrUndecided, OwnedBuffer,
         Parallelism, ParallelismOrUndecided, SingleThreaded, Undecided,
     },
 };
 
 #[cfg(feature = "openmp")]
-use crate::type_state::MultiThreaded;
+use crate::typestate::MultiThreaded;
 
 use std::marker::PhantomData;
 
-/// Test
+/// One of the main entry points of this library for constructing suffix arrays.
+///
+/// See [`suffix_array`](self) for details.
 #[derive(Debug)]
 pub struct SuffixArrayConstruction<
     'r,
@@ -72,10 +171,12 @@ impl<
     }
 }
 
-// entry point to builder for small alphabets
 impl<'t, I: SmallAlphabet>
     SuffixArrayConstruction<'static, 'static, 't, I, Undecided, Undecided, Undecided>
 {
+    /// The first method to call for `u8`/`u16`-based texts.
+    ///
+    /// The text has to be at most as long as the maximum value of the output element type you will choose.
     pub fn for_text(text: &'t [I]) -> Self {
         Self {
             text: Some(Either::Left(text)),
@@ -84,10 +185,12 @@ impl<'t, I: SmallAlphabet>
     }
 }
 
-// entry point to builder for large alphabets
 impl<'t, I: LargeAlphabet>
     SuffixArrayConstruction<'static, 'static, 't, I, Undecided, Undecided, Undecided>
 {
+    /// The first method to call for `i32`/`i64`-based texts.
+    ///
+    /// The text has to be at most as long as the maximum value of the output element type you will choose.
     pub fn for_text_mut(text: &'t mut [I]) -> Self {
         Self {
             text: Some(Either::Right(text)),
@@ -96,10 +199,13 @@ impl<'t, I: LargeAlphabet>
     }
 }
 
-// second choice: output type and buffer mode
 impl<'t, I: InputElement>
     SuffixArrayConstruction<'static, 'static, 't, I, Undecided, Undecided, Undecided>
 {
+    /// Provide a buffer to the library in which the suffix array should be stored.
+    ///
+    /// The buffer has to be at least as large as the text, but at most as large as the maximum value
+    /// of the output element type. Additional space might be used by the algorithm for better performance.
     pub fn in_borrowed_buffer<'s, O>(
         self,
         suffix_array_buffer: &'s mut [O],
@@ -114,6 +220,8 @@ impl<'t, I: InputElement>
         }
     }
 
+    /// Inform the library of your desired output element type,
+    /// if you want to obtain the suffix array in a [`Vec`].
     pub fn in_owned_buffer<O>(
         self,
     ) -> SuffixArrayConstruction<'static, 'static, 't, I, O, OwnedBuffer, Undecided>
@@ -126,6 +234,7 @@ impl<'t, I: InputElement>
         }
     }
 
+    /// Inform the library that you want to obtain the suffix array in a [`Vec<i32>`].
     pub fn in_owned_buffer32(
         self,
     ) -> SuffixArrayConstruction<'static, 'static, 't, I, i32, OwnedBuffer, Undecided>
@@ -138,6 +247,7 @@ impl<'t, I: InputElement>
         }
     }
 
+    /// Inform the library that you want to obtain the suffix array in a [`Vec<i64>`].
     pub fn in_owned_buffer64(
         self,
     ) -> SuffixArrayConstruction<'static, 'static, 't, I, i64, OwnedBuffer, Undecided>
@@ -151,7 +261,6 @@ impl<'t, I: InputElement>
     }
 }
 
-// third choice: threading
 impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode>
     SuffixArrayConstruction<'r, 's, 't, I, O, B, Undecided>
 {
@@ -181,7 +290,11 @@ impl<'r, 's, 't, I: SmallAlphabet, B: BufferMode, P: Parallelism>
     SuffixArrayConstruction<'r, 's, 't, I, i32, B, P>
 {
     /// Uses a context object that allows reusing memory across runs of the algorithm.
-    /// Currently, this is only available for the single threaded 32-bit output version.
+    ///
+    /// Currently, this is only available for the `i32` output version. When using multiple threads,
+    /// the thread count of the context must be equal to the threads count of this object.
+    ///
+    /// See [`context`](super::context) for further details.
     pub fn with_context(self, context: &'r mut Context<I, i32, P>) -> Self {
         Self {
             context: Some(context),
@@ -193,9 +306,18 @@ impl<'r, 's, 't, I: SmallAlphabet, B: BufferMode, P: Parallelism>
 impl<'r, 's, 't, I: SmallAlphabet, O: OutputElement, B: BufferMode, P: Parallelism>
     SuffixArrayConstruction<'r, 's, 't, I, O, B, P>
 {
-    /// By calling this function you are claiming that the frequency table is valid for the text
-    /// for which this config is used later. Otherwise there is not guarantee for correct behavior
-    /// of the C library.
+    /// Supply the algorithm with a table that contains the number of occurences of each value.
+    ///
+    /// For `u8`-based texts, the table must have a size of 256, for `u16`-based texts, the table must have
+    /// a size of 65536. This might slightly improve the performance of the algorithm.
+    ///
+    /// # Safety
+    ///
+    /// By calling this function you are claiming that the frequency table is valid for the text.
+    ///
+    /// # Panics
+    ///
+    /// If the frequency table has the wrong size.
     pub unsafe fn with_frequency_table(self, frequency_table: &'r mut [O]) -> Self {
         assert_eq!(frequency_table.len(), I::FREQUENCY_TABLE_SIZE);
 
@@ -206,9 +328,10 @@ impl<'r, 's, 't, I: SmallAlphabet, O: OutputElement, B: BufferMode, P: Paralleli
     }
 
     /// Construct the generalized suffix array, which is the suffix array of a set of strings.
-    /// Conceptually, all suffixes of all of the strings will be sorted in a single array.
-    /// The set of strings will be supplied to the algorithm by concatenating them separated by the 0 character
-    /// (not ASCII '0'). The concatenated string additionally has to be terminated by a 0.
+    ///
+    /// When using this mode, the last character of the texts must be 0 (not ASCII '0').
+    ///
+    /// See [`suffix_array`](self) for details.
     pub fn generalized_suffix_array(self) -> Self {
         Self {
             generalized_suffix_array: true,
@@ -220,8 +343,14 @@ impl<'r, 's, 't, I: SmallAlphabet, O: OutputElement, B: BufferMode, P: Paralleli
 impl<'r, 's, 't, I: LargeAlphabet, O: OutputElement, B: BufferMode, P: Parallelism>
     SuffixArrayConstruction<'r, 's, 't, I, O, B, P>
 {
+    /// Supply the algorithm with an alphabet size for large alphabets.
+    ///
+    /// See [`suffix_array`](self) for details.
+    ///
+    /// # Safety
+    ///
     /// By calling this function you are asserting that all values of the text
-    /// you'll use for this configuration are in the range [0, alphabet_size)
+    /// you are using are in the range [0, alphabet_size) and that there are no negative values.
     pub unsafe fn with_alphabet_size(self, alphabet_size: AlphabetSize<O>) -> Self {
         Self {
             alphabet_size: alphabet_size.0,
@@ -233,6 +362,13 @@ impl<'r, 's, 't, I: LargeAlphabet, O: OutputElement, B: BufferMode, P: Paralleli
 impl<'r, 's, 't, I: InputElement, O: OutputElement, P: Parallelism>
     SuffixArrayConstruction<'r, 's, 't, I, O, OwnedBuffer, P>
 {
+    /// Provide the algorithm with additional memory.
+    ///
+    /// This might slightly improve the performance in some cases. When using an owned buffer,
+    /// this is automatically determined. The default is [`ExtraSpace::Recommended`].
+    ///
+    /// The extra space may not make the suffix array buffer larger than the maximum allowed value when
+    /// using [`ExtraSpace::Fixed`].
     pub fn with_extra_space_in_buffer(self, extra_space: ExtraSpace) -> Self {
         Self {
             extra_space,
@@ -241,11 +377,19 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, P: Parallelism>
     }
 }
 
-// -------------------- operations and runners for only suffix array and small alphabets --------------------
 impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelism>
     SuffixArrayConstruction<'r, 's, 't, I, O, B, P>
 {
     /// Construct the suffix array for the given text.
+    ///
+    /// # Panics
+    ///
+    /// If any of the requirements of the methods called before are not met.
+    ///
+    /// # Returns
+    ///
+    /// An error or a type that bundles the suffix array with a reference to the text.
+    /// See [`suffix_array`](self) for details.
     pub fn run(mut self) -> Result<SuffixArrayWithText<'s, 't, I, O, B>, LibsaisError> {
         let text_len = self.text().len();
         let mut suffix_array =
@@ -337,6 +481,9 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelis
     }
 }
 
+/// The read-only return type of a suffix array construction.
+///
+/// It keeps a reference to the text to allow safely constructing a PLCP array.
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct SuffixArrayWithText<'s, 't, I: InputElement, O: OutputElement, B: BufferMode> {
     pub(crate) suffix_array: OwnedOrBorrowed<'s, O, B>,
@@ -381,6 +528,13 @@ impl<'s, 't, I: InputElement, O: OutputElement, B: BufferMode>
 impl<'s, 't, I: InputElement, O: IsValidOutputFor<I>, B: BufferMode>
     SuffixArrayWithText<'s, 't, I, O, B>
 {
+    /// Construct this type without going through a [`SuffixArrayConstruction`] or by using the parts
+    /// obtained by [`Self::into_parts`].
+    ///
+    /// # Safety
+    ///
+    /// You are claiming that the suffix array is correct for the text according to the conventions of `libsais`
+    /// and that the indicator for the generalized suffix array is correct.
     pub unsafe fn from_parts(
         suffix_array: B::Buffer<'s, O>,
         text: &'t [I],
@@ -412,11 +566,17 @@ impl<'s, 't, I: InputElement, O: SupportsPlcpOutputFor<I>, SaB: BufferMode>
     }
 }
 
+/// The extra space to give the algorithm when using an owned buffer to (maybe) improve performance.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ExtraSpace {
     None,
+    /// The recommended extra space is 0 for `u8`/`u16`-based texts and for texts smaller ar equal to 20K.
+    /// For larger, `i32`/`i64`-based texts, it is 6K. When the extra space would make the buffer larger
+    /// than the maximum of the output element type, the maximum allowed buffer size is chosen.
     Recommended,
-    Fixed { value: usize },
+    Fixed {
+        value: usize,
+    },
 }
 
 impl ExtraSpace {
@@ -424,7 +584,7 @@ impl ExtraSpace {
         match *self {
             ExtraSpace::None => text_len,
             ExtraSpace::Recommended => {
-                if text_len <= 10_000 {
+                if text_len <= 20_000 {
                     text_len
                 } else {
                     let max_buffer_len_in_usize = O::MAX.into() as usize;
@@ -445,6 +605,9 @@ impl ExtraSpace {
     }
 }
 
+/// An alphabet size that is recommended to use when handling `i32`/`i64`-based texts.
+///
+/// See [`suffix_array`](self) for details.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AlphabetSize<O: OutputElement>(AlphabetSizeInner<O>);
 

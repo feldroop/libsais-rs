@@ -4,8 +4,8 @@
  *
  * [`libsais`] provides highly optimized implementation for the features listed below.
  * These implementations are widely used in the analysis of very large sequences, such as genome analysis
- * in bioinformatics. For example, [`libsais`] contains the fastest suffix array construction
- * implementation to date. [Comparison to `libdivsufsort`] | [Benchmark crates.io]
+ * in bioinformatics. For example, [`libsais`] contains the fastest implementation of a suffix array construction
+ * algorithm to date. [Comparison to `libdivsufsort`] | [Benchmark crates.io]
  *
  * <div class="warning">
  *
@@ -14,29 +14,29 @@
  *
  * </div>
  *
- * ## Features
+ * # Features
  *
  * This crate exposes the whole functionality of [`libsais`].
  * It might be useful to also check out the [documentation of the original library].
  *
- * * [suffix_array]: Construct suffix arrays for `u8`/`u16`/`i32`/`i64` input texts and `i32`/`i64` output texts,
- *   with support for generalized suffix arrays
- * * [bwt]: Construct the Burrows-Wheeler-Transform (BWT) for `u8`/`u16` texts
- * * [unbwt]: Recover the original text from a BWT
- * * [plcp]: Construct the permuted longest common prefix array (PLCP) for a suffix array and text
- * * [lcp]: Construct the longest common prefix array from a PLCP for a suffix array and text
- * * [context]: Use a memory allocation optimization for repeated calls on small inputs
+ * * [`suffix_array`]: Construct suffix arrays for `u8`/`u16`/`i32`/`i64` input texts and `i32`/`i64` output texts,
+ *   with support for generalized suffix arrays.
+ * * [`bwt`]: Construct the Burrows-Wheeler-Transform (BWT) for `u8`/`u16` texts.
+ * * [`unbwt`]: Recover the original text from a BWT.
+ * * [`plcp`]: Construct the permuted longest common prefix array (PLCP) for a suffix array and text.
+ * * [`lcp`]: Construct the longest common prefix array from a PLCP for a suffix array and text.
+ * * [`context`]: Use a memory allocation optimization for repeated calls on small inputs.
  *
- * ## Usage
+ * # Usage
  *
  * This crate provides generic builder-like APIs for all of the features listed above.
  * For further details on the individual features, please refer to the module-level documentation.
- * The API might be a bit noisy due to lifetimes and type state, so it is recommended to start with the
+ * The API is a bit noisy due to lifetimes and typestate, so it is recommended to start with the
  * module-level documentation and [examples].
  *
  * The following is a simple example of how to use this library to construct a suffix array in parallel:
  *
- * ```rust
+ * ```
  * use libsais::{SuffixArrayConstruction, ThreadCount};
  *
  * let text = b"barnabasbabblesaboutbananas";
@@ -48,11 +48,16 @@
  *     .into_vec();
  * ```
  *
- * ## Examples
+ * The primary entry points to this library are [`SuffixArrayConstruction`] and [`BwtConstruction`]. Obtaining
+ * an [`LcpConstruction`], [`PlcpConstruction`] or [`UnBwt`] can only be done via an `unsafe` constructor or by
+ * using the returned types of the primary operations. Passing logically wrong input to these secondary
+ * functions of `libsais` can result in undefined behavior of the underlying C library.
+ *
+ * # Examples
  *
  * There are [examples] for multiple non-trivial use-cases of this library.
  *
- * ## Multithreading
+ * # Multithreading
  *
  * This library supports the multithreaded implementations of [`libsais`] via the optional `openmp` feature,
  * which is enabled by default.
@@ -69,7 +74,7 @@ pub mod context;
 pub mod lcp;
 pub mod plcp;
 pub mod suffix_array;
-pub mod type_state;
+pub mod typestate;
 pub mod unbwt;
 
 mod generics_dispatch;
@@ -82,7 +87,7 @@ use generics_dispatch::{
     OutputDispatch,
 };
 use sealed::Sealed;
-use type_state::OutputElementOrUndecided;
+use typestate::OutputElementOrUndecided;
 
 /// The version of the original C library `libsais` wrapped by this crate
 pub use libsais_sys::libsais::LIBSAIS_VERSION_STRING;
@@ -99,16 +104,6 @@ pub use {
     bwt::BwtConstruction, lcp::LcpConstruction, plcp::PlcpConstruction,
     suffix_array::SuffixArrayConstruction, unbwt::UnBwt,
 };
-
-// TODOs:
-
-//      some comments in code
-//      good docs functions
-
-//      good docs module and crate level
-
-//      setup CI and such, also without default features, clippy, etc.
-//      release-plz good release (also libsais-sys update)
 
 /// Possible element types of input texts and output data structures storing text elements implement this trait.
 /// You cannot implement it and don't need to.
@@ -165,10 +160,11 @@ pub trait SmallAlphabet: InputElement {
     const FREQUENCY_TABLE_SIZE: usize;
 }
 
-/// When using `i32`/`i64`-based texts, the API for suffix array construction changes slightly. See [suffix_array] for details.
+/// When using `i32`/`i64`-based texts, the API for suffix array construction changes slightly.
+/// See [`suffix_array`] for details.
 pub trait LargeAlphabet: InputElement + OutputElement {}
 
-/// Information about whether an [OutputElement] type can be used with a given [InputElement] type.
+/// Information about whether an [`OutputElement`] type can be used with a given [`InputElement`] type.
 ///
 /// Notably, `i32` output supports only `i32` input and `i64` output supports only `i64` input.
 pub trait IsValidOutputFor<I: InputElement>: Sealed + OutputElement {}
@@ -181,9 +177,9 @@ impl IsValidOutputFor<u8> for i64 {}
 impl IsValidOutputFor<u16> for i64 {}
 impl IsValidOutputFor<i64> for i64 {}
 
-/// Information about whether an [OutputElement] type supports the construction of PLCP arrays.
+/// Information about whether an [`OutputElement`] type supports the construction of PLCP arrays.
 ///
-/// Apart from the limitations of [IsValidOutputFor], `i64` output does't support PLCP construction
+/// Apart from the limitations of [`IsValidOutputFor`], `i64` output does't support PLCP construction
 /// for `i64` input.
 pub trait SupportsPlcpOutputFor<I: InputElement>:
     Sealed + OutputElement + IsValidOutputFor<I>
