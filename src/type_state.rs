@@ -1,3 +1,7 @@
+/*!
+ * Typestate model for builder APIs, most likely not relevant to you.
+ */
+
 use either::Either;
 
 use crate::{
@@ -31,6 +35,8 @@ impl<P: Parallelism> ParallelismOrUndecided for P {
         P::WithInput<I, O>;
 }
 
+/// Decision about whether the OpenMP based functions of `libsais` will be used. [MultiThreaded] is
+/// only available when the crate feate `openmp` is activated.
 pub trait Parallelism: Sealed {
     type WithInput<I: InputElement, O: OutputElementOrUndecided>: InputDispatch<I, O>;
 }
@@ -118,6 +124,7 @@ pub trait BufferModeOrUndecided: Sealed {}
 
 impl BufferModeOrUndecided for Undecided {}
 
+/// Decision about whether an owned [Vec]-based buffer or a user-provided slice-based buffer is used.
 pub trait BufferMode: Sealed {
     type Buffer<'a, T: 'a>;
 
@@ -187,6 +194,7 @@ impl BufferMode for OwnedBuffer {
     }
 }
 
+/// In some operations (BWT, BWT reversal and LCP), the input can also be used as the output buffer.
 pub trait BufferModeOrReplaceInput: Sealed {}
 
 impl<B: BufferMode> BufferModeOrReplaceInput for B {}
@@ -197,6 +205,8 @@ impl Sealed for ReplaceInput {}
 
 impl BufferModeOrReplaceInput for ReplaceInput {}
 
+/// Decision about whether auxiliary indices are additionally returned during BWT construction. See
+/// [bwt](super::bwt) for details.
 pub trait AuxIndicesMode: Sealed {}
 
 pub struct NoAuxIndices {}
@@ -206,22 +216,3 @@ impl Sealed for NoAuxIndices {}
 impl AuxIndicesMode for NoAuxIndices {}
 
 impl<B: BufferMode> AuxIndicesMode for B {}
-
-pub trait IsValidOutputFor<I: InputElement>: Sealed + OutputElement {}
-
-impl IsValidOutputFor<u8> for i32 {}
-impl IsValidOutputFor<u16> for i32 {}
-impl IsValidOutputFor<i32> for i32 {}
-
-impl IsValidOutputFor<u8> for i64 {}
-impl IsValidOutputFor<u16> for i64 {}
-impl IsValidOutputFor<i64> for i64 {}
-
-pub trait SupportsPlcpOutputFor<I: InputElement>: Sealed + OutputElement {}
-
-impl SupportsPlcpOutputFor<u8> for i32 {}
-impl SupportsPlcpOutputFor<u16> for i32 {}
-impl SupportsPlcpOutputFor<i32> for i32 {}
-
-impl SupportsPlcpOutputFor<u8> for i64 {}
-impl SupportsPlcpOutputFor<u16> for i64 {}

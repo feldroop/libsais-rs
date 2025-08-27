@@ -1,8 +1,11 @@
+/*!
+ * Construct the longest common prefix (LCP) array from a PLCP for a suffix array and text.
+ */
+
 use std::marker::PhantomData;
 
 use crate::{
-    OutputElement, ThreadCount,
-    error::{IntoSaisResult, LibsaisError},
+    IntoSaisResult, LibsaisError, OutputElement, ThreadCount,
     generics_dispatch::{LcpFunctionsDispatch, LibsaisLcpFunctions},
     owned_or_borrowed::OwnedOrBorrowed,
     type_state::{

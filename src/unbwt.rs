@@ -1,12 +1,15 @@
+/*!
+ * Recover the text from a Burrows-Wheeler-Transform.
+ */
+
 use either::Either;
 
 use std::marker::PhantomData;
 
 use crate::{
-    InputElement, OutputElement, SmallAlphabet, ThreadCount,
+    InputElement, IntoSaisResult, LibsaisError, OutputElement, SmallAlphabet, ThreadCount,
     bwt::{AuxIndicesSamplingRate, IntoOtherInner},
     context::UnBwtContext,
-    error::{IntoSaisResult, LibsaisError},
     generics_dispatch::{LibsaisFunctionsSmallAlphabet, SmallAlphabetFunctionsDispatch},
     owned_or_borrowed::OwnedOrBorrowed,
     suffix_array,

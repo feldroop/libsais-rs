@@ -1,11 +1,16 @@
+/*!
+ * Construct Burrows-Wheeler-Transforms (BWTs) for texts using [BwtConstruction].
+ *
+ * # Test
+ */
+
 use either::Either;
 
 use std::marker::PhantomData;
 
 use crate::{
-    OutputElement, SmallAlphabet, ThreadCount,
+    IntoSaisResult, LibsaisError, OutputElement, SmallAlphabet, ThreadCount,
     context::Context,
-    error::{IntoSaisResult, LibsaisError},
     generics_dispatch::{LibsaisFunctionsSmallAlphabet, SmallAlphabetFunctionsDispatch},
     owned_or_borrowed::OwnedOrBorrowed,
     suffix_array::{self, ExtraSpace},

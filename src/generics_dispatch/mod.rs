@@ -8,6 +8,10 @@ use crate::{
     type_state::{OutputElementOrUndecided, Parallelism, ParallelismOrUndecided},
 };
 
+// These types are the key gadgets that allow the transition from the generic interface of this wrapper
+// to the flat function interface of the C library.
+// They essentially form a tree in the type system with assiociated as edge transitions.
+// Maybe it is possible top implement this goal more in a more simple way, but this is what I came up with.
 pub type SmallAlphabetFunctionsDispatch<I, O, P> =
     <<<P as Parallelism>::WithInput<I, O> as InputDispatch<I, O>>::WithOutput as OutputDispatch<
         I,
@@ -31,6 +35,7 @@ pub type SmallAlphabetFunctionsDispatchOrUnimplemented<I, O, P> =
         O,
     >>::SmallAlphabetFunctions;
 
+// -------------------- traits that model libsais functions --------------------
 #[allow(clippy::too_many_arguments)]
 pub trait LibsaisFunctionsSmallAlphabet<I: InputElement, O: OutputElementOrUndecided>:
     Sealed
@@ -132,7 +137,7 @@ pub trait LibsaisLcpFunctions<I: InputElement, O: OutputElementOrUndecided>: Sea
     ) -> O;
 }
 
-// -------------------- placeholder type for output dispatch --------------------
+// -------------------- placeholder type for output dispatch when fucntions are unimplemented --------------------
 pub struct FunctionsUnimplemented {}
 
 impl Sealed for FunctionsUnimplemented {}

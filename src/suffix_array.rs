@@ -1,9 +1,13 @@
+/*!
+ * Construct (generalized) suffix array (GSA) for a text using [SuffixArrayConstruction].
+ */
+
 use either::Either;
 
 use crate::{
-    InputElement, LargeAlphabet, OutputElement, SmallAlphabet, ThreadCount,
+    InputElement, IntoSaisResult, IsValidOutputFor, LargeAlphabet, LibsaisError, OutputElement,
+    SmallAlphabet, SupportsPlcpOutputFor, ThreadCount,
     context::Context,
-    error::{IntoSaisResult, LibsaisError},
     generics_dispatch::{
         LargeAlphabetFunctionsDispatch, LibsaisFunctionsLargeAlphabet,
         LibsaisFunctionsSmallAlphabet, SmallAlphabetFunctionsDispatch,
@@ -11,9 +15,8 @@ use crate::{
     owned_or_borrowed::OwnedOrBorrowed,
     plcp::PlcpConstruction,
     type_state::{
-        BorrowedBuffer, BufferMode, BufferModeOrUndecided, IsValidOutputFor,
-        OutputElementOrUndecided, OwnedBuffer, Parallelism, ParallelismOrUndecided, SingleThreaded,
-        SupportsPlcpOutputFor, Undecided,
+        BorrowedBuffer, BufferMode, BufferModeOrUndecided, OutputElementOrUndecided, OwnedBuffer,
+        Parallelism, ParallelismOrUndecided, SingleThreaded, Undecided,
     },
 };
 
@@ -22,6 +25,7 @@ use crate::type_state::MultiThreaded;
 
 use std::marker::PhantomData;
 
+/// Test
 #[derive(Debug)]
 pub struct SuffixArrayConstruction<
     'r,

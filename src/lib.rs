@@ -18,7 +18,6 @@
  *
  * This crate exposes the whole functionality of [`libsais`].
  * It might be useful to also check out the [documentation of the original library].
- * For further details on the individual features, please refer to the module-level documentation.
  *
  * * [suffix_array]: Construct suffix arrays for `u8`/`u16`/`i32`/`i64` input texts and `i32`/`i64` output texts,
  *   with support for generalized suffix arrays
@@ -31,6 +30,10 @@
  * ## Usage
  *
  * This crate provides generic builder-like APIs for all of the features listed above.
+ * For further details on the individual features, please refer to the module-level documentation.
+ * The API might be a bit noisy due to lifetimes and type state, so it is recommended to start with the
+ * module-level documentation and [examples].
+ *
  * The following is a simple example of how to use this library to construct a suffix array in parallel:
  *
  * ```rust
@@ -61,32 +64,18 @@
  * [examples]: https://github.com/feldroop/libsais-rs/tree/master/examples
  */
 
-/// Construct a Burrows-Wheeler-Transform
 pub mod bwt;
-
-/// Use an optimization for repeated calls of `libsais` functions on small inputs
 pub mod context;
-
-/// The error type of this crate
-pub mod error;
-
-/// Construct the permuted longest common prefix array
 pub mod lcp;
-
-/// Construct the permuted longest common prefix array
 pub mod plcp;
-
-/// Construct a (generalized) suffix array
 pub mod suffix_array;
-
-/// Typestate for builder APIs, ikely not relevant for you
 pub mod type_state;
-
-/// Recover the text from a Burrows-Wheeler-Transform
 pub mod unbwt;
 
 mod generics_dispatch;
 mod owned_or_borrowed;
+
+use std::fmt::{Debug, Display};
 
 use generics_dispatch::{
     LibsaisFunctionsLargeAlphabet, LibsaisFunctionsSmallAlphabet, LibsaisLcpFunctions,
@@ -176,8 +165,97 @@ pub trait SmallAlphabet: InputElement {
     const FREQUENCY_TABLE_SIZE: usize;
 }
 
-/// When using `i32`/`i64`-based texts, the API for suffix array construction changes slightly. [Details](TODO)
+/// When using `i32`/`i64`-based texts, the API for suffix array construction changes slightly. See [suffix_array] for details.
 pub trait LargeAlphabet: InputElement + OutputElement {}
+
+/// Information about whether an [OutputElement] type can be used with a given [InputElement] type.
+///
+/// Notably, `i32` output supports only `i32` input and `i64` output supports only `i64` input.
+pub trait IsValidOutputFor<I: InputElement>: Sealed + OutputElement {}
+
+impl IsValidOutputFor<u8> for i32 {}
+impl IsValidOutputFor<u16> for i32 {}
+impl IsValidOutputFor<i32> for i32 {}
+
+impl IsValidOutputFor<u8> for i64 {}
+impl IsValidOutputFor<u16> for i64 {}
+impl IsValidOutputFor<i64> for i64 {}
+
+/// Information about whether an [OutputElement] type supports the construction of PLCP arrays.
+///
+/// Apart from the limitations of [IsValidOutputFor], `i64` output does't support PLCP construction
+/// for `i64` input.
+pub trait SupportsPlcpOutputFor<I: InputElement>:
+    Sealed + OutputElement + IsValidOutputFor<I>
+{
+}
+
+impl SupportsPlcpOutputFor<u8> for i32 {}
+impl SupportsPlcpOutputFor<u16> for i32 {}
+impl SupportsPlcpOutputFor<i32> for i32 {}
+
+impl SupportsPlcpOutputFor<u8> for i64 {}
+impl SupportsPlcpOutputFor<u16> for i64 {}
+
+/// The error type of this crate, used for all functions that run a `libsais` algorithm.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LibsaisError {
+    /// Corresponds to the error code `-1` of the C library.
+    InvalidInput,
+    /// Corresponds to the error code `-2` of the C library.
+    OutOfMemory,
+    /// Corresponds to an unexpected error code other than `0` for success, `-1` and `-2`.
+    /// You should hopefully never encounter this.
+    UnknownError,
+}
+
+impl LibsaisError {
+    fn from_return_code(return_code: i64) -> Self {
+        match return_code {
+            0 => panic!("Return code does not indicate an error"),
+            -1 => Self::InvalidInput,
+            -2 => Self::OutOfMemory,
+            _ => Self::UnknownError,
+        }
+    }
+}
+
+impl Display for LibsaisError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        <LibsaisError as std::fmt::Debug>::fmt(self, f)
+    }
+}
+
+impl std::error::Error for LibsaisError {}
+
+// convenience methods for use inside this trait
+pub(crate) trait IntoSaisResult {
+    fn into_empty_sais_result(self) -> Result<(), LibsaisError>;
+
+    fn into_primary_index_sais_result(self) -> Result<usize, LibsaisError>;
+}
+
+impl<O: OutputElement> IntoSaisResult for O {
+    fn into_empty_sais_result(self) -> Result<(), LibsaisError> {
+        let return_code: i64 = self.into();
+
+        if return_code != 0 {
+            Err(LibsaisError::from_return_code(return_code))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn into_primary_index_sais_result(self) -> Result<usize, LibsaisError> {
+        let return_code: i64 = self.into();
+
+        if return_code < 0 {
+            Err(LibsaisError::from_return_code(return_code))
+        } else {
+            Ok(return_code as usize)
+        }
+    }
+}
 
 /// A wrapper type for passing the desired number of threads. Only useful when the `openmp` feature is activated.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

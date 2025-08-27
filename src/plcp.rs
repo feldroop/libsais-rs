@@ -1,8 +1,11 @@
+/*!
+ * Construct the permuted longest common prefix array (PLCP) for a suffix array and text.
+ */
+
 use std::marker::PhantomData;
 
 use crate::{
-    InputElement, OutputElement, ThreadCount,
-    error::{IntoSaisResult, LibsaisError},
+    InputElement, IntoSaisResult, LibsaisError, OutputElement, ThreadCount,
     generics_dispatch::{LcpFunctionsDispatch, LibsaisLcpFunctions},
     lcp::LcpConstruction,
     owned_or_borrowed::OwnedOrBorrowed,

@@ -19,6 +19,12 @@ use super::{
     MultiThreaded32InputOutputDispatcher, MultiThreaded64InputOutputDispatcher,
 };
 
+// this module could be considered the "backend" of this library.
+// It implements the traits that model libsais functions for all combinations
+// of Parallelism, u8/u16/i32/i64 as input elements and i32/i64 as output elements.
+// The resulting types are used to implement the InputElement and OutputElement traits.
+// When a combination of types is not supported, an unimplemented panic is inserted.
+// These combinations should be impossible to create, which is guarded by the "frontend" builder API.
 macro_rules! fn_or_unimplemented {
     ($mod_name:ident, unimplemented, $($parameter:ident),*) => {
         unimplemented!("This function is currently not implemented by {}.", stringify!($mod_name))
