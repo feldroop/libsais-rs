@@ -48,6 +48,7 @@ fn main() {
     frequency_table[b'l' as usize] = 5;
     frequency_table[b'm' as usize] = 5;
 
+    // SAFETY: the frequency table for this example is correct
     unsafe {
         construction = construction.with_frequency_table(&mut frequency_table);
     }

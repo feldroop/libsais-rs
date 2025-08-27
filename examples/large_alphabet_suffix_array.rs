@@ -72,6 +72,9 @@ fn main() {
     // It is still recommended to always use this function, because otherwise this API wrapper library
     // will have to inject a linear scan of the text to determine the alphabet size and make sure that
     // no negative values exist.
+
+    // SAFETY: we filtered out negative values in the random text generation and know that
+    // the alphabet size is correct
     unsafe {
         construction = construction.with_alphabet_size(AlphabetSize::new(alphabet_size as i64));
     }
