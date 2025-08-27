@@ -15,7 +15,12 @@ pub fn concatenate_texts<'a>(iter: impl IntoIterator<Item = &'a [u8]>) -> Vec<u8
 }
 
 fn main() {
-    let texts = [b"bababababa".as_slice(), b"lalalalala", b"mamamamama"];
+    let texts = [
+        b"bababababa".as_slice(),
+        b"lalalalala",
+        b"mamamamama",
+        b"papapapapa",
+    ];
 
     // To create a generalized suffix array (GSA), we need to first concatenate all of the indiviual texts
     // into one text, separated by the 0 value (not '0' in ASCII). The individual text should not contain this value.
@@ -46,10 +51,11 @@ fn main() {
     // This is a completely optional parameter and might sometimes improve performance a little bit.
     let mut frequency_table = [0; 256];
     frequency_table[0] = 3;
-    frequency_table[b'a' as usize] = 15;
+    frequency_table[b'a' as usize] = 20;
     frequency_table[b'b' as usize] = 5;
     frequency_table[b'l' as usize] = 5;
     frequency_table[b'm' as usize] = 5;
+    frequency_table[b'p' as usize] = 5;
 
     // SAFETY: the frequency table for this example is correct
     unsafe {
