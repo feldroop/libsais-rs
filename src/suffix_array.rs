@@ -6,7 +6,7 @@
  *
  * The entry point to the API is the [`SuffixArrayConstruction`] builder-like struct. It is always required to
  * pass the input text, register the output element and make a decision about parallelisation. Further configuration
- * options include supplying an output buffer, [context], metadata about the input text, and instructing the library
+ * options include supplying an output buffer, [`context`], metadata about the input text, and instructing the library
  * to pass additional memory to the algorithm.
  *
  * The following is a fully-configured example of the suffix array construction for `u8`/`u16`-based alphabets:
@@ -41,12 +41,12 @@
  * # Sentinel Convention and Suffix Array Length
  *
  * In the literature and in some applications, the input texts to suffix array construction algorithms are
- * assumed to be terminated by a unique, lexicographically smallest character It is usually denoted by $ and
+ * assumed to be terminated by a unique, lexicographically smallest character. It is usually denoted by $ and
  * implemented by the zero byte.
  *
  * `libsais` does not have this requirement, but sorts suffixes as if such a
  * character were present at the end of the text. Therefore, the resulting suffix array has the same
- * length as the text. When using a borrowed output buffer, it has to at least as long as the text.
+ * length as the text. When using a borrowed output buffer, it has to be at least as long as the text.
  *
  * # Return Type and PLCP
  *
@@ -63,13 +63,13 @@
  * errors, the text will be returned to its initial state. Negative values in the input text are NOT allowed.
  *
  * Additionally, it is strongly recommended to pass an alphabet size using
- * [`SuffixArrayConstruction::with_alphabet_size`], because the memory usage of the algorithm is linear
- * in the alphabet size. Otherwise, the library will inject a linear scan of the
- * text to determine a suitable alphabet size and guarantee that no negative values exist.
+ * [`SuffixArrayConstruction::with_alphabet_size`]. Otherwise, the library will inject a linear scan of the
+ * text to determine a suitable alphabet size and guarantee that no negative values exist. The memory usage of
+ * the algorithm is linear in the alphabet size.
  *
- * The largest value in the text plus one is a lower bound for the alphabet size. It is therefore very wasteful
- * to use this algorithm on a text with a large maximum value when many values smaller than the maximum are
- * not represented in the text. In such a scenario, mapping the text into the range [0, k) is a good option,
+ * The largest value in the text plus one is a lower bound for the alphabet size. It is therefore wasteful
+ * to use this algorithm on a text with a large maximum value, when many values smaller than the maximum do
+ * not occur in the text. In such a scenario, mapping the text into the range [0, k) is a good option,
  * where k is the number of distinct values in the text.
  *
  * An example of using large alphabets with further explanations can be found
@@ -82,14 +82,15 @@
  * indices of the suffix and of the text the suffix belongs to.
  *
  * The generalized suffix array can be simulated in practice by concatenating the text using unique separators
- * and then constructing a normal suffix array for the concatenated text. The concatenation work like this:
+ * and then constructing a normal suffix array for the concatenated text. The concatenation works like this:
  * `t = t1 $1 t2 $2 ... tn $n`, with `$1 < $2 < ... < $n`. `libsais` allows implementing this behavior by using the
  * zero byte (not ASCII '0') for every separator, like so: `t0 = t1 0 t2 0 ... tn 0`. In this API wrapper, simply
- * use the [`SuffixArrayConstruction::generalized_suffix_array`] function.
+ * use the [`SuffixArrayConstruction::generalized_suffix_array`] function to activate this behavior.
  *
  * It would be possible to construct a normal suffix array of `t0` without this flag and obtain
- * an suffix array very similar to the generalized suffix array. However, the tie-breaking behavior
- * between equivalent suffixes of different texts would be unpredicatble in this case.
+ * a suffix array very similar to the generalized suffix array. However, the tie-breaking behavior
+ * between equivalent suffixes of different texts would then be unpredicatble, because the zero bytes
+ * would not be implicitly treated as unique, ordered separators.
  *
  * An example of creating a generalized suffix array of multiple texts can be found
  * [here](https://github.com/feldroop/libsais-rs/blob/master/examples/fully_configured_generalized_suffix_array.rs).
