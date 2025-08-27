@@ -1,9 +1,12 @@
 use libsais::{SuffixArrayConstruction, context::Context, suffix_array::ExtraSpace};
 
 pub fn concatenate_texts<'a>(iter: impl IntoIterator<Item = &'a [u8]>) -> Vec<u8> {
-    let mut concatenated_text = Vec::new();
+    let texts: Vec<_> = iter.into_iter().collect();
+    let needed_capacity = texts.iter().map(|t| t.len()).sum::<usize>() + texts.len();
 
-    for s in iter.into_iter() {
+    let mut concatenated_text = Vec::with_capacity(needed_capacity);
+
+    for s in texts.into_iter() {
         concatenated_text.extend_from_slice(s);
         concatenated_text.push(0)
     }
