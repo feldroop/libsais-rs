@@ -9,7 +9,6 @@ use common::*;
 #[test]
 fn empty_text_bwt_unbwt() {
     let bwt: Bwt<u8, _> = BwtConstruction::for_text(&[])
-        .in_owned_buffer()
         .with_owned_temporary_array_buffer32()
         .single_threaded()
         .run()
@@ -34,7 +33,6 @@ fn unbwt() {
     let (text, _, mut frequency_table, mut ctx) = setup_basic_example();
 
     let mut construction = BwtConstruction::for_text(text)
-        .in_owned_buffer()
         .with_owned_temporary_array_buffer_and_extra_space32(ExtraSpace::None)
         .single_threaded()
         .with_context(&mut ctx);

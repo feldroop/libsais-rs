@@ -123,7 +123,7 @@ use crate::typestate::MultiThreaded;
 
 use std::marker::PhantomData;
 
-/// One of the main entry points of this library for constructing suffix arrays.
+/// One of the two main entry points of this library, for constructing suffix arrays.
 ///
 /// See [`suffix_array`](self) for details.
 #[derive(Debug)]
@@ -203,7 +203,7 @@ impl<'t, I: LargeAlphabet>
 impl<'t, I: InputElement>
     SuffixArrayConstruction<'static, 'static, 't, I, Undecided, Undecided, Undecided>
 {
-    /// Provide a buffer to the library in which the suffix array should be stored.
+    /// Provide a buffer to the library in which the suffix array will be stored.
     ///
     /// The buffer has to be at least as large as the text, but at most as large as the maximum value
     /// of the output element type. Additional space might be used by the algorithm for better performance.

@@ -9,7 +9,7 @@ documentation = "https://docs.rs/libsais"
 homepage = "https://github.com/feldroop/libsais-rs"
 description = "Bindings to the C library libsais for suffix array construction"
 categories = ["science::bioinformatics::sequence-analysis", "text-processing", "api-bindings"]
-keywords = ["sequence-analysis", "bioinformatics", "algorithm", "suffix-array", "c-bindings"]
+keywords = ["bioinformatics", "saca", "suffix-array", "bwt", "lcp"]
 edition = "2024"
 
 [workspace]

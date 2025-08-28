@@ -1,7 +1,69 @@
 /*!
- * Construct Burrows-Wheeler-Transforms (BWTs) for texts using [`BwtConstruction`].
+ * Construct the [Burrows-Wheeler-Transform] (BWT) for a text using [`BwtConstruction`].
  *
- * # Test
+ * To construct the BWT, a temporary (suffix) array is constructed by `libsais`. However,
+ * this temporary array does not contain the suffix array after the procedure.
+ *
+ * The entry point to the API is the [`BwtConstruction`] builder-like struct. It is always required to
+ * pass the input text, register the output element _of the temporary array_ and make a decision about
+ * parallelisation. Further configuration options include supplying an output and/or temporary array buffer,
+ * [`context`], metadata about the input text, usage of auxiliary indices, usage of additional memory
+ * in the algorithm and instructing the library to replace the text by the BWT.
+ *
+ * The following is an example of the BWT construction that contains some of its unique configuration
+ * options. See [`suffix_array`] for an example of most of the other options.
+ *
+ * ```
+ * use libsais::{BwtConstruction, bwt, suffix_array::ExtraSpace};
+ *
+ * let mut text = vec![b'a'; 10];
+ *
+ * let res = BwtConstruction::replace_text(&mut text)
+ *     .with_owned_temporary_array_buffer_and_extra_space32(ExtraSpace::Fixed { value: 10 })
+ *     .single_threaded()
+ *     .with_aux_indices(bwt::AuxIndicesSamplingRate::from(4))
+ *     .run()
+ *     .unwrap();
+ *
+ * println!("{:?}", res.bwt());
+ * println!("{:?}", res.aux_indices());
+ * ```
+ *
+ * # Output Conventions
+ *
+ * In the literature, the text input for the BWT construction is typically assumed to be terminated by a
+ * unique, lexicographically smallest character. This character is called sentinel and denoted by $.
+ *
+ * `libsais` does not require the text to be terminated by a sentinel, but it behaves as if a sentinel
+ * were present. In the output BWT, the sentinel is not included. Therefore, the BWT has the same length
+ * as the input text.
+ *
+ * # Primary Index and Auxiliary Indices
+ *
+ * To recover the original text from a BWT, the primary index `i0` of the BWT is needed. It is defined as the
+ * index for which `SUF[i0 - 1] = 0`, where `SUF` is the suffix array in `libsais` convention. The `-1`
+ * is applied, because the suffix array also does not contain an entry for the sentinel. Such an entry
+ * would always be at the first position.
+ *
+ * The primary index is part of the return type of [`BwtConstruction::run`]. It is 0 for the empty input text.
+ *
+ * `libsais` allows creating a subsampled array of auxiliary indices. These indices have the same role as the
+ * primary index and are defined as follows: `AUX[i] == k => SUF[k - 1] = i * r`, where `r` is the sampling rate.
+ * In particular, `AUX[0]` is th primary index. The auxiliary indices can be used in different ways.
+ * For example, they allow significantly faster BWT reversal, both single and multi threaded. [Benchmark]
+ *
+ * # Return Type and Reversal
+ *
+ * The read-only return type of [`BwtConstruction::run`] bundles the BWT with either the primary index or the
+ * auxiliary indices and their sampling rate. It is generic over whether an owned or borrowed output buffer is used.
+ * The object can be destructured into parts or used to safely reverse the BWT and obtain the text again.
+ *
+ * An example of constructing and reversing the BWT can be found
+ * [here](https://github.com/feldroop/libsais-rs/blob/master/examples/to_the_bwt_and_back.rs).
+ *
+ * [Burrows-Wheeler-Transform]: https://en.wikipedia.org/wiki/Burrows%E2%80%93Wheeler_transform
+ * [`context`]: super::context
+ * [Benchmark]: https://github.com/feldroop/benchmark_crates_io_sacas/blob/master/LIBSAIS_BWT_AUX.md
  */
 
 use either::Either;
@@ -25,6 +87,9 @@ use crate::{
 #[cfg(feature = "openmp")]
 use crate::typestate::MultiThreaded;
 
+/// One of the two main entry points of this library, for constructing BWTs.
+///
+/// See [`bwt`](self) for details.
 #[derive(Debug)]
 pub struct BwtConstruction<
     'a,
@@ -107,17 +172,26 @@ impl<
     }
 }
 
-// entry point to builder
 impl<'a, 'b, 'r, I: SmallAlphabet>
     BwtConstruction<'a, 'b, 'r, I, Undecided, Undecided, Undecided, NoAuxIndices>
 {
-    pub fn for_text(text: &'r [I]) -> Self {
-        Self {
+    /// The first method to call if you don't want to replace the input text.
+    ///
+    /// The text has to be at most as long as the maximum value of the output element type
+    /// you will choose for the temporary array.
+    pub fn for_text(
+        text: &'r [I],
+    ) -> BwtConstruction<'a, 'b, 'r, I, Undecided, OwnedBuffer, Undecided, NoAuxIndices> {
+        BwtConstruction {
             text: Some(text),
-            ..Self::init()
+            ..BwtConstruction::init()
         }
     }
 
+    /// The first method to call if you want to replace the input text.
+    ///
+    /// The text has to be at most as long as the maximum value of the output element type
+    /// you will choose for the temporary array.
     pub fn replace_text(
         text: &'b mut [I],
     ) -> BwtConstruction<'a, 'b, 'r, I, Undecided, BorrowedBuffer, Undecided, NoAuxIndices> {
@@ -126,7 +200,14 @@ impl<'a, 'b, 'r, I: SmallAlphabet>
             ..BwtConstruction::init()
         }
     }
+}
 
+impl<'a, 'b, 'r, I: SmallAlphabet>
+    BwtConstruction<'a, 'b, 'r, I, Undecided, OwnedBuffer, Undecided, NoAuxIndices>
+{
+    /// Optionally supply an output buffer for the result BWT.
+    ///
+    /// The buffer must have the same length as the text.
     pub fn in_borrowed_buffer(
         self,
         bwt_buffer: &'b mut [I],
@@ -137,21 +218,15 @@ impl<'a, 'b, 'r, I: SmallAlphabet>
             ..BwtConstruction::init()
         }
     }
-
-    pub fn in_owned_buffer(
-        self,
-    ) -> BwtConstruction<'a, 'b, 'r, I, Undecided, OwnedBuffer, Undecided, NoAuxIndices> {
-        BwtConstruction {
-            text: self.text,
-            ..BwtConstruction::init()
-        }
-    }
 }
 
-// second choice: output type
 impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode>
     BwtConstruction<'a, 'b, 'r, I, Undecided, B, Undecided, NoAuxIndices>
 {
+    /// Provide a buffer to the library in which the temporary array will be stored.
+    ///
+    /// The buffer has to be at least as large as the text, but at most as large as the maximum value
+    /// of the output element type. Additional space might be used by the algorithm for better performance.
     pub fn with_borrowed_temporary_array_buffer<O: OutputElement>(
         self,
         temporary_array_buffer: &'r mut [O],
@@ -164,6 +239,8 @@ impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode>
         }
     }
 
+    /// Inform the library of your desired temporary array output element type,
+    /// if you want the temporary array to be stored internally in a [`Vec`].
     pub fn with_owned_temporary_array_buffer<O: OutputElement>(
         self,
     ) -> BwtConstruction<'a, 'b, 'r, I, O, B, Undecided, NoAuxIndices> {
@@ -174,6 +251,8 @@ impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode>
         }
     }
 
+    /// Inform the library of your desired temporary array output element type,
+    /// if you want the temporary array to be stored internally in a [`Vec<i32>`].
     pub fn with_owned_temporary_array_buffer32(
         self,
     ) -> BwtConstruction<'a, 'b, 'r, I, i32, B, Undecided, NoAuxIndices> {
@@ -184,6 +263,8 @@ impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode>
         }
     }
 
+    /// Inform the library of your desired temporary array output element type,
+    /// if you want the temporary array to be stored internally in a [`Vec<i64>`].
     pub fn with_owned_temporary_array_buffer64(
         self,
     ) -> BwtConstruction<'a, 'b, 'r, I, i64, B, Undecided, NoAuxIndices> {
@@ -194,6 +275,8 @@ impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode>
         }
     }
 
+    /// Like [`Self::with_owned_temporary_array_buffer`], but with additional memory
+    /// to be supplied to the algorithm, which might improve performance.
     pub fn with_owned_temporary_array_buffer_and_extra_space<O: OutputElement>(
         self,
         extra_space: ExtraSpace,
@@ -206,6 +289,8 @@ impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode>
         }
     }
 
+    /// Like [`Self::with_owned_temporary_array_buffer32`], but with additional memory
+    /// to be supplied to the algorithm, which might improve performance.
     pub fn with_owned_temporary_array_buffer_and_extra_space32(
         self,
         extra_space: ExtraSpace,
@@ -218,6 +303,8 @@ impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode>
         }
     }
 
+    /// Like [`Self::with_owned_temporary_array_buffer64`], but with additional memory
+    /// to be supplied to the algorithm, which might improve performance.
     pub fn with_owned_temporary_array_buffer_and_extra_space64(
         self,
         extra_space: ExtraSpace,
@@ -263,10 +350,12 @@ impl<'a, 'b, 'r, I: SmallAlphabet, O: OutputElement, B: BufferMode>
     }
 }
 
-// optional choice at any time: with auxiliary indices
 impl<'a, 'b, 'r, I: SmallAlphabet, O: OutputElement, B: BufferMode, P: Parallelism>
     BwtConstruction<'a, 'b, 'r, I, O, B, P, NoAuxIndices>
 {
+    /// Instruct `libsais` to also generate auxiliary indicides.
+    ///
+    /// See [`bwt`](self#primary-index-and-auxiliary-indices) for details.
     pub fn with_aux_indices(
         mut self,
         aux_indices_sampling_rate: AuxIndicesSamplingRate<O>,
@@ -275,6 +364,12 @@ impl<'a, 'b, 'r, I: SmallAlphabet, O: OutputElement, B: BufferMode, P: Paralleli
         self.into_other_marker_type()
     }
 
+    /// Instruct `libsais` to also generate auxiliary indicides in a borrowed buffer.
+    ///
+    /// The buffer must have exactly the following size: `(text_len - 1) / r + 1`,
+    /// where `r` is the sampling rate.
+    ///
+    /// See [`bwt`](self#primary-index-and-auxiliary-indices) for details.
     pub fn with_aux_indices_in_buffer(
         mut self,
         aux_indices_sampling_rate: AuxIndicesSamplingRate<O>,
@@ -290,7 +385,11 @@ impl<'a, 'b, 'r, I: SmallAlphabet, B: BufferMode, P: Parallelism, A: AuxIndicesM
     BwtConstruction<'a, 'b, 'r, I, i32, B, P, A>
 {
     /// Uses a context object that allows reusing memory across runs of the algorithm.
-    /// Currently, this is only available for the single threaded 32-bit output version.
+    ///
+    /// Currently, this is only available for the `i32` output version. When using multiple threads,
+    /// the thread count of the context must be equal to the threads count of this object.
+    ///
+    /// See [`context`](super::context) for further details.
     pub fn with_context(self, context: &'r mut Context<I, i32, P>) -> Self {
         Self {
             context: Some(context),
@@ -310,9 +409,18 @@ impl<
     A: AuxIndicesMode,
 > BwtConstruction<'a, 'b, 'r, I, O, B, P, A>
 {
-    /// By calling this function you are claiming that the frequency table is valid for the text
-    /// for which this config is used later. Otherwise there is not guarantee for correct behavior
-    /// of the C library.
+    /// Supply the algorithm with a table that contains the number of occurences of each value.
+    ///
+    /// For `u8`-based texts, the table must have a size of 256, for `u16`-based texts, the table must have
+    /// a size of 65536. This might slightly improve the performance of the algorithm.
+    ///
+    /// # Safety
+    ///
+    /// By calling this function you are claiming that the frequency table is valid for the text.
+    ///
+    /// # Panics
+    ///
+    /// If the frequency table has the wrong size.
     pub unsafe fn with_frequency_table(self, frequency_table: &'r mut [O]) -> Self {
         assert_eq!(frequency_table.len(), I::FREQUENCY_TABLE_SIZE);
 
@@ -326,6 +434,16 @@ impl<
 impl<'a, 'b, 'r, I: SmallAlphabet, O: OutputElement, B: BufferMode, P: Parallelism>
     BwtConstruction<'a, 'b, 'r, I, O, B, P, NoAuxIndices>
 {
+    /// Construct the BWT for the given text.
+    ///
+    /// # Panics
+    ///
+    /// If any of the requirements of the methods called before are not met.
+    ///
+    /// # Returns
+    ///
+    /// An error or a type that bundles the BWT with the primary index.
+    /// See [`bwt`](self#return-type-and-reversal) for details.
     pub fn run(mut self) -> Result<Bwt<'b, I, B>, LibsaisError> {
         let text_len = self.text.as_ref().map_or_else(
             || self.bwt_buffer.as_ref().unwrap().len(),
@@ -413,6 +531,16 @@ impl<
     AuxB: BufferMode,
 > BwtConstruction<'a, 'b, 'r, I, O, BwtB, P, AuxB>
 {
+    /// Construct the BWT for the given text.
+    ///
+    /// # Panics
+    ///
+    /// If any of the requirements of the methods called before are not met.
+    ///
+    /// # Returns
+    ///
+    /// An error or a type that bundles the BWT with the auxiliary indices.
+    /// See [`bwt`](self#return-type-and-reversal) for details.
     pub fn run(mut self) -> Result<BwtWithAuxIndices<'a, 'b, I, O, BwtB, AuxB>, LibsaisError> {
         let text_len = self.text.as_ref().map_or_else(
             || self.bwt_buffer.as_ref().unwrap().len(),
@@ -507,6 +635,9 @@ impl<
     }
 }
 
+/// The read-only return type of a BWT construction without auxiliary indices.
+///
+/// It bundes the BWT and the primary index for safe BWT reversal.
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Bwt<'b, I: SmallAlphabet, B: BufferMode> {
     pub(crate) bwt: OwnedOrBorrowed<'b, I, B>,
@@ -526,6 +657,13 @@ impl<'b, I: SmallAlphabet, B: BufferMode> Bwt<'b, I, B> {
         (self.bwt.into_inner(), self.primary_index)
     }
 
+    /// Construct this type without going through a [`BwtConstruction`] or by using the parts
+    /// obtained by [`Self::into_parts`].
+    ///
+    /// # Safety
+    ///
+    /// You are claiming that the BWT  with the primary index is correct for some text according
+    /// to the conventions of `libsais`.
     pub unsafe fn from_parts(bwt: B::Buffer<'b, I>, primary_index: usize) -> Self {
         Self {
             bwt: OwnedOrBorrowed::new(bwt),
@@ -555,6 +693,9 @@ impl<I: SmallAlphabet> Bwt<'static, I, OwnedBuffer> {
     }
 }
 
+/// The read-only return type of a BWT construction with auxiliary indices.
+///
+/// It bundes the BWT, auxiliary indices and sampling rate for safe BWT reversal.
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct BwtWithAuxIndices<
     'a,
@@ -598,6 +739,13 @@ impl<'a, 'b, I: SmallAlphabet, O: OutputElement, BwtB: BufferMode, AuxB: BufferM
         )
     }
 
+    /// Construct this type without going through a [`BwtConstruction`] or by using the parts
+    /// obtained by [`Self::into_parts`].
+    ///
+    /// # Safety
+    ///
+    /// You are claiming that the BWT and the auxiliary indices with the given sampling rate
+    /// are correct for some text according to the conventions of `libsais`.
     pub unsafe fn from_parts(
         bwt: BwtB::Buffer<'b, I>,
         aux_indices: AuxB::Buffer<'a, O>,
@@ -626,6 +774,9 @@ impl<'a, 'b, I: SmallAlphabet, O: OutputElement, BwtB: BufferMode, AuxB: BufferM
     }
 }
 
+/// The sampling rate for auxiliary indices of the BWT construction
+///
+/// See [`bwt`](self#primary-index-and-auxiliary-indices) for details.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AuxIndicesSamplingRate<O: OutputElementOrUndecided> {
     pub(crate) value: O,
@@ -633,6 +784,15 @@ pub struct AuxIndicesSamplingRate<O: OutputElementOrUndecided> {
 }
 
 impl<O: OutputElement> AuxIndicesSamplingRate<O> {
+    /// Create a sampling rate from an output element type.
+    ///
+    /// # Panics
+    ///
+    /// The sampling rate must be a power of two and greater than 1. Otherwise this function panics.
+    pub fn new(value: O) -> Self {
+        Self::from(value)
+    }
+
     pub fn value(&self) -> usize {
         self.value_usize
     }
@@ -647,6 +807,11 @@ impl<O: OutputElement> AuxIndicesSamplingRate<O> {
 }
 
 impl<O: OutputElement> From<O> for AuxIndicesSamplingRate<O> {
+    /// Create a sampling rate from an output element type.
+    ///
+    /// # Panics
+    ///
+    /// The sampling rate must be a power of two and greater than 1. Otherwise this function panics.
     fn from(value: O) -> Self {
         if value.into() < O::ZERO.into() {
             panic!("Aux indices sampling rate cannot be negative");
