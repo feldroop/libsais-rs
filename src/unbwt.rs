@@ -63,6 +63,9 @@ use crate::{
 #[cfg(feature = "openmp")]
 use crate::typestate::MultiThreaded;
 
+/// Recover the text from a BWT
+///
+/// See [`unbwt`](self) for details.
 #[derive(Debug)]
 pub struct UnBwt<
     'b,
@@ -86,9 +89,6 @@ pub struct UnBwt<
     pub(crate) _text_buffer_mode_marker: PhantomData<TextB>,
 }
 
-/// Recover the text from a BWT
-///
-/// See [`unbwt`](self) for details.
 impl<
     'b,
     'r,
@@ -324,7 +324,7 @@ impl<
     ///
     /// # Panics
     ///
-    /// If any of the requirements of the methods called before are not met and if the inptu BWT is
+    /// If any of the requirements of the methods called before are not met and if the input BWT is
     /// too large for the chosen output element type of the temporary array.
     ///
     /// # Returns
