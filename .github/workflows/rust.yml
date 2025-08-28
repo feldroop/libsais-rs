@@ -19,6 +19,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: recursive
     - name: Test
       run: cargo test --verbose --no-default-features
     - name: Test no OpenMP
