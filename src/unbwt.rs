@@ -1,5 +1,46 @@
 /*!
  * Recover the text from a Burrows-Wheeler-Transform.
+ *
+ * The [`UnBwt`] builder-like struct can only be obtained by running a BWT construction first or by
+ * using an `unsafe` constructor of [`Bwt`](super::bwt::Bwt)/[`BwtWithAuxIndices`](super::bwt::BwtWithAuxIndices).
+ *
+ * For optimal performance, it is recommended to use auxiliary indices ([Benchmark]). Their usage is automatically
+ * registered in the [`UnBwt`] builder depending on how you obtain it. Other configuration options include the
+ * use of borrowed output and temporary array buffers, metadata about the BWT, usage of a [`context`](super::context)
+ * and the possiblity of replacing the BWT by the resulting text.
+ *
+ * It is important to know that the temporary array buffer must have the size of the BWT _plus one_ in this operation.
+ *
+ * The following is a simple example of constructing and reversing a BWT:
+ *
+ *
+ * ```
+ * use libsais::BwtConstruction;
+ *
+ * let text = b"blablablabla".as_slice();
+ *
+ * let res = BwtConstruction::for_text(text)
+ *     .with_owned_temporary_array_buffer32()
+ *     .single_threaded()
+ *     .run()
+ *     .unwrap();
+ *
+ * println!("{:?}", res.bwt());
+ *
+ * let recovered_text = res
+ *     .unbwt()
+ *     .with_owned_temporary_array_buffer32()
+ *     .single_threaded()
+ *     .run()
+ *     .unwrap();
+ *
+ * assert_eq!(text, recovered_text.as_slice());
+ * ```
+ *
+ * A more elaborate example can be found [here].
+ *
+ * [here]: https://github.com/feldroop/libsais-rs/blob/master/examples/to_the_bwt_and_back.rs
+ * [Benchmark]: https://github.com/feldroop/benchmark_crates_io_sacas/blob/master/LIBSAIS_BWT_AUX.md
  */
 
 use either::Either;
@@ -45,6 +86,9 @@ pub struct UnBwt<
     pub(crate) _text_buffer_mode_marker: PhantomData<TextB>,
 }
 
+/// Recover the text from a BWT
+///
+/// See [`unbwt`](self) for details.
 impl<
     'b,
     'r,
@@ -125,6 +169,9 @@ impl<
 impl<'b, 'r, 't, I: SmallAlphabet, O: OutputElementOrUndecided, BwtB: BufferMode>
     UnBwt<'b, 'r, 't, I, O, BwtB, OwnedBuffer, Undecided>
 {
+    /// Optionally supply an output buffer for the result text.
+    ///
+    /// The buffer must have the same length as the BWT.
     pub fn in_borrowed_text_buffer(
         self,
         text: &'t mut [I],
@@ -132,6 +179,7 @@ impl<'b, 'r, 't, I: SmallAlphabet, O: OutputElementOrUndecided, BwtB: BufferMode
         self.into_other_marker_type_with_text(OwnedOrBorrowed::new(text))
     }
 
+    /// Instruct the library to replace the input BWT by the recovered text.
     pub fn replace_bwt(mut self) -> UnBwt<'b, 'r, 'b, I, O, BwtB, BwtB, Undecided> {
         let bwt = self.bwt.take().unwrap();
         self.into_other_marker_type_with_text(bwt)
@@ -142,6 +190,9 @@ impl<'b, 'r, 't, I: SmallAlphabet, O: OutputElementOrUndecided, BwtB: BufferMode
 impl<'b, 'r, 't, I: SmallAlphabet, BwtB: BufferMode, TextB: BufferMode>
     UnBwt<'b, 'r, 't, I, Undecided, BwtB, TextB, Undecided>
 {
+    /// Provide a buffer to the library in which the temporary array will be stored.
+    ///
+    /// The buffer must have the same as the input BWT _plus one_.
     pub fn with_borrowed_temporary_array_buffer<O: OutputElement>(
         self,
         temporary_array_buffer: &'r mut [O],
@@ -149,18 +200,24 @@ impl<'b, 'r, 't, I: SmallAlphabet, BwtB: BufferMode, TextB: BufferMode>
         self.into_other_output_type_with_temporary_array_buffer(Some(temporary_array_buffer))
     }
 
+    /// Inform the library of your desired temporary array output element type,
+    /// if you want the temporary array to be stored internally in a [`Vec`].
     pub fn with_owned_temporary_array_buffer<O: OutputElement>(
         self,
     ) -> UnBwt<'b, 'r, 't, I, O, BwtB, TextB, Undecided> {
         self.into_other_output_type_with_temporary_array_buffer(None)
     }
 
+    /// Inform the library of your desired temporary array output element type,
+    /// if you want the temporary array to be stored internally in a [`Vec<i32>`].
     pub fn with_owned_temporary_array_buffer32(
         self,
     ) -> UnBwt<'b, 'r, 't, I, i32, BwtB, TextB, Undecided> {
         self.into_other_output_type_with_temporary_array_buffer(None)
     }
 
+    /// Inform the library of your desired temporary array output element type,
+    /// if you want the temporary array to be stored internally in a [`Vec<i64>`].
     pub fn with_owned_temporary_array_buffer64(
         self,
     ) -> UnBwt<'b, 'r, 't, I, i64, BwtB, TextB, Undecided> {
@@ -172,6 +229,9 @@ impl<'b, 'r, 't, I: SmallAlphabet, BwtB: BufferMode, TextB: BufferMode>
 impl<'b, 'r, 't, I: SmallAlphabet, O: OutputElement, BwtB: BufferMode, TextB: BufferMode>
     UnBwt<'b, 'r, 't, I, O, BwtB, TextB, Undecided>
 {
+    /// Provide a buffer to the library in which the temporary array will be stored.
+    ///
+    /// The buffer must have the same as the input BWT _plus one_.
     pub fn with_borrowed_temporary_array_buffer(
         self,
         temporary_array_buffer: &'r mut [O],
@@ -180,7 +240,6 @@ impl<'b, 'r, 't, I: SmallAlphabet, O: OutputElement, BwtB: BufferMode, TextB: Bu
     }
 }
 
-// third choice: threading
 impl<'b, 'r, 't, I: SmallAlphabet, O: OutputElement, BwtB: BufferMode, TextB: BufferMode>
     UnBwt<'b, 'r, 't, I, O, BwtB, TextB, Undecided>
 {
@@ -204,7 +263,11 @@ impl<'b, 'r, 't, I: SmallAlphabet, BwtB: BufferMode, TextB: BufferMode, P: Paral
     UnBwt<'b, 'r, 't, I, i32, BwtB, TextB, P>
 {
     /// Uses a context object that allows reusing memory across runs of the algorithm.
-    /// Currently, this is only available for the single threaded 32-bit output version.
+    ///
+    /// Currently, this is only available for the `i32` output version. When using multiple threads,
+    /// the thread count of the context must be equal to the threads count of this object.
+    ///
+    /// See [`context`](super::context) for further details.
     pub fn with_context(self, context: &'r mut UnBwtContext<I, i32, P>) -> Self {
         Self {
             context: Some(context),
@@ -224,9 +287,18 @@ impl<
     P: Parallelism,
 > UnBwt<'b, 'r, 't, I, O, BwtB, TextB, P>
 {
-    /// By calling this function you are claiming that the frequency table is valid for the bwt/text
-    /// for which this config is used later. Otherwise there is not guarantee for correct behavior
-    /// of the C library.
+    /// Supply the algorithm with a table that contains the number of occurences of each value.
+    ///
+    /// For `u8`-based BWTs, the table must have a size of 256, for `u16`-based BWTs, the table must have
+    /// a size of 65536. This might slightly improve the performance of the algorithm.
+    ///
+    /// # Safety
+    ///
+    /// By calling this function you are claiming that the frequency table is valid for the BWT.
+    ///
+    /// # Panics
+    ///
+    /// If the frequency table has the wrong size.
     pub unsafe fn with_frequency_table(self, frequency_table: &'r mut [O]) -> Self {
         assert_eq!(frequency_table.len(), I::FREQUENCY_TABLE_SIZE);
 
@@ -248,6 +320,16 @@ impl<
     P: Parallelism,
 > UnBwt<'b, 'r, 't, I, O, BwtB, TextB, P>
 {
+    /// Recover the original text for the given BWT.
+    ///
+    /// # Panics
+    ///
+    /// If any of the requirements of the methods called before are not met and if the inptu BWT is
+    /// too large for the chosen output element type of the temporary array.
+    ///
+    /// # Returns
+    ///
+    /// An error or a simple wrapper type around the recovered text.
     pub fn run(mut self) -> Result<Text<'t, I, TextB>, LibsaisError> {
         let bwt_len = self.bwt.as_ref().map_or_else(
             || self.text.as_ref().unwrap().buffer.len(),
@@ -344,6 +426,7 @@ impl<
     }
 }
 
+/// A simple wrapper type around the recovered text.
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Text<'t, I: InputElement, B: BufferMode> {
     pub(crate) text: OwnedOrBorrowed<'t, I, B>,
