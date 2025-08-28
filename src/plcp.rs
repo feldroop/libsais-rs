@@ -1,5 +1,42 @@
 /*!
- * Construct the permuted longest common prefix array (PLCP) for a suffix array and text.
+ * Construct the [permuted longest common prefix array]
+ * (PLCP) for a suffix array and text.
+ *
+ * The PLCP is a similar data structure to the longest common prefix array (LCP). The difference is that
+ * the longest common prefix values appear in text order rather than lexicographical order.
+ * It can be defined as follows: `PLCP[SUF[j]] = p <=> LCP[j] = p`.
+ *
+ * A PLCP can be used to simulate or construct the LCP array. Please refer to the [literature]
+ * for details. This library only supports constructing the LCP array, see [`lcp`](super::lcp) for details.
+ *
+ * [`PlcpConstruction`] provides a builder-like API for constructing the PLCP. It can only be obtained from
+ * a [`SuffixArrayWithText`](super::suffix_array::SuffixArrayWithText), which is in turn obtained from a
+ * suffix array construction or by using its `unsafe` constructor.
+ *
+ * ```
+ * use libsais::{SuffixArrayConstruction};
+ *
+ * let text = b"abracadabra".as_slice();
+ *
+ * let res = SuffixArrayConstruction::for_text(text)
+ *     .in_owned_buffer32()
+ *     .single_threaded()
+ *     .run()
+ *     .unwrap();
+ *
+ * let res_with_plcp = res.plcp_construction()
+ *     .single_threaded()
+ *     .run()
+ *     .unwrap();
+ * ```
+ *
+ * # Generalized Suffix Array Support
+ *
+ * When using the generalized suffix array mode, the longest common prefix calculation behaves as theoretically
+ * expected. Only the prefixes of individual texts are compared and the sentinels stop the comparison.
+ *
+ * [permuted longest common prefix array]: https://doi.org/10.1007/978-3-642-02441-2_17
+ * [literature]: https://doi.org/10.1007/978-3-642-02441-2_17
  */
 
 use std::marker::PhantomData;
@@ -18,6 +55,9 @@ use crate::typestate::SingleThreaded;
 #[cfg(feature = "openmp")]
 use crate::typestate::{MultiThreaded, Undecided};
 
+/// Construct the permuted longest common prefix array for a suffix array and text.
+///
+/// See [`plcp`](self) for details.
 #[derive(Debug)]
 pub struct PlcpConstruction<
     'p,
@@ -73,6 +113,9 @@ impl<'p, 's, 't, I: InputElement, O: OutputElement, SaB: BufferMode, PlcpB: Buff
 impl<'s, 't, I: InputElement, O: OutputElement, SaB: BufferMode, P: ParallelismOrUndecided>
     PlcpConstruction<'static, 's, 't, I, O, SaB, OwnedBuffer, P>
 {
+    /// Construct the PLCP array in a borrowed buffer instead of allocating an owned [`Vec`].
+    ///
+    /// The buffer must have the same length as the suffix array and text.
     pub fn in_borrowed_buffer<'p>(
         self,
         plcp_buffer: &'p mut [O],
@@ -100,6 +143,17 @@ impl<
     P: Parallelism,
 > PlcpConstruction<'p, 's, 't, I, O, SaB, PlcpB, P>
 {
+    /// Construct the PLCP array for the given suffix array and text.
+    ///
+    /// # Panics
+    ///
+    /// If the text, suffix array and PLCP buffers don't all have the same length, which has to fit into
+    /// the output type. When using a generalized suffix array, the last character of the text has to be the
+    /// zero byte (not ASCII '0').
+    ///
+    /// # Returns
+    ///
+    /// An error or a type that bundles the suffix array with the PLCP array.
     pub fn run(mut self) -> Result<SuffixArrayWithPlcp<'p, 's, O, SaB, PlcpB>, LibsaisError> {
         let mut plcp = OwnedOrBorrowed::take_buffer_or_allocate(self.plcp_buffer.take(), || {
             vec![O::ZERO; self.text.len()]
@@ -156,6 +210,9 @@ impl<
     }
 }
 
+/// The read-only return type of a PLCP construction.
+///
+/// It bundles the suffix array and the PLCP array, to safely allow LCP array construction.
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct SuffixArrayWithPlcp<'p, 's, O: OutputElement, SaB: BufferMode, PlcpB: BufferMode> {
     pub(crate) suffix_array: OwnedOrBorrowed<'s, O, SaB>,
@@ -186,6 +243,13 @@ impl<'p, 's, O: OutputElement, SaB: BufferMode, PlcpB: BufferMode>
         )
     }
 
+    /// Construct this type without going through a [`PlcpConstruction`] or by using the parts
+    /// obtained by [`Self::into_parts`].
+    ///
+    /// # Safety
+    ///
+    /// You are claiming that the PLCP array is correct for the suffix array according to the conventions of `libsais`
+    /// and that the indicator for the generalized suffix array is correct.
     pub unsafe fn from_parts(
         plcp: PlcpB::Buffer<'p, O>,
         suffix_array: SaB::Buffer<'s, O>,

@@ -1,5 +1,5 @@
 /*!
- * Construct the (generalized) [suffix array] (GSA) for a text using [`SuffixArrayConstruction`].
+ * Construct the (generalized) [suffix array] for a text using [`SuffixArrayConstruction`].
  *
  * `libsais` implements suffix array construction based on the [Suffix Array Induced Sort] (SAIS) algorithm.
  * It is a linear-time algorithm and only needs the suffix array itself as memory in most cases.
@@ -97,7 +97,7 @@
  *
  * [suffix array]: https://en.wikipedia.org/wiki/Suffix_array
  * [Suffix Array Induced Sort]: https://www.doi.org/10.1109/TC.2010.188
- * [context]: super::context
+ * [`context`]: super::context
  */
 
 use either::Either;
@@ -332,7 +332,7 @@ impl<'r, 's, 't, I: SmallAlphabet, O: OutputElement, B: BufferMode, P: Paralleli
     ///
     /// When using this mode, the last character of the texts must be 0 (not ASCII '0').
     ///
-    /// See [`suffix_array`](self) for details.
+    /// See [`suffix_array`](self#generalized-suffix-array) for details.
     pub fn generalized_suffix_array(self) -> Self {
         Self {
             generalized_suffix_array: true,
@@ -346,7 +346,7 @@ impl<'r, 's, 't, I: LargeAlphabet, O: OutputElement, B: BufferMode, P: Paralleli
 {
     /// Supply the algorithm with an alphabet size for large alphabets.
     ///
-    /// See [`suffix_array`](self) for details.
+    /// See [`suffix_array`](self#large-alphabets) for details.
     ///
     /// # Safety
     ///
@@ -390,7 +390,7 @@ impl<'r, 's, 't, I: InputElement, O: OutputElement, B: BufferMode, P: Parallelis
     /// # Returns
     ///
     /// An error or a type that bundles the suffix array with a reference to the text.
-    /// See [`suffix_array`](self) for details.
+    /// See [`suffix_array`](self#return-type-and-plcp) for details.
     pub fn run(mut self) -> Result<SuffixArrayWithText<'s, 't, I, O, B>, LibsaisError> {
         let text_len = self.text().len();
         let mut suffix_array =
@@ -571,8 +571,10 @@ impl<'s, 't, I: InputElement, O: SupportsPlcpOutputFor<I>, SaB: BufferMode>
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ExtraSpace {
     None,
-    /// The recommended extra space is 0 for `u8`/`u16`-based texts and for texts smaller ar equal to 20K.
-    /// For larger, `i32`/`i64`-based texts, it is 6K. When the extra space would make the buffer larger
+    /// The recommended extra space is 0 for `u8`/`u16`-based texts and for texts of length smaller than
+    /// or equal to 20K. For larger, `i32`/`i64`-based texts, it is 6K.
+    ///
+    /// When the extra space would make the buffer larger
     /// than the maximum of the output element type, the maximum allowed buffer size is chosen.
     Recommended,
     Fixed {
@@ -608,7 +610,7 @@ impl ExtraSpace {
 
 /// An alphabet size that is recommended to use when handling `i32`/`i64`-based texts.
 ///
-/// See [`suffix_array`](self) for details.
+/// See [`suffix_array`](self#large-alphabets) for details.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AlphabetSize<O: OutputElement>(AlphabetSizeInner<O>);
 

@@ -243,3 +243,16 @@ fn longest_common_prefix<I: InputElement>(
 
     lcp
 }
+
+pub fn is_libsais_plcp<O: OutputElement>(suffix_array: &[O], plcp: &[O], lcp: &[O]) -> bool {
+    // `PLCP[i] = p <=> LCP[j] = p, SUF[j] = i`
+    // `PLCP[SUF[j]] = p <=> LCP[j] = p`
+
+    for (&suf, &l) in suffix_array.iter().zip(lcp) {
+        if plcp[suf.into() as usize].into() != l.into() {
+            return false;
+        }
+    }
+
+    true
+}

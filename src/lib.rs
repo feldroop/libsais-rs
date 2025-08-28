@@ -4,7 +4,7 @@
  *
  * [`libsais`] provides highly optimized implementation for the features listed below.
  * These implementations are widely used in the analysis of very large sequences, such as genome analysis
- * in bioinformatics. For example, [`libsais`] contains the fastest implementation of a suffix array construction
+ * in bioinformatics. For example, [`libsais`] contains the fastest implementation of a [suffix array] construction
  * algorithm to date. [Comparison to `libdivsufsort`] | [Benchmark crates.io]
  *
  * <div class="warning">
@@ -30,6 +30,12 @@
  * # Usage
  *
  * This crate provides generic builder-like APIs for all of the features listed above.
+ *
+ * The primary entry points to this library are [`SuffixArrayConstruction`] and [`BwtConstruction`]. Obtaining
+ * an [`LcpConstruction`], [`PlcpConstruction`] or [`UnBwt`] can only be done via an `unsafe` constructor or by
+ * using the returned types of the primary operations. Passing logically wrong input to these secondary
+ * functions of `libsais` can result in undefined behavior of the underlying C library.
+ *
  * For further details on the individual features, please refer to the module-level documentation.
  * The API is a bit noisy due to lifetimes and typestate, so it is recommended to start with the
  * module-level documentation and [examples].
@@ -47,12 +53,6 @@
  *     .expect("The example on the front page should really work")
  *     .into_vec();
  * ```
- *
- * The primary entry points to this library are [`SuffixArrayConstruction`] and [`BwtConstruction`]. Obtaining
- * an [`LcpConstruction`], [`PlcpConstruction`] or [`UnBwt`] can only be done via an `unsafe` constructor or by
- * using the returned types of the primary operations. Passing logically wrong input to these secondary
- * functions of `libsais` can result in undefined behavior of the underlying C library.
- *
  * # Examples
  *
  * There are [examples] for multiple non-trivial use-cases of this library.
@@ -67,6 +67,7 @@
  * [Benchmark crates.io]: https://github.com/feldroop/benchmark_crates_io_sacas
  * [documentation of the original library]: https://github.com/IlyaGrebnov/libsais
  * [examples]: https://github.com/feldroop/libsais-rs/tree/master/examples
+ * [suffix array]: https://en.wikipedia.org/wiki/Suffix_array
  */
 
 pub mod bwt;
@@ -161,7 +162,7 @@ pub trait SmallAlphabet: InputElement {
 }
 
 /// When using `i32`/`i64`-based texts, the API for suffix array construction changes slightly.
-/// See [`suffix_array`] for details.
+/// See [`suffix_array`](suffix_array#large-alphabets) for details.
 pub trait LargeAlphabet: InputElement + OutputElement {}
 
 /// Information about whether an [`OutputElement`] type can be used with a given [`InputElement`] type.

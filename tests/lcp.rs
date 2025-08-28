@@ -26,6 +26,7 @@ fn empty_text_plcp_lcp() {
     assert!(res.lcp().is_empty());
 
     assert!(is_libsais_lcp(&text, res.suffix_array(), res.lcp(), false));
+    assert!(is_libsais_plcp(res.suffix_array(), res.plcp(), res.lcp()));
 }
 
 #[test]
@@ -60,6 +61,7 @@ fn plcp_lcp_in_buffers() {
         .expect("libsais lcp should run without an error");
 
     assert!(is_libsais_lcp(text, res.suffix_array(), res.lcp(), false));
+    assert!(is_libsais_plcp(res.suffix_array(), res.plcp(), res.lcp()));
 }
 
 #[test]
@@ -91,4 +93,5 @@ fn plcp_lcp_gsa() {
         .expect("libsais lcp should run without an error");
 
     assert!(is_libsais_lcp(&text, res.suffix_array(), res.lcp(), true));
+    assert!(is_libsais_plcp(res.suffix_array(), res.plcp(), res.lcp()));
 }

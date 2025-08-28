@@ -130,7 +130,7 @@ impl<I: InputElement, O: OutputElementOrUndecided, P: ParallelismOrUndecided> Dr
     }
 }
 
-/// A context for use in the recovering of texts from BWTs. Refer to [context](self) for details.
+/// A context for use in the recovering of texts from BWTs. Refer to [`context`](self) for details.
 #[derive(Debug, PartialEq, Eq)]
 pub struct UnBwtContext<I: InputElement, O: OutputElementOrUndecided, P: ParallelismOrUndecided> {
     ptr: *mut c_void,

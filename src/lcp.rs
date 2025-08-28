@@ -1,5 +1,46 @@
 /*!
- * Construct the longest common prefix (LCP) array from a PLCP for a suffix array and text.
+ * Construct the [longest common prefix array] (LCP) from a permuted LCP array (PLCP) for a suffix array.
+ *
+ * [`LcpConstruction`] provides a builder-like API for constructing the PLCP. It can only be obtained from
+ * a [`SuffixArrayWitPlcp`](super::plcp::SuffixArrayWithPlcp), which is in turn obtained from a
+ * PLCP array construction or by using its `unsafe` constructor.
+ *
+ * A notable configuration option is the ability to replace the _suffix array_ (not the PLCP array) with
+ * the LCP array.
+ *
+ * ```
+ * use libsais::{SuffixArrayConstruction};
+ *
+ * let text = b"abracadabra".as_slice();
+ *
+ * let res = SuffixArrayConstruction::for_text(text)
+ *     .in_owned_buffer32()
+ *     .single_threaded()
+ *     .run()
+ *     .unwrap();
+ *
+ * let res_with_plcp = res.plcp_construction()
+ *     .single_threaded()
+ *     .run()
+ *     .unwrap();
+ *
+ * let res_with_plcp_and_lcp = res_with_plcp.lcp_construction()
+ *     .single_threaded()
+ *     .run()
+ *     .unwrap();
+ * ```
+ *
+ * # Output Convention
+ *
+ * The LCP array of `libsais` always starts with a 0. The second entry is the LCP value for the first two suffixes
+ * of the suffix array, and so on.
+ *
+ * # Generalized Suffix Array Support
+ *
+ * When using the generalized suffix array mode, the longest common prefix calculation behaves as theoretically
+ * expected. Only the prefixes of individual texts are compared and the sentinels stop the comparison.
+ *
+ * [longest common prefix array]: https://en.wikipedia.org/wiki/LCP_array
  */
 
 use std::marker::PhantomData;
@@ -20,6 +61,9 @@ use crate::typestate::SingleThreaded;
 #[cfg(feature = "openmp")]
 use crate::typestate::{MultiThreaded, Undecided};
 
+/// Construct the permuted longest common prefix array for a suffix array and PLCP.
+///
+/// See [`lcp`](self) for details.
 #[derive(Debug)]
 pub struct LcpConstruction<
     'l,
@@ -69,6 +113,9 @@ impl<
 impl<'p, 's, O: OutputElement, SaB: BufferMode, PlcpB: BufferMode, P: ParallelismOrUndecided>
     LcpConstruction<'static, 'p, 's, O, SaB, OwnedBuffer, PlcpB, P>
 {
+    /// Construct the LCP array in a borrowed buffer instead of allocating an owned [`Vec`].
+    ///
+    /// The buffer must have the same length as the suffix array and PLCP.
     pub fn in_borrowed_buffer<'l>(
         self,
         lcp_buffer: &'l mut [O],
@@ -216,6 +263,7 @@ impl<
     }
 }
 
+/// The read-only return type of an LCP construction.
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct SuffixArrayWithLcpAndPlcp<
     'l,
@@ -269,6 +317,7 @@ impl<'l, 'p, 's, O: OutputElement, SaB: BufferMode, LcpB: BufferMode, PlcpB: Buf
     }
 }
 
+/// The read-only return type of an LCP construction, when the LCP has replaced the suffix array.
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct LcpAndPlcp<'l, 'p, O: OutputElement, LcpB: BufferMode, PlcpB: BufferMode> {
     pub(crate) lcp: OwnedOrBorrowed<'l, O, LcpB>,
