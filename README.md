@@ -1,5 +1,9 @@
 # libsais-rs
 
+[![Build Status](https://img.shields.io/github/actions/workflow/status/feldroop/libsais-rs/rust.yml?style=flat-square&logo=github)](https://github.com/feldroop/libsais-rs/actions)
+[![Crates.io](https://img.shields.io/crates/v/libsais.svg?style=flat-square&logo=rust)](https://crates.io/crates/libsais)
+[![Documentation](https://img.shields.io/docsrs/libsais?style=flat-square&logo=rust)](https://docs.rs/libsais)
+
 An idiomatic and mostly safe API wrapper for the awesome and _very_ fast library [`libsais`] by Ilya Grebnov.
 
 ⚠️ **Warning:** this crate is not yet battle-tested, there might be bugs. The API is still subject to small changes. Any kind of feedback and suggestions via the issue tracker is highly appreciated!⚠️ 
