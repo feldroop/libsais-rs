@@ -46,14 +46,16 @@ use crate::{
     generics_dispatch::{LcpFunctionsDispatch, LibsaisLcpFunctions},
     lcp::LcpConstruction,
     owned_or_borrowed::OwnedOrBorrowed,
-    typestate::{BorrowedBuffer, BufferMode, OwnedBuffer, Parallelism, ParallelismOrUndecided},
+    typestate::{
+        BorrowedBuffer, BufferMode, OwnedBuffer, Parallelism, ParallelismOrUndecided, Undecided,
+    },
 };
 
 #[allow(unused)]
 use crate::typestate::SingleThreaded;
 
 #[cfg(feature = "openmp")]
-use crate::typestate::{MultiThreaded, Undecided};
+use crate::typestate::MultiThreaded;
 
 /// Construct the permuted longest common prefix array for a suffix array and text.
 ///

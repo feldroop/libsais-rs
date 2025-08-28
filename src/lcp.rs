@@ -51,7 +51,7 @@ use crate::{
     owned_or_borrowed::OwnedOrBorrowed,
     typestate::{
         BorrowedBuffer, BufferMode, BufferModeOrReplaceInput, OwnedBuffer, Parallelism,
-        ParallelismOrUndecided, ReplaceInput,
+        ParallelismOrUndecided, ReplaceInput, Undecided,
     },
 };
 
@@ -59,7 +59,7 @@ use crate::{
 use crate::typestate::SingleThreaded;
 
 #[cfg(feature = "openmp")]
-use crate::typestate::{MultiThreaded, Undecided};
+use crate::typestate::MultiThreaded;
 
 /// Construct the permuted longest common prefix array for a suffix array and PLCP.
 ///

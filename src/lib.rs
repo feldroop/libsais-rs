@@ -46,6 +46,7 @@
  * use libsais::{SuffixArrayConstruction, ThreadCount};
  *
  * let text = b"barnabasbabblesaboutbananas";
+ * # #[cfg(feature = "openmp")]
  * let suffix_array: Vec<i32> = SuffixArrayConstruction::for_text(text)
  *     .in_owned_buffer()
  *     .multi_threaded(ThreadCount::openmp_default())

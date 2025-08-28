@@ -205,25 +205,34 @@ fn libsais_64input_omp() {
 fn create_and_drop_all_contexts() {
     let c1 = Context::<u8, i32, _>::new_single_threaded();
     let c2 = Context::<u16, i32, _>::new_single_threaded();
-    let c3 = Context::<u16, i32, _>::new_multi_threaded(ThreadCount::fixed(2));
-    let c4 = Context::<u16, i32, _>::new_multi_threaded(ThreadCount::fixed(2));
 
     let uc1 = UnBwtContext::<u8, i32, _>::new_single_threaded();
     let uc2 = UnBwtContext::<u16, i32, _>::new_single_threaded();
-    let uc3 = UnBwtContext::<u16, i32, _>::new_multi_threaded(ThreadCount::fixed(2));
-    let uc4 = UnBwtContext::<u16, i32, _>::new_multi_threaded(ThreadCount::fixed(2));
 
     std::mem::drop(c1);
     std::mem::drop(c2);
-    std::mem::drop(c3);
-    std::mem::drop(c4);
 
     std::mem::drop(uc1);
     std::mem::drop(uc2);
+}
+
+#[cfg(feature = "openmp")]
+#[test]
+fn create_and_drop_all_contexts_multithreaded() {
+    let c3 = Context::<u16, i32, _>::new_multi_threaded(ThreadCount::fixed(2));
+    let c4 = Context::<u16, i32, _>::new_multi_threaded(ThreadCount::fixed(2));
+
+    let uc3 = UnBwtContext::<u16, i32, _>::new_multi_threaded(ThreadCount::fixed(2));
+    let uc4 = UnBwtContext::<u16, i32, _>::new_multi_threaded(ThreadCount::fixed(2));
+
+    std::mem::drop(c3);
+    std::mem::drop(c4);
+
     std::mem::drop(uc3);
     std::mem::drop(uc4);
 }
 
+#[cfg(feature = "openmp")]
 #[test]
 fn readme() {
     let text = b"barnabasbrabblesaboutbananas";
