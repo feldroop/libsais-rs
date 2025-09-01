@@ -171,12 +171,11 @@ pub trait LargeAlphabet: InputElement + OutputElement {}
 /// Notably, `i32` output supports only `i32` input and `i64` output supports only `i64` input.
 pub trait IsValidOutputFor<I: InputElement>: Sealed + OutputElement {}
 
-impl IsValidOutputFor<u8> for i32 {}
-impl IsValidOutputFor<u16> for i32 {}
+impl<O: OutputElement> IsValidOutputFor<u8> for O {}
+impl<O: OutputElement> IsValidOutputFor<u16> for O {}
+
 impl IsValidOutputFor<i32> for i32 {}
 
-impl IsValidOutputFor<u8> for i64 {}
-impl IsValidOutputFor<u16> for i64 {}
 impl IsValidOutputFor<i64> for i64 {}
 
 /// Information about whether an [`OutputElement`] type supports the construction of PLCP arrays.
@@ -188,12 +187,10 @@ pub trait SupportsPlcpOutputFor<I: InputElement>:
 {
 }
 
-impl SupportsPlcpOutputFor<u8> for i32 {}
-impl SupportsPlcpOutputFor<u16> for i32 {}
-impl SupportsPlcpOutputFor<i32> for i32 {}
+impl<O: OutputElement> SupportsPlcpOutputFor<u8> for O {}
+impl<O: OutputElement> SupportsPlcpOutputFor<u16> for O {}
 
-impl SupportsPlcpOutputFor<u8> for i64 {}
-impl SupportsPlcpOutputFor<u16> for i64 {}
+impl SupportsPlcpOutputFor<i32> for i32 {}
 
 /// The error type of this crate, used for all functions that run a `libsais` algorithm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
