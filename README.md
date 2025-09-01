@@ -20,7 +20,7 @@ This crate exposes the whole functionality of [`libsais`]. It might be useful to
 
 ## Usage
 
-This crate provides generic builder-like APIs for all of the features listed above. The following is a simple example of how to use this library to construct a suffix array in parallel:
+This crate provides generic builder-like APIs for the whole functionality listed above. The following is a simple example of how to use this library to construct a suffix array in parallel:
 
 ```rust
 use libsais::{SuffixArrayConstruction, ThreadCount};

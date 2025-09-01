@@ -29,7 +29,7 @@
  *
  * # Usage
  *
- * This crate provides generic builder-like APIs for all of the features listed above.
+ * This crate provides generic builder-like APIs for the whole functionality listed above.
  *
  * The primary entry points to this library are [`SuffixArrayConstruction`] and [`BwtConstruction`]. Obtaining
  * an [`LcpConstruction`], [`PlcpConstruction`] or [`UnBwt`] can only be done via an `unsafe` constructor or by
