@@ -1,6 +1,7 @@
 #![allow(unused)]
 
 use libsais::{InputElement, OutputElement, context::Context, typestate::SingleThreaded};
+use num_traits::NumCast;
 
 pub fn setup_basic_example() -> (
     &'static [u8; 11],
@@ -57,8 +58,8 @@ pub fn is_suffix_array<I: InputElement, O: OutputElement>(
     }
 
     for indices in maybe_suffix_array.windows(2) {
-        let previous = indices[0].into() as usize;
-        let current = indices[1].into() as usize;
+        let previous = <usize as NumCast>::from(indices[0]).unwrap();
+        let current = <usize as NumCast>::from(indices[1]).unwrap();
 
         if text[previous..] > text[current..] {
             return false;
@@ -85,7 +86,7 @@ pub fn is_generalized_suffix_array<I: InputElement, O: OutputElement>(
     let mut sentinel_weight = -1;
 
     for c in concatenated_text {
-        if *c == I::ZERO {
+        if *c == I::zero() {
             text_with_markers.push((*c, sentinel_weight));
             sentinel_weight -= 1;
         } else {
@@ -94,20 +95,20 @@ pub fn is_generalized_suffix_array<I: InputElement, O: OutputElement>(
     }
 
     for indices in maybe_suffix_array.windows(2) {
-        let previous = indices[0].into() as usize;
-        let current = indices[1].into() as usize;
+        let previous = <usize as NumCast>::from(indices[0]).unwrap();
+        let current = <usize as NumCast>::from(indices[1]).unwrap();
 
         let previous_full_suffix = &text_with_markers[previous..];
         let current_full_suffix = &text_with_markers[current..];
 
         let end_previous = previous_full_suffix
             .iter()
-            .position(|&(c, _)| c == I::ZERO)
+            .position(|&(c, _)| c == I::zero())
             .unwrap();
 
         let end_current = current_full_suffix
             .iter()
-            .position(|&(c, _)| c == I::ZERO)
+            .position(|&(c, _)| c == I::zero())
             .unwrap();
 
         let previous_suffix = if end_previous == previous_full_suffix.len() {
@@ -154,23 +155,21 @@ pub fn is_libsais_bwt<I: InputElement, O: OutputElement>(
     let mut i = 1;
 
     for &suffix_array_entry in suffix_array {
-        let suffix_array_entry: i64 = suffix_array_entry.into();
-
-        if suffix_array_entry == 0 {
+        if suffix_array_entry == O::zero() {
             // this would be the sentinel in the bwt, which is not there (virtual sentinel)
             // i is delibaretly not incremented here
             continue;
         }
 
-        let rotated_index = if suffix_array_entry == 0 {
+        let rotated_index = if suffix_array_entry == O::zero() {
             text.len() - 1
         } else {
-            suffix_array_entry as usize - 1
+            <usize as NumCast>::from(suffix_array_entry).unwrap() - 1
         };
 
         let bwt_char = maybe_bwt[i];
 
-        if bwt_char.into() != text[rotated_index].into() {
+        if bwt_char != text[rotated_index] {
             return false;
         }
 
@@ -189,10 +188,10 @@ pub fn is_libsais_aux_indices<O: OutputElement>(
     // aux[i] == k => suffix_array[k - 1] = i * r
 
     for (i, &aux_index) in aux_indices.iter().enumerate() {
-        let aux_index: i64 = aux_index.into();
-        let suffix_array_entry: i64 = suffix_array[aux_index as usize - 1].into();
+        let aux_idx_usize = <usize as NumCast>::from(aux_index).unwrap();
+        let suffix_array_entry = <usize as NumCast>::from(suffix_array[aux_idx_usize - 1]).unwrap();
 
-        if suffix_array_entry as usize != i * sampling_rate {
+        if suffix_array_entry != i * sampling_rate {
             return false;
         }
     }
@@ -207,13 +206,13 @@ pub fn is_libsais_lcp<I: InputElement, O: OutputElement>(
     is_generalized_suffix_array: bool,
 ) -> bool {
     for (i, indices) in suffix_array.windows(2).enumerate() {
-        let first = indices[0].into() as usize;
-        let second = indices[1].into() as usize;
+        let first = <usize as NumCast>::from(indices[0]).unwrap();
+        let second = <usize as NumCast>::from(indices[1]).unwrap();
 
-        let lcp_value = lcp[i + 1].into();
+        let lcp_value = <usize as NumCast>::from(lcp[i + 1]).unwrap();
 
         if longest_common_prefix(&text[first..], &text[second..], is_generalized_suffix_array)
-            != lcp_value as usize
+            != lcp_value
         {
             return false;
         }
@@ -230,7 +229,7 @@ fn longest_common_prefix<I: InputElement>(
     let mut lcp = 0;
 
     for (c1, c2) in std::iter::zip(t1, t2) {
-        if is_generalized_suffix_array && (*c1 == I::ZERO || *c2 == I::ZERO) {
+        if is_generalized_suffix_array && (*c1 == I::zero() || *c2 == I::zero()) {
             break;
         }
 
@@ -249,7 +248,8 @@ pub fn is_libsais_plcp<O: OutputElement>(suffix_array: &[O], plcp: &[O], lcp: &[
     // `PLCP[SUF[j]] = p <=> LCP[j] = p`
 
     for (&suf, &l) in suffix_array.iter().zip(lcp) {
-        if plcp[suf.into() as usize].into() != l.into() {
+        let idx = <usize as NumCast>::from(suf).unwrap();
+        if plcp[idx] != l {
             return false;
         }
     }

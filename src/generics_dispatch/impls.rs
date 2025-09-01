@@ -789,7 +789,6 @@ impl Sealed for u8 {}
 
 impl InputElement for u8 {
     const RECOMMENDED_EXTRA_SPACE: usize = 0;
-    const ZERO: Self = 0;
 
     type SingleThreadedOutputDispatcher<O: OutputElementOrUndecided> =
         SingleThreaded8InputOutputDispatcher<O>;
@@ -802,7 +801,6 @@ impl Sealed for u16 {}
 
 impl InputElement for u16 {
     const RECOMMENDED_EXTRA_SPACE: usize = 0;
-    const ZERO: Self = 0;
 
     type SingleThreadedOutputDispatcher<O: OutputElementOrUndecided> =
         SingleThreaded16InputOutputDispatcher<O>;
@@ -815,7 +813,6 @@ impl Sealed for i32 {}
 
 impl InputElement for i32 {
     const RECOMMENDED_EXTRA_SPACE: usize = 6_000;
-    const ZERO: Self = 0;
 
     type SingleThreadedOutputDispatcher<O: OutputElementOrUndecided> =
         SingleThreaded32InputOutputDispatcher<O>;
@@ -825,9 +822,6 @@ impl InputElement for i32 {
 }
 
 impl OutputElement for i32 {
-    const MAX: Self = Self::MAX;
-    const ZERO: Self = 0;
-
     type SingleThreaded8InputFunctions = SingleThreaded8Input32Output;
     type SingleThreaded16InputFunctions = SingleThreaded16Input32Output;
     type SingleThreaded32InputFunctions = SingleThreaded32Input32Output;
@@ -847,7 +841,6 @@ impl Sealed for i64 {}
 
 impl InputElement for i64 {
     const RECOMMENDED_EXTRA_SPACE: usize = 6_000;
-    const ZERO: Self = 0;
 
     type SingleThreadedOutputDispatcher<O: OutputElementOrUndecided> =
         SingleThreaded64InputOutputDispatcher<O>;
@@ -857,9 +850,6 @@ impl InputElement for i64 {
 }
 
 impl OutputElement for i64 {
-    const MAX: Self = Self::MAX;
-    const ZERO: Self = 0;
-
     type SingleThreaded8InputFunctions = SingleThreaded8Input64Output;
     type SingleThreaded16InputFunctions = SingleThreaded16Input64Output;
     type SingleThreaded32InputFunctions = FunctionsUnimplemented;

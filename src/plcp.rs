@@ -41,6 +41,8 @@
 
 use std::marker::PhantomData;
 
+use num_traits::NumCast;
+
 use crate::{
     InputElement, IntoSaisResult, LibsaisError, OutputElement, ThreadCount,
     generics_dispatch::{LcpFunctionsDispatch, LibsaisLcpFunctions},
@@ -158,7 +160,7 @@ impl<
     /// An error or a type that bundles the suffix array with the PLCP array.
     pub fn run(mut self) -> Result<SuffixArrayWithPlcp<'p, 's, O, SaB, PlcpB>, LibsaisError> {
         let mut plcp = OwnedOrBorrowed::take_buffer_or_allocate(self.plcp_buffer.take(), || {
-            vec![O::ZERO; self.text.len()]
+            vec![O::zero(); self.text.len()]
         });
 
         self.construct_in_buffer(&mut plcp.buffer)
@@ -174,11 +176,11 @@ impl<
         assert_eq!(self.text.len(), self.suffix_array_buffer.buffer.len());
 
         // the try_into implementations fail exactly when the value is too large for the respective libsais version
-        let Ok(text_len): Result<O, _> = self.text.len().try_into() else {
+        let Some(text_len) = <O as NumCast>::from(self.text.len()) else {
             panic!(
                 "The text is too long for the chosen output type. Text len: {}, Max allowed len: {}",
                 self.text.len(),
-                O::MAX
+                O::max_value()
             );
         };
 
@@ -186,12 +188,12 @@ impl<
             && let Some(c) = self.text.last()
         {
             assert!(
-                (*c).into() == 0i64,
+                *c == I::zero(),
                 "For the generalized suffix array, the last character of the text needs to be 0 (not ASCII '0')"
             );
         }
 
-        let num_threads = O::try_from(self.thread_count.value as usize).unwrap();
+        let num_threads = <O as NumCast>::from(self.thread_count.value).unwrap();
 
         // SAFETY: lens of buffers were checked
         // generalized suffix array expectations were checked

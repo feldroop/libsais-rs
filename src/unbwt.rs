@@ -44,6 +44,7 @@
  */
 
 use either::Either;
+use num_traits::NumCast;
 
 use std::marker::PhantomData;
 
@@ -338,19 +339,19 @@ impl<
 
         // if there is no text, TextB must be OwnedBuffer
         let mut text = self.text.take().unwrap_or_else(|| {
-            OwnedOrBorrowed::take_buffer_or_allocate(None, || vec![I::ZERO; bwt_len])
+            OwnedOrBorrowed::take_buffer_or_allocate(None, || vec![I::zero(); bwt_len])
         });
 
         let mut temporary_array_buffer = if let Some(borrowed) = self.temporary_array_buffer.take()
         {
             Either::Right(borrowed)
         } else {
-            Either::Left(vec![O::ZERO; bwt_len + 1])
+            Either::Left(vec![O::zero(); bwt_len + 1])
         };
 
         assert_eq!(bwt_len, text.buffer.len());
         assert_eq!(bwt_len + 1, temporary_array_buffer.len());
-        assert!(temporary_array_buffer.len() <= O::MAX.into() as usize);
+        assert!(temporary_array_buffer.len() <= <usize as NumCast>::from(O::max_value()).unwrap());
 
         if let Some(context) = self.context.as_ref() {
             assert_eq!(
@@ -391,7 +392,7 @@ impl<
                     temporary_array_buffer.as_mut_ptr(),
                     bwt_len_output_type,
                     frequency_table_ptr,
-                    O::try_from(primary_index)
+                    <O as NumCast>::from(primary_index)
                         .expect("primary index needs to fit into output type"),
                     num_threads,
                     self.context.map(|ctx| ctx.as_mut_ptr()),

@@ -82,6 +82,8 @@ pub mod unbwt;
 mod generics_dispatch;
 mod owned_or_borrowed;
 
+use num_traits::{NumCast, PrimInt};
+
 use std::fmt::{Debug, Display};
 
 use generics_dispatch::{
@@ -109,11 +111,8 @@ pub use {
 
 /// Possible element types of input texts and output data structures storing text elements implement this trait.
 /// You cannot implement it and don't need to.
-pub trait InputElement:
-    Sealed + std::fmt::Debug + Copy + Clone + Ord + TryFrom<usize, Error: std::fmt::Debug> + Into<i64>
-{
+pub trait InputElement: Sealed + PrimInt + std::fmt::Debug + std::fmt::Display {
     const RECOMMENDED_EXTRA_SPACE: usize;
-    const ZERO: Self;
 
     type SingleThreadedOutputDispatcher<O: OutputElementOrUndecided>: OutputDispatch<Self, O>;
     #[cfg(feature = "openmp")]
@@ -122,18 +121,7 @@ pub trait InputElement:
 
 /// Possible element types of output data structures storing indices implement this trait.
 /// You cannot implement it and don't need to.
-pub trait OutputElement:
-    Sealed
-    + std::fmt::Debug
-    + std::fmt::Display
-    + Copy
-    + Clone
-    + TryFrom<usize, Error: std::fmt::Debug>
-    + Into<i64>
-{
-    const MAX: Self;
-    const ZERO: Self;
-
+pub trait OutputElement: Sealed + PrimInt + std::fmt::Debug + std::fmt::Display {
     type SingleThreaded8InputFunctions: LibsaisFunctionsSmallAlphabet<u8, Self>
         + LibsaisLcpFunctions<u8, Self>;
     type SingleThreaded16InputFunctions: LibsaisFunctionsSmallAlphabet<u16, Self>
@@ -205,8 +193,10 @@ pub enum LibsaisError {
 }
 
 impl LibsaisError {
-    fn from_return_code(return_code: i64) -> Self {
-        match return_code {
+    fn from_return_code<O: OutputElement>(return_code: O) -> Self {
+        let return_code_i64 = <i64 as NumCast>::from(return_code).unwrap();
+
+        match return_code_i64 {
             0 => panic!("Return code does not indicate an error"),
             -1 => Self::InvalidInput,
             -2 => Self::OutOfMemory,
@@ -232,22 +222,18 @@ pub(crate) trait IntoSaisResult {
 
 impl<O: OutputElement> IntoSaisResult for O {
     fn into_empty_sais_result(self) -> Result<(), LibsaisError> {
-        let return_code: i64 = self.into();
-
-        if return_code != 0 {
-            Err(LibsaisError::from_return_code(return_code))
+        if self != O::zero() {
+            Err(LibsaisError::from_return_code(self))
         } else {
             Ok(())
         }
     }
 
     fn into_primary_index_sais_result(self) -> Result<usize, LibsaisError> {
-        let return_code: i64 = self.into();
-
-        if return_code < 0 {
-            Err(LibsaisError::from_return_code(return_code))
+        if self < O::zero() {
+            Err(LibsaisError::from_return_code(self))
         } else {
-            Ok(return_code as usize)
+            Ok(<usize as NumCast>::from(self).unwrap())
         }
     }
 }

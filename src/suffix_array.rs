@@ -101,6 +101,7 @@
  */
 
 use either::Either;
+use num_traits::NumCast;
 
 use crate::{
     InputElement, IntoSaisResult, IsValidOutputFor, LargeAlphabet, LibsaisError, OutputElement,
@@ -590,7 +591,7 @@ impl ExtraSpace {
                 if text_len <= 20_000 {
                     text_len
                 } else {
-                    let max_buffer_len_in_usize = O::MAX.into() as usize;
+                    let max_buffer_len_in_usize = <usize as NumCast>::from(O::max_value()).unwrap();
                     let desired_buffer_len = text_len + I::RECOMMENDED_EXTRA_SPACE;
 
                     if desired_buffer_len <= max_buffer_len_in_usize {
@@ -631,7 +632,7 @@ pub(crate) fn allocate_suffix_array_buffer<I: InputElement, O: OutputElement>(
     text_len: usize,
 ) -> Vec<O> {
     let buffer_len = extra_space_in_buffer.compute_buffer_size::<I, O>(text_len);
-    vec![O::ZERO; buffer_len]
+    vec![O::zero(); buffer_len]
 }
 
 pub(crate) fn sais_safety_checks<I: InputElement, O: OutputElement, P: Parallelism>(
@@ -641,20 +642,19 @@ pub(crate) fn sais_safety_checks<I: InputElement, O: OutputElement, P: Paralleli
     thread_count: ThreadCount,
     generalized_suffix_array: bool,
 ) {
-    // the try_into implementations fail exactly when the value is too large for the respective libsais version
-    let Ok(_): Result<O, _> = text.len().try_into() else {
+    if <O as NumCast>::from(text.len()).is_none() {
         panic!(
             "The text is too long for the chosen output type. Text len: {}, Max allowed len: {}",
             text.len(),
-            O::MAX
+            O::max_value()
         );
     };
 
-    let Ok(_): Result<O, _> = suffix_array_buffer.len().try_into() else {
+    if <O as NumCast>::from(suffix_array_buffer.len()).is_none() {
         panic!(
             "The suffix array buffer is too long for chosen output type. Buffer len: {}, Max allowed len: {}",
             suffix_array_buffer.len(),
-            O::MAX
+            O::max_value()
         );
     };
 
@@ -673,7 +673,7 @@ pub(crate) fn sais_safety_checks<I: InputElement, O: OutputElement, P: Paralleli
 
     if generalized_suffix_array && let Some(c) = text.last() {
         assert!(
-            (*c).into() == 0i64,
+            *c == I::zero(),
             "For the generalized suffix array, the last character of the text needs to be 0 (not ASCII '0')"
         );
     }
@@ -686,9 +686,9 @@ pub(crate) fn cast_and_unpack_parameters<O: OutputElement>(
     frequency_table: Option<&mut [O]>,
 ) -> (O, O, O, *mut O) {
     // all of these casts should succeed after the safety checks
-    let extra_space = (suffix_array_buffer.len() - text_len).try_into().unwrap();
-    let text_len = O::try_from(text_len).unwrap();
-    let num_threads = O::try_from(thread_count.value as usize).unwrap();
+    let extra_space = <O as NumCast>::from(suffix_array_buffer.len() - text_len).unwrap();
+    let text_len = <O as NumCast>::from(text_len).unwrap();
+    let num_threads = <O as NumCast>::from(thread_count.value).unwrap();
 
     let frequency_table_ptr =
         frequency_table.map_or(std::ptr::null_mut(), |freq| freq.as_mut_ptr());
@@ -702,24 +702,19 @@ pub(crate) fn cast_and_unpack_parameters<O: OutputElement>(
 pub(crate) fn compute_and_validate_alphabet_size<I: InputElement, O: OutputElement>(
     text: &[I],
 ) -> Result<O, &'static str> {
-    let mut min = I::ZERO;
-    let mut max = I::ZERO;
+    let mut min = I::zero();
+    let mut max = I::zero();
 
     for c in text {
         min = min.min(*c);
         max = max.max(*c);
     }
 
-    if min < I::ZERO {
+    if min < I::zero() {
         Err("Text cannot contain negative chars")
+    } else if max == I::max_value() {
+        Err("Text cannot contain the maximum value as a character")
     } else {
-        let found_max: i64 = max.into();
-        let max_allowed: i64 = O::MAX.into();
-
-        if found_max == max_allowed {
-            Err("Text cannot contain the maximum value as a character")
-        } else {
-            Ok(O::try_from(found_max as usize + 1).unwrap())
-        }
+        Ok(<O as NumCast>::from(max + I::one()).unwrap())
     }
 }

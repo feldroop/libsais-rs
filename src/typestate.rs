@@ -136,7 +136,6 @@ pub trait BufferMode: Sealed {
 
     fn unwrap_or_allocate<'a, T, F>(opt: Option<&'a mut [T]>, f: F) -> Self::Buffer<'a, T>
     where
-        T: TryFrom<usize, Error: std::fmt::Debug> + Clone,
         F: FnOnce() -> Vec<T>;
 }
 
@@ -161,7 +160,6 @@ impl BufferMode for BorrowedBuffer {
 
     fn unwrap_or_allocate<'a, T, F>(opt: Option<&'a mut [T]>, _f: F) -> Self::Buffer<'a, T>
     where
-        T: TryFrom<usize, Error: std::fmt::Debug> + Clone,
         F: FnOnce() -> Vec<T>,
     {
         opt.unwrap()
@@ -187,7 +185,6 @@ impl BufferMode for OwnedBuffer {
 
     fn unwrap_or_allocate<'a, T, F>(_opt: Option<&'a mut [T]>, f: F) -> Self::Buffer<'a, T>
     where
-        T: TryFrom<usize, Error: std::fmt::Debug> + Clone,
         F: FnOnce() -> Vec<T>,
     {
         f()

@@ -67,6 +67,7 @@
  */
 
 use either::Either;
+use num_traits::NumCast;
 
 use std::marker::PhantomData;
 
@@ -451,7 +452,7 @@ impl<'a, 'b, 'r, I: SmallAlphabet, O: OutputElement, B: BufferMode, P: Paralleli
         );
 
         let mut bwt = OwnedOrBorrowed::take_buffer_or_allocate(self.bwt_buffer.take(), || {
-            vec![I::ZERO; text_len]
+            vec![I::zero(); text_len]
         });
 
         let mut temporary_array_buffer = if let Some(borrowed) = self.temporary_array_buffer.take()
@@ -548,7 +549,7 @@ impl<
         );
 
         let mut bwt = OwnedOrBorrowed::take_buffer_or_allocate(self.bwt_buffer.take(), || {
-            vec![I::ZERO; text_len]
+            vec![I::zero(); text_len]
         });
 
         let mut temporary_array_buffer = if let Some(borrowed) = self.temporary_array_buffer.take()
@@ -583,7 +584,7 @@ impl<
         let aux_indices_sampling_rate = self.aux_indices_sampling_rate.unwrap();
         let mut aux_indices =
             OwnedOrBorrowed::take_buffer_or_allocate(self.aux_indices_buffer.take(), || {
-                vec![O::ZERO; aux_indices_sampling_rate.aux_indices_buffer_size(text_len)]
+                vec![O::zero(); aux_indices_sampling_rate.aux_indices_buffer_size(text_len)]
             });
 
         aux_indices_safety_checks_and_cast_sampling_rate(
@@ -813,11 +814,11 @@ impl<O: OutputElement> From<O> for AuxIndicesSamplingRate<O> {
     ///
     /// The sampling rate must be a power of two and greater than 1. Otherwise this function panics.
     fn from(value: O) -> Self {
-        if value.into() < O::ZERO.into() {
+        if value < O::zero() {
             panic!("Aux indices sampling rate cannot be negative");
         }
 
-        let value_usize = value.into() as usize;
+        let value_usize = <usize as NumCast>::from(value).unwrap();
 
         if value_usize < 2 {
             panic!("Aux indices sampling rate must be greater than 1");
@@ -838,7 +839,7 @@ impl<O1: OutputElementOrUndecided, O2: OutputElement> IntoOtherInner<O2>
 {
     fn into_other_inner(self) -> AuxIndicesSamplingRate<O2> {
         AuxIndicesSamplingRate {
-            value: O2::try_from(self.value_usize)
+            value: <O2 as NumCast>::from(self.value_usize)
                 .expect("Auxiliary indices sampling rate needs to fit into output type"),
             value_usize: self.value_usize,
         }

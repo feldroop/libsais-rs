@@ -1,4 +1,5 @@
 use either::Either;
+use num_traits::PrimInt;
 
 use std::marker::PhantomData;
 
@@ -40,7 +41,7 @@ impl<'a, T, B: BufferMode> OwnedOrBorrowed<'a, T, B> {
 
 impl<'a, T, B: BufferMode> OwnedOrBorrowed<'a, T, B>
 where
-    T: TryFrom<usize, Error: std::fmt::Debug> + Clone + std::fmt::Debug,
+    T: PrimInt + Clone + std::fmt::Debug,
 {
     pub(crate) fn take_buffer_or_allocate<F: FnOnce() -> Vec<T>>(
         opt: Option<&'a mut [T]>,

@@ -45,6 +45,8 @@
 
 use std::marker::PhantomData;
 
+use num_traits::NumCast;
+
 use crate::{
     IntoSaisResult, LibsaisError, OutputElement, ThreadCount,
     generics_dispatch::{LcpFunctionsDispatch, LibsaisLcpFunctions},
@@ -179,7 +181,7 @@ impl<
         mut self,
     ) -> Result<SuffixArrayWithLcpAndPlcp<'l, 'p, 's, O, SaB, LcpB, PlcpB>, LibsaisError> {
         let mut lcp = OwnedOrBorrowed::take_buffer_or_allocate(self.lcp_buffer.take(), || {
-            vec![O::ZERO; self.suffix_array_buffer.buffer.len()]
+            vec![O::zero(); self.suffix_array_buffer.buffer.len()]
         });
 
         self.run_in_optional_borrowed_buffer(Some(&mut lcp.buffer))
@@ -228,16 +230,16 @@ impl<
         }
 
         // the try_into implementations fail exactly when the value is too large for the respective libsais version
-        let Ok(suffix_array_len): Result<O, _> = self.suffix_array_buffer.buffer.len().try_into()
+        let Some(suffix_array_len) = <O as NumCast>::from(self.suffix_array_buffer.buffer.len())
         else {
             panic!(
                 "The suffix array is too long for the chosen output type. Suffix array len: {}, Max allowed len: {}",
                 self.suffix_array_buffer.buffer.len(),
-                O::MAX
+                O::max_value()
             );
         };
 
-        let num_threads = O::try_from(self.thread_count.value as usize).unwrap();
+        let num_threads = <O as NumCast>::from(self.thread_count.value as usize).unwrap();
 
         // this and the below break Rust's borrowing rules for suffix_array_buffer
         // but the pointers are only used in the C code
