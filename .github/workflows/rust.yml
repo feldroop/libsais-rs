@@ -24,7 +24,7 @@ jobs:
     - name: Test libsais-sys
       run: cargo test --verbose -p libsais-sys
     - name: Test
-      run: cargo test --verbose --no-default-features
+      run: cargo test --verbose
     - name: Test no OpenMP
       run: cargo test --verbose --no-default-features
     - name: Clippy
