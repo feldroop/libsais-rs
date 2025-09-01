@@ -1,6 +1,6 @@
 # libsais-rs
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/feldroop/libsais-rs/rust.yml?style=flat-square&logo=github)](https://github.com/feldroop/libsais-rs/actions)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/feldroop/libsais-rs/rust.yml?style=flat-square&logo=github&label=CI)](https://github.com/feldroop/libsais-rs/actions)
 [![Crates.io](https://img.shields.io/crates/v/libsais.svg?style=flat-square&logo=rust)](https://crates.io/crates/libsais)
 [![Documentation](https://img.shields.io/docsrs/libsais?style=flat-square&logo=rust)](https://docs.rs/libsais)
 
