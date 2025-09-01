@@ -14,7 +14,7 @@
  *
  * </div>
  *
- * # Features
+ * # Functionality
  *
  * This crate exposes the whole functionality of [`libsais`].
  * It might be useful to also check out the [documentation of the original library].

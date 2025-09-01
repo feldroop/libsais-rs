@@ -6,9 +6,9 @@
 
 An idiomatic and mostly safe API wrapper for the awesome and _very_ fast library [`libsais`] by Ilya Grebnov.
 
-⚠️ **Warning:** this crate is not yet battle-tested, there might be bugs. The API is still subject to small changes. Any kind of feedback and suggestions via the issue tracker is highly appreciated!⚠️ 
+⚠️ **Warning:** this crate is not yet battle-tested, there might be bugs. The API is still subject to small changes. Any kind of feedback and suggestions via the issue tracker is highly appreciated!⚠️
 
-## Features
+## Functionality
 
 This crate exposes the whole functionality of [`libsais`]. It might be useful to also check out the [documentation of the original library](https://github.com/IlyaGrebnov/libsais).
 
