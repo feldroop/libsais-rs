@@ -111,7 +111,7 @@ pub use {
 
 /// Possible element types of input texts and output data structures storing text elements implement this trait.
 /// You cannot implement it and don't need to.
-pub trait InputElement: Sealed + PrimInt + std::fmt::Debug + std::fmt::Display {
+pub trait InputElement: Sealed + PrimInt + std::fmt::Debug + std::fmt::Display + 'static {
     const RECOMMENDED_EXTRA_SPACE: usize;
 
     type SingleThreadedOutputDispatcher<O: OutputElementOrUndecided>: OutputDispatch<Self, O>;
@@ -121,7 +121,7 @@ pub trait InputElement: Sealed + PrimInt + std::fmt::Debug + std::fmt::Display {
 
 /// Possible element types of output data structures storing indices implement this trait.
 /// You cannot implement it and don't need to.
-pub trait OutputElement: Sealed + PrimInt + std::fmt::Debug + std::fmt::Display {
+pub trait OutputElement: Sealed + PrimInt + std::fmt::Debug + std::fmt::Display + 'static {
     type SingleThreaded8InputFunctions: LibsaisFunctionsSmallAlphabet<u8, Self>
         + LibsaisLcpFunctions<u8, Self>;
     type SingleThreaded16InputFunctions: LibsaisFunctionsSmallAlphabet<u16, Self>
