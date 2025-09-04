@@ -69,8 +69,8 @@
  *
  * The largest value in the text plus one is a lower bound for the alphabet size. It is therefore wasteful
  * to use this algorithm on a text with a large maximum value, when many values smaller than the maximum do
- * not occur in the text. In such a scenario, mapping the text into the range [0, k) is a good option,
- * where k is the number of distinct values in the text.
+ * not occur in the text. In such a scenario, reencoding the text and mapping the values into the range [0, k)
+ * is a good option, where k is the number of distinct values in the text.
  *
  * An example of using large alphabets with further explanations can be found
  * [here](https://github.com/feldroop/libsais-rs/blob/master/examples/large_alphabet_suffix_array.rs).
