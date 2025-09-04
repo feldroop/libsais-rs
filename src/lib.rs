@@ -82,6 +82,7 @@ pub mod unbwt;
 mod generics_dispatch;
 mod owned_or_borrowed;
 
+use bytemuck::Pod;
 use num_traits::{NumCast, PrimInt};
 
 use std::fmt::{Debug, Display};
@@ -111,7 +112,7 @@ pub use {
 
 /// Possible element types of input texts and output data structures storing text elements implement this trait.
 /// You cannot implement it and don't need to.
-pub trait InputElement: Sealed + PrimInt + Debug + Display + Send + Sync + 'static {
+pub trait InputElement: Sealed + PrimInt + Debug + Display + Send + Sync + Pod + 'static {
     const RECOMMENDED_EXTRA_SPACE: usize;
 
     type SingleThreadedOutputDispatcher<O: OutputElementOrUndecided>: OutputDispatch<Self, O>;
@@ -121,7 +122,7 @@ pub trait InputElement: Sealed + PrimInt + Debug + Display + Send + Sync + 'stat
 
 /// Possible element types of output data structures storing indices implement this trait.
 /// You cannot implement it and don't need to.
-pub trait OutputElement: Sealed + PrimInt + Debug + Display + Send + Sync + 'static {
+pub trait OutputElement: Sealed + PrimInt + Debug + Display + Send + Sync + Pod + 'static {
     type SingleThreaded8InputFunctions: LibsaisFunctionsSmallAlphabet<u8, Self>
         + LibsaisLcpFunctions<u8, Self>;
     type SingleThreaded16InputFunctions: LibsaisFunctionsSmallAlphabet<u16, Self>
