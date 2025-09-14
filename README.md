@@ -44,7 +44,7 @@ Below are the results of a small benchmark of suffix array construction algorith
 
 The excellent performance of [`libsais`] is one of the main reasons why this API wrapper crate was created.
 
-<img src="https://raw.githubusercontent.com/feldroop/crates-io-saca-benchmarks/refs/heads/master/plot/plot.svg" />
+<img src="https://raw.githubusercontent.com/feldroop/crates-io-saca-benchmark/refs/heads/master/plot/plot.svg" />
 
 [`libsais`]: https://github.com/IlyaGrebnov/libsais
 [documentation]: https://docs.rs/libsais/latest/libsais/
