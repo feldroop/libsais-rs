@@ -40,11 +40,11 @@ Please consult the [documentation] and the [examples](./examples) for more detai
 
 This library only adds a few safety checks, which should not impact performance in a relevant way. A notable exception is the suffix array construction for `i32` and `i64` inputs. Please consult the [documentation](https://docs.rs/libsais/latest/libsais/suffix_array/index.html#large-alphabets) for details.
 
-Below are the results of a small benchmark of suffix array construction algorithms available on [crates.io](https://crates.io). The input was the human genome, truncated to 2 GB. Details about this benchmark can be found [here](https://github.com/feldroop/benchmark_crates_io_sacas).
+Below are the results of a small benchmark of suffix array construction algorithms available on [crates.io](https://crates.io). The input was the human genome, truncated to 2 GB. Details about this benchmark can be found [here](https://github.com/feldroop/crates-io-saca-benchmark).
 
 The excellent performance of [`libsais`] is one of the main reasons why this API wrapper crate was created.
 
-<img src="https://raw.githubusercontent.com/feldroop/benchmark_crates_io_sacas/refs/heads/master/plot/plot.svg" />
+<img src="https://raw.githubusercontent.com/feldroop/crates-io-saca-benchmarks/refs/heads/master/plot/plot.svg" />
 
 [`libsais`]: https://github.com/IlyaGrebnov/libsais
 [documentation]: https://docs.rs/libsais/latest/libsais/
