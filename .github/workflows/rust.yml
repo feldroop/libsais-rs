@@ -28,9 +28,11 @@ jobs:
     - name: Test no OpenMP
       run: cargo test --verbose --no-default-features
     - name: Clippy
-      run: cargo clippy --verbose
+      run: cargo clippy --verbose -- -Dwarnings
     - name: Documentation
-      run: cargo doc
+      run: cargo doc --no-deps --workspace
+    - name: Format
+      run: cargo fmt --all -- --check
     - name: Examples
       run: |
         cargo run --example fully_configured_generalized_suffix_array
